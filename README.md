@@ -13,7 +13,7 @@ daemon, with a pane that always opens the project's most recently used Paseo wor
 - Optional: a sync server for several machines (projects, links, open tabs handed between devices)
 - Optional: password autofill from a Bitwarden or Vaultwarden vault
 
-Electron + React. Runs on macOS, Linux (X11/Wayland, incl. niri) and Windows.
+Electron + React. Runs on macOS, Linux (X11/Wayland, incl. niri) and Windows. Feedback and issues welcome.
 
 ## Install and run (local mode)
 
