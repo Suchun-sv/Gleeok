@@ -89,7 +89,7 @@ export class Store {
     const rows = this.#db.prepare('SELECT data FROM paseo_daemons').all() as { data: string }[];
     return rows
       .map((r) => JSON.parse(r.data) as PaseoDaemon)
-      .map((d) => ({ ...d, ...this.#daemonSettings(d.serverId) }))
+      .map((d) => ({ ...d, ...effectiveCodeServer(this.#daemonSettings(d.serverId)) }))
       .sort((a, b) => a.hostname.localeCompare(b.hostname));
   }
 
@@ -100,19 +100,42 @@ export class Store {
 
   /** Store a daemon's catalog and re-point managed Paseo links of projects imported from it. */
   putDaemon(daemon: PaseoDaemon): number {
-    const { codeServer: _, ...catalog } = daemon;
+    const { codeServer: _, codeServerSource: __, ...catalog } = daemon;
     this.#db
       .prepare('INSERT INTO paseo_daemons (server_id, data) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET data = excluded.data')
       .run(daemon.serverId, JSON.stringify(catalog));
-    return this.#relink({ ...catalog, ...this.#daemonSettings(daemon.serverId) });
+    return this.#relink({ ...catalog, ...effectiveCodeServer(this.#daemonSettings(daemon.serverId)) });
   }
 
-  /** Returns undefined for an unknown daemon, else how many projects' links changed. */
-  setDaemonSettings(serverId: string, settings: DaemonSettings): number | undefined {
+  /** The user's code-server address for a daemon; null goes back to detection. Undefined for an unknown daemon. */
+  setCodeServer(serverId: string, url: string | null): number | undefined {
+    return this.#updateSettings(serverId, (s) => {
+      const { codeServer: _, ...rest } = s;
+      return url ? { ...rest, codeServer: url } : rest;
+    });
+  }
+
+  /**
+   * Record a detection result. A miss only clears an earlier find after three misses in a row,
+   * so one slow probe doesn't strip every project's 代码 link.
+   */
+  setDetectedCodeServer(serverId: string, url: string | null): number | undefined {
+    return this.#updateSettings(serverId, (s) => {
+      if (url) return { ...s, detected: url, misses: 0 };
+      const misses = (s.misses ?? 0) + 1;
+      const { detected: _, ...rest } = s;
+      return misses >= 3 ? { ...rest, misses } : { ...s, misses };
+    });
+  }
+
+  #updateSettings(serverId: string, edit: (s: DaemonSettings) => DaemonSettings): number | undefined {
     if (!this.#db.prepare('SELECT 1 FROM paseo_daemons WHERE server_id = ?').get(serverId)) return undefined;
+    const before = this.#daemonSettings(serverId);
+    const after = edit(before);
     this.#db
       .prepare('INSERT INTO paseo_daemon_settings (server_id, data) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET data = excluded.data')
-      .run(serverId, JSON.stringify(settings));
+      .run(serverId, JSON.stringify(after));
+    if (effectiveCodeServer(before).codeServer === effectiveCodeServer(after).codeServer) return 0;
     return this.#relink(this.listDaemons().find((d) => d.serverId === serverId)!);
   }
 
@@ -165,7 +188,17 @@ export class Store {
 }
 
 export interface DaemonSettings {
+  /** Set by the user; overrides detection. */
   codeServer?: string;
+  detected?: string;
+  /** Consecutive detection misses since the last find. */
+  misses?: number;
+}
+
+function effectiveCodeServer(s: DaemonSettings): Pick<PaseoDaemon, 'codeServer' | 'codeServerSource'> {
+  if (s.codeServer) return { codeServer: s.codeServer, codeServerSource: 'user' };
+  if (s.detected) return { codeServer: s.detected, codeServerSource: 'detected' };
+  return {};
 }
 
 const newLinkId = () => `l_${randomUUID().slice(0, 8)}`;
@@ -211,7 +244,10 @@ export function parseDaemon(serverId: string, body: unknown): PaseoDaemon | stri
       name: p.name,
       path: p.path,
       workspaceCount: Number(p.workspaceCount ?? 0),
-      latest: p.latest && typeof p.latest.workspaceId === 'string' ? p.latest : null,
+      latest:
+        p.latest && typeof p.latest.workspaceId === 'string'
+          ? { ...p.latest, dir: typeof p.latest.dir === 'string' && p.latest.dir ? p.latest.dir : null }
+          : null,
     })),
   };
 }

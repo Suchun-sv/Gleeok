@@ -101,6 +101,7 @@ async function readCatalog(daemon: DaemonClient, known: { serverId: string; host
       background?: boolean;
       activityAt?: string | null;
       statusEnteredAt?: string | null;
+      workspaceDirectory?: string;
     }[] = [];
     let cursor: string | undefined;
     do {
@@ -121,7 +122,9 @@ async function readCatalog(daemon: DaemonClient, known: { serverId: string; host
           name: p.projectDisplayName,
           path: p.projectRootPath,
           workspaceCount: own.length,
-          latest: top ? { workspaceId: top.id, name: top.name, at: usedAt(top), terminalId: terminals?.entries[0]?.id ?? null } : null,
+          latest: top
+            ? { workspaceId: top.id, name: top.name, at: usedAt(top), terminalId: terminals?.entries[0]?.id ?? null, dir: top.workspaceDirectory ?? null }
+            : null,
         };
       }),
     );

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
+import { detectCodeServer } from './codeserver.ts';
 import { type Store, parseDaemon, parseProjectInput, parseSession } from './store.ts';
 
 export interface AppOptions {
@@ -7,7 +8,11 @@ export interface AppOptions {
   token?: string;
   /** Password vault (Vaultwarden/Bitwarden) the clients of this server should use by default. */
   vaultUrl?: string;
+  /** In-process (local mode): a code-server on localhost is reachable by the only client there is. */
+  local?: boolean;
 }
+
+const DETECT_EVERY_MS = 10 * 60_000;
 
 /**
  * The whole API. The standalone server serves it over HTTP; Gleeok's local mode calls
@@ -15,6 +20,14 @@ export interface AppOptions {
  */
 export function createApp(store: Store, opts: AppOptions = {}) {
   const app = new Hono();
+
+  // Look for a code-server next to each daemon when its catalog arrives, at most every 10 minutes.
+  const lastDetect = new Map<string, number>();
+  const detect = async (serverId: string, hostname: string) => {
+    lastDetect.set(serverId, Date.now());
+    const url = await detectCodeServer(hostname, { allowLocalhost: opts.local });
+    return store.setDetectedCodeServer(serverId, url);
+  };
 
   app.get('/health', (c) => c.json({ ok: true }));
   if (opts.token) app.use('/api/*', bearerAuth({ token: opts.token }));
@@ -65,19 +78,30 @@ export function createApp(store: Store, opts: AppOptions = {}) {
   app.put('/api/paseo/daemons/:serverId', async (c) => {
     const daemon = parseDaemon(c.req.param('serverId'), await c.req.json().catch(() => null));
     if (typeof daemon === 'string') return c.json({ error: daemon }, 400);
-    return c.json({ ok: true, projects: daemon.projects.length, linksUpdated: store.putDaemon(daemon) });
+    const linksUpdated = store.putDaemon(daemon);
+    if (Date.now() - (lastDetect.get(daemon.serverId) ?? 0) > DETECT_EVERY_MS) void detect(daemon.serverId, daemon.hostname).catch(() => {});
+    return c.json({ ok: true, projects: daemon.projects.length, linksUpdated });
   });
 
-  // Per-daemon settings the user chooses (the sync never sends these).
+  // The user's code-server address for a daemon (the sync never sends one); empty/null = detect.
   app.put('/api/paseo/daemons/:serverId/settings', async (c) => {
     const body = (await c.req.json().catch(() => null)) as { codeServer?: unknown } | null;
     const raw = body?.codeServer;
     if (raw !== null && raw !== undefined && typeof raw !== 'string') return c.json({ error: 'codeServer must be a URL or null' }, 400);
     const codeServer = typeof raw === 'string' ? raw.trim().replace(/\/+$/, '') : '';
     if (codeServer && !/^https?:\/\/[^/\s]+/.test(codeServer)) return c.json({ error: 'codeServer must start with http:// or https://' }, 400);
-    const updated = store.setDaemonSettings(c.req.param('serverId'), codeServer ? { codeServer } : {});
+    const updated = store.setCodeServer(c.req.param('serverId'), codeServer || null);
     if (updated === undefined) return c.json({ error: 'unknown daemon' }, 404);
     return c.json({ ok: true, linksUpdated: updated });
+  });
+
+  // Probe now (after installing code-server, say) instead of waiting for the next round.
+  app.post('/api/paseo/daemons/:serverId/detect', async (c) => {
+    const daemon = store.listDaemons().find((d) => d.serverId === c.req.param('serverId'));
+    if (!daemon) return c.json({ error: 'unknown daemon' }, 404);
+    const linksUpdated = await detect(daemon.serverId, daemon.hostname);
+    const after = store.listDaemons().find((d) => d.serverId === daemon.serverId)!;
+    return c.json({ ok: true, codeServer: after.codeServer ?? null, source: after.codeServerSource ?? null, linksUpdated });
   });
 
   app.post('/api/paseo/import', async (c) => {

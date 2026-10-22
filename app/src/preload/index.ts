@@ -27,6 +27,7 @@ const api: GleeokApi = {
   pairPaseo: (url) => ipcRenderer.invoke('paseo:pair', url),
   unpairPaseo: (serverId) => ipcRenderer.invoke('paseo:unpair', serverId),
   setCodeServer: (serverId, url) => ipcRenderer.invoke('paseo:code-server', serverId, url),
+  detectCodeServer: (serverId) => ipcRenderer.invoke('paseo:detect-code-server', serverId),
 };
 
 contextBridge.exposeInMainWorld('gleeok', api);

@@ -154,48 +154,73 @@ function DaemonSection({ daemon, snap }: { daemon: PaseoDaemon; snap: Snapshot }
   );
 }
 
-/** Optional: where this daemon's projects can be edited in code-server; every imported project gets a 代码 link. */
+/**
+ * code-server next to this daemon: detected by the server (tailnet name of the daemon's host), or
+ * typed in to override. When there is one, every project from the daemon gets a 代码 link.
+ */
 function CodeServerSetting({ daemon }: { daemon: PaseoDaemon }) {
   const [editing, setEditing] = useState(false);
-  const [url, setUrl] = useState(daemon.codeServer ?? '');
-  const [error, setError] = useState('');
+  const [url, setUrl] = useState('');
+  const [note, setNote] = useState('');
 
   async function save() {
     const { error } = await gleeok.setCodeServer(daemon.serverId, url);
-    if (error) return setError(error);
-    setError('');
+    if (error) return setNote(error);
+    setNote('');
     setEditing(false);
   }
 
-  if (!editing) {
+  async function detect() {
+    setNote('正在检测…');
+    const r = await gleeok.detectCodeServer(daemon.serverId);
+    setNote(r.error ? `检测失败：${r.error}` : r.url ? '' : `没在 ${daemon.hostname} 上找到 code-server`);
+  }
+
+  if (editing) {
     return (
+      <span className="code-server-edit">
+        <input
+          autoFocus
+          placeholder="https://主机:端口（留空 = 自动检测）"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void save();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+        />
+        <button onClick={() => void save()}>保存</button>
+        <button onClick={() => setEditing(false)}>取消</button>
+        {note && <span className="error">{note}</span>}
+      </span>
+    );
+  }
+  const shown = daemon.codeServer?.replace(/^https?:\/\//, '');
+  return (
+    <span className="code-server-edit">
       <button
         className={daemon.codeServer ? 'code-server set' : 'code-server'}
         onClick={() => {
-          setUrl(daemon.codeServer ?? '');
+          setUrl(daemon.codeServerSource === 'user' ? (daemon.codeServer ?? '') : '');
+          setNote('');
           setEditing(true);
         }}
-        title={daemon.codeServer ? `这个 daemon 的项目都有一条「代码」链接，指向 ${daemon.codeServer}` : '可选：填上这台机器的 code-server 地址，导入的项目会自动带一条「代码」链接'}
+        title={
+          daemon.codeServer
+            ? `这个 daemon 的项目都有一条「代码」链接，打开最近 workspace 的目录。点击可以手动指定地址`
+            : `在 ${daemon.hostname} 上没检测到 code-server。点击可以手动指定地址`
+        }
       >
-        {daemon.codeServer ? `</> ${daemon.codeServer.replace(/^https?:\/\//, '')}` : '</> code-server…'}
+        {daemon.codeServer
+          ? `</> ${shown}${daemon.codeServerSource === 'user' ? '（手动）' : '（自动检测）'}`
+          : '</> 没有 code-server'}
       </button>
-    );
-  }
-  return (
-    <span className="code-server-edit">
-      <input
-        autoFocus
-        placeholder="https://主机:端口（留空表示不用）"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') void save();
-          if (e.key === 'Escape') setEditing(false);
-        }}
-      />
-      <button onClick={() => void save()}>保存</button>
-      <button onClick={() => setEditing(false)}>取消</button>
-      {error && <span className="error">{error}</span>}
+      {daemon.codeServerSource !== 'user' && (
+        <button className="link" onClick={() => void detect()} title="装好 code-server 后不用等，马上检测">
+          重新检测
+        </button>
+      )}
+      {note && <span className="meta">{note}</span>}
     </span>
   );
 }

@@ -68,10 +68,13 @@ pastes it once.
 A project can carry one or more code-editor links (code-server, vscode.dev, ...), one of them
 primary. Projects that have one show a `</>` button in the sidebar (and Prefix+C) that opens
 the primary link in 草稿区, or brings forward a tab already showing it; right-click it for the
-others. Add them on the project's entry page ("+ 添加代码链接"), or give a daemon its
-code-server address on the import page (the `</> code-server…` button): every project from
-that daemon then gets a managed link to its folder (`<address>/?folder=<project path>`).
-Without either, nothing code-related appears.
+others. Add them on the project's entry page ("+ 添加代码链接"). Projects imported from Paseo
+get one by themselves when the daemon's machine runs code-server: the server looks for it by
+the machine's tailnet name (tailscale serve on 8443 or 443, or port 8080; in local mode also
+the address in `~/.config/code-server/config.yaml`), checks `/healthz`, and links each project
+to its latest workspace's directory (`<address>/?folder=<dir>`). The import page shows what was
+found, re-checks on demand and lets you type an address instead. Without any of this, nothing
+code-related appears.
 
 In local mode Gleeok also reads a daemon on the same machine without pairing; `PASEO_URL`
 (default `http://127.0.0.1:6767`) and `PASEO_PASSWORD` point it elsewhere.

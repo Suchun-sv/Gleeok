@@ -49,7 +49,7 @@ export class ConfigClient {
       this.#conf = JSON.parse(readFileSync(path, 'utf8')) as ClientConfig;
       this.status = 'offline';
     } catch {
-      this.#local = createApp(new Store(join(app.getPath('userData'), 'gleeok.db')));
+      this.#local = createApp(new Store(join(app.getPath('userData'), 'gleeok.db')), { local: true });
       this.status = 'local';
       return;
     }
@@ -157,6 +157,12 @@ export class ConfigClient {
   async setDaemonSettings(serverId: string, settings: { codeServer: string | null }) {
     await this.#request('PUT', `/api/paseo/daemons/${serverId}/settings`, settings);
     await this.refresh();
+  }
+
+  async detectCodeServer(serverId: string): Promise<string | null> {
+    const r = (await this.#request('POST', `/api/paseo/daemons/${serverId}/detect`)) as { codeServer: string | null };
+    await this.refresh();
+    return r.codeServer;
   }
 
   /** Store a Paseo daemon's catalog (local mode feeds it from the local daemon). */

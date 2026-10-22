@@ -1286,6 +1286,15 @@ ipcMain.handle('paseo:code-server', async (_e, serverId: string, url: string) =>
     return { error: m ? m[1] : String(e) };
   }
 });
+ipcMain.handle('paseo:detect-code-server', async (_e, serverId: string) => {
+  try {
+    const url = await config.detectCodeServer(serverId);
+    changed();
+    return { url };
+  } catch (e) {
+    return { error: String(e).slice(0, 120) };
+  }
+});
 ipcMain.handle('paseo:unpair', (_e, serverId: string) => {
   pairings = pairings.filter((p) => p.serverId !== serverId);
   savePairings(pairings);

@@ -45,8 +45,12 @@ export interface PaseoDaemon {
   version: string;
   /** Web UI origin used to build links, e.g. https://app.paseo.sh */
   webBase: string;
-  /** code-server on the daemon's machine (set by the user, not by the sync); projects get a 代码 link into it. */
+  /**
+   * code-server on the daemon's machine, found by the server's detection or set by the user (who
+   * wins); projects get a 代码 link into it. Never sent by the sync.
+   */
   codeServer?: string;
+  codeServerSource?: 'user' | 'detected';
   syncedAt: string;
   projects: PaseoProject[];
 }
@@ -57,7 +61,14 @@ export interface PaseoProject {
   path: string;
   workspaceCount: number;
   /** Most recently active non-archived workspace, if any. */
-  latest: { workspaceId: string; name: string; at: string | null; terminalId?: string | null } | null;
+  latest: {
+    workspaceId: string;
+    name: string;
+    at: string | null;
+    terminalId?: string | null;
+    /** The workspace's own directory (a worktree may differ from the project root). */
+    dir?: string | null;
+  } | null;
 }
 
 export function paseoProjectUrl(daemon: Pick<PaseoDaemon, 'serverId' | 'webBase'>, p: PaseoProject): string {
@@ -107,7 +118,7 @@ export function managedPaseoLinks(
   }
   if (daemon.codeServer) {
     const code = keep('paseo-code');
-    out.push({ ...(code ?? { id: newId(), label: `代码 · ${daemon.hostname}` }), url: codeFolderUrl(daemon.codeServer, p.path), kind: 'paseo-code' });
+    out.push({ ...(code ?? { id: newId(), label: `代码 · ${daemon.hostname}` }), url: codeFolderUrl(daemon.codeServer, p.latest?.dir || p.path), kind: 'paseo-code' });
   }
   return out;
 }

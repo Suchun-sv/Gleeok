@@ -142,6 +142,8 @@ export interface GleeokApi {
   /** Remember a daemon's pairing link on this machine and read its projects through the relay. */
   pairPaseo(url: string): Promise<{ error?: string }>;
   unpairPaseo(serverId: string): Promise<void>;
-  /** Set (or clear, with '') the code-server address projects from this daemon link into. */
+  /** Set the code-server address projects from this daemon link into; '' goes back to detection. */
   setCodeServer(serverId: string, url: string): Promise<{ error?: string }>;
+  /** Look for a code-server on the daemon's machine now; resolves to what was found. */
+  detectCodeServer(serverId: string): Promise<{ url?: string | null; error?: string }>;
 }

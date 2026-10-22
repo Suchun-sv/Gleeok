@@ -60,7 +60,7 @@ const catalog = projects.map((p) => {
     name: p.projectDisplayName,
     path: p.projectRootPath,
     workspaceCount: own.length,
-    latest: top ? { workspaceId: top.id, name: top.name, at: usedAt(top) } : null,
+    latest: top ? { workspaceId: top.id, name: top.name, at: usedAt(top), dir: top.workspaceDirectory ?? null } : null,
   };
 });
 
