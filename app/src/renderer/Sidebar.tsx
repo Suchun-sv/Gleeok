@@ -191,8 +191,25 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         >
           入口页
         </button>
+        {(snap.update.commits.length > 0 || snap.update.step || snap.update.error) && (
+          <button className="update-available" onClick={() => gleeok.dispatch({ type: 'openUpdate' })}>
+            {snap.update.step
+              ? `正在更新：${snap.update.step}`
+              : snap.update.error
+                ? '更新失败，点此查看'
+                : `⬆ 更新 Gleeok（${snap.update.commits.length} 个更新）`}
+          </button>
+        )}
         <span className="build" title={__GLEEOK_BUILD__}>
           build {new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          {snap.canSelfUpdate && (
+            <>
+              {' · '}
+              <button className="link" onClick={() => gleeok.dispatch({ type: 'checkUpdate' })}>
+                检查更新
+              </button>
+            </>
+          )}
         </span>
       </footer>
     </aside>

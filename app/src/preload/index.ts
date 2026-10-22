@@ -14,6 +14,7 @@ const api: GleeokApi = {
   onDragImages: (cb) => subscribe<Record<number, string>>('drag-images', cb),
   onPalette: (cb) => subscribe<void>('palette', () => cb()),
   onVaultDialog: (cb) => subscribe<VaultDialog>('vault-dialog', cb),
+  onUpdateDialog: (cb) => subscribe<void>('update-dialog', () => cb()),
   vaultUnlock: (email, password, server) => ipcRenderer.invoke('vault:unlock', email, password, server),
   vaultSave: (login) => ipcRenderer.invoke('vault:save', login),
   dispatch: (action) => ipcRenderer.send('action', action),

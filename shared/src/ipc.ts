@@ -38,6 +38,8 @@ export interface Snapshot {
   tabDragging: boolean;
   /** Running from a git checkout, so the palette can offer "update Gleeok". */
   canSelfUpdate: boolean;
+  /** New commits upstream (subjects, newest first) and, while updating, the current step. */
+  update: { commits: string[]; step?: string; error?: string };
   vault: {
     unlocked: boolean;
     email: string;
@@ -92,6 +94,7 @@ export type Action =
   | { type: 'openPalette' }
   | { type: 'checkUpdate' }
   | { type: 'selfUpdate' }
+  | { type: 'openUpdate' }
   | { type: 'adoptRemoteTabs'; projectId: string }
   | { type: 'restoreTabs'; projectId: string }
   | { type: 'vaultFill' }
@@ -121,6 +124,8 @@ export interface GleeokApi {
   /** Main asks this window to show the command palette. */
   onPalette(cb: () => void): () => void;
   onVaultDialog(cb: (d: VaultDialog) => void): () => void;
+  /** Main asks this window to show the update dialog. */
+  onUpdateDialog(cb: () => void): () => void;
   vaultUnlock(email: string, password: string, server?: string): Promise<{ error?: string }>;
   vaultSave(login: { name: string; url: string; username: string; password: string }): Promise<{ error?: string }>;
   dispatch(action: Action): void;

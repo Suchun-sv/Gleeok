@@ -236,6 +236,35 @@ main {
   opacity: 0.7;
 }
 
+.build .link {
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+  text-decoration: underline;
+  background: none;
+}
+
+.update-available {
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #0b1220;
+  font-weight: 600;
+}
+
+.update-dialog ul {
+  margin: 0;
+  padding-left: 18px;
+  max-height: 240px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+
+.update-dialog .progress {
+  margin: 0;
+  color: var(--accent);
+}
+
 .project.add {
   color: var(--muted);
 }
@@ -753,6 +782,12 @@ input.managed {
 .download.interrupted .meta,
 .download.cancelled .meta {
   color: var(--danger);
+}
+
+.newtab .links .sub {
+  margin-top: -5px;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .newtab .links .hint {

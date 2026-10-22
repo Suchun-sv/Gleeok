@@ -3,6 +3,7 @@ import type { Command, Snapshot, VaultDialog as VaultDialogState } from '../../.
 import { EntryPage } from './EntryPage.tsx';
 import { ImportPage } from './ImportPage.tsx';
 import { Palette } from './Palette.tsx';
+import { UpdateDialog } from './UpdateDialog.tsx';
 import { VaultDialog } from './VaultDialog.tsx';
 import { Panes } from './Panes.tsx';
 import { Sidebar, SidebarToggle } from './Sidebar.tsx';
@@ -16,6 +17,7 @@ export function App() {
   const [dragImages, setDragImages] = useState<Record<number, string>>({});
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [vaultDialog, setVaultDialog] = useState<VaultDialogState | null>(null);
+  const [updateOpen, setUpdateOpen] = useState(false);
 
   useEffect(() => {
     void gleeok.getSnapshot().then(setSnap);
@@ -28,7 +30,13 @@ export function App() {
       setPaletteOpen(false);
       setVaultDialog(d);
     });
+    const offUpdate = gleeok.onUpdateDialog(() => {
+      setPaletteOpen(false);
+      setVaultDialog(null);
+      setUpdateOpen(true);
+    });
     return () => {
+      offUpdate();
       offSnap();
       offCmd();
       offImages();
@@ -50,6 +58,8 @@ export function App() {
       serverUrl={snap.vault.serverUrl}
       onClose={() => setVaultDialog(null)}
     />
+  ) : updateOpen ? (
+    <UpdateDialog update={snap.update} winId={WIN_ID} onClose={() => setUpdateOpen(false)} />
   ) : paletteOpen ? (
     <Palette snap={snap} winId={WIN_ID} onClose={() => setPaletteOpen(false)} />
   ) : null;

@@ -28,10 +28,12 @@ function run(cmd: string, args: string[], cwd: string): Promise<string> {
   });
 }
 
-/** Commits on the remote branch that this checkout does not have yet. */
-export async function pendingUpdates(): Promise<number> {
+/** Commits on the remote branch that this checkout does not have yet (subjects, newest first). */
+export async function pendingUpdates(): Promise<{ head: string; commits: string[] }> {
   await run('git', ['fetch', '--quiet'], repoDir);
-  return Number(await run('git', ['rev-list', '--count', 'HEAD..@{u}'], repoDir)) || 0;
+  const head = await run('git', ['rev-parse', '@{u}'], repoDir);
+  const log = await run('git', ['log', '--format=%s', 'HEAD..@{u}'], repoDir);
+  return { head, commits: log ? log.split('\n') : [] };
 }
 
 /** Pull, install and build; reports each step. Throws with the failing step's tail on error. */

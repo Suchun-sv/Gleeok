@@ -499,6 +499,7 @@ function snapshot(): Snapshot {
     memory: Object.fromEntries(memory),
     tabDragging,
     canSelfUpdate: canSelfUpdate(),
+    update,
     vault: {
       unlocked: vault?.unlocked ?? false,
       email: vault?.email ?? '',
@@ -573,13 +574,19 @@ const openPalette = () => openOverlay('palette');
 // ---- self-update (git checkout) ----
 
 let updating = false;
+let update: Snapshot['update'] = { commits: [] };
+/** Upstream commit the dialog last popped up for: each new version asks once. */
+let updateAskedFor = '';
 
 async function checkUpdate(announceNone: boolean) {
-  if (!canSelfUpdate()) return;
+  if (!canSelfUpdate() || updating) return;
   try {
-    const n = await pendingUpdates();
-    if (n > 0) {
-      send({ type: 'toast', slot: state.focusedPane, text: `Gleeok 有 ${n} 个更新`, undo: { type: 'selfUpdate' }, undoLabel: '更新并重启', ms: 20_000 });
+    const { head, commits } = await pendingUpdates();
+    update = { commits };
+    changed();
+    if (commits.length > 0) {
+      if (announceNone || (head !== updateAskedFor && !process.env.GLEEOK_DEV_SCRIPT)) void openOverlay('update-dialog');
+      updateAskedFor = head;
     } else if (announceNone) {
       send({ type: 'toast', slot: state.focusedPane, text: 'Gleeok 已经是最新版本' });
     }
@@ -592,14 +599,22 @@ async function runSelfUpdate() {
   if (updating || !canSelfUpdate()) return;
   updating = true;
   const say = (text: string, ms = 120_000) => send({ type: 'toast', slot: state.focusedPane, text, ms });
+  const step = (s: string) => {
+    update = { ...update, step: s, error: undefined };
+    changed();
+    say(`正在更新 Gleeok：${s}`);
+  };
   try {
-    await selfUpdate((s) => say(`正在更新 Gleeok：${s}`));
-    say('更新完成，正在重启…', 5000);
+    await selfUpdate(step);
+    step('完成，正在重启…');
     // Dev scripts must not relaunch themselves in a loop.
     if (!process.env.GLEEOK_NO_RELAUNCH) app.relaunch();
     setTimeout(() => app.quit(), 800);
   } catch (e) {
-    say(`更新失败：${String(e).replace(/^Error: /, '').slice(0, 140)}`, 30_000);
+    const error = String(e).replace(/^Error: /, '').slice(0, 300);
+    update = { ...update, step: undefined, error };
+    changed();
+    say(`更新失败：${error.slice(0, 140)}`, 30_000);
   } finally {
     updating = false;
   }
@@ -822,6 +837,9 @@ function dispatch(action: Action) {
       return;
     case 'selfUpdate':
       void runSelfUpdate();
+      return;
+    case 'openUpdate':
+      void openOverlay('update-dialog');
       return;
     case 'vaultFill':
       void vaultFill();

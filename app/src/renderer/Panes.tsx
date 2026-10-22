@@ -438,6 +438,14 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
   );
 }
 
+/** Tools offered on every new-tab page, after the project's own links. */
+const SUGGESTIONS = [
+  { label: '读论文', name: 'alphaXiv', url: 'https://www.alphaxiv.org/' },
+  { label: '做 PPT', name: 'OneDrive', url: 'https://www.office.com/launch/onedrive' },
+  { label: '草稿', name: 'Notion', url: 'https://www.notion.so/' },
+  { label: '画布', name: 'Miro', url: 'https://miro.com/app/dashboard/' },
+];
+
 function NewTab({
   slot,
   project,
@@ -469,6 +477,16 @@ function NewTab({
           <button key={l.id} onClick={() => gleeok.dispatch({ type: 'navigate', slot, url: l.url })} title={l.url}>
             <img src={l.icon ?? faviconFor(l.url)} alt="" />
             <span>{l.label}</span>
+          </button>
+        ))}
+      </div>
+      <h3>常用</h3>
+      <div className="links">
+        {SUGGESTIONS.map((t) => (
+          <button key={t.url} onClick={() => gleeok.dispatch({ type: 'navigate', slot, url: t.url })} title={t.url}>
+            <img src={faviconFor(t.url)} alt="" />
+            <span>{t.label}</span>
+            <span className="sub">{t.name}</span>
           </button>
         ))}
       </div>
