@@ -444,6 +444,7 @@ const SUGGESTIONS = [
   { label: '做 PPT', name: 'OneDrive', url: 'https://www.office.com/launch/onedrive' },
   { label: '草稿', name: 'Notion', url: 'https://www.notion.so/' },
   { label: '画布', name: 'Miro', url: 'https://miro.com/app/dashboard/' },
+  { label: '代码', name: 'code-server', url: 'https://coder.com/solutions/code-server' },
   { label: '邮件', name: 'Outlook', url: 'https://outlook.com/' },
   { label: '娱乐', name: 'RedNote', url: 'https://www.rednote.com/' },
 ];
