@@ -5,6 +5,7 @@
 # Rebuild after pulling changes: (cd ~/github/gleeok/app && npm run build)
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")/../app"
-electron=$(node -e 'console.log(require("electron"))')
+# The first call downloads Electron and prints a progress line before the path: keep the last line.
+electron=$(node -e 'console.log(require("electron"))' | tail -n1)
 # --enable-wayland-ime + text-input v3: lets fcitx5 type Chinese into pages on niri.
 exec "$electron" . --ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3 "$@"

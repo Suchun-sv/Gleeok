@@ -7,7 +7,7 @@ profile=${GLEEOK_PROFILE:-/tmp/gleeok-capture-profile}
 rm -rf "$out" /tmp/gleeok-capture-downloads; [ -n "${KEEP_PROFILE:-}" ] || rm -rf "$profile"; mkdir -p "$out" /tmp/gleeok-capture-downloads
 cd "$(dirname "$0")/../app"
 GLEEOK_DEV_SCRIPT=$script GLEEOK_DEV_OUT=$out GLEEOK_USER_DATA=$profile GLEEOK_DOWNLOADS=/tmp/gleeok-capture-downloads \
-  timeout 120 "$(node -e 'console.log(require("electron"))')" . --ozone-platform=headless --ozone-override-screen-size=1600,1000 --disable-gpu 2>&1 | grep -E '\[devscript\]|rror' || true
+  timeout 120 "$(node -e 'console.log(require("electron"))' | tail -n1)" . --ozone-platform=headless --ozone-override-screen-size=1600,1000 --disable-gpu 2>&1 | grep -E '\[devscript\]|rror' || true
 for j in $(ls "$out"/*.json); do
   name=$(basename "$j" .json)
   args=$(node -e '
