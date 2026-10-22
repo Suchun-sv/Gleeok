@@ -28,14 +28,22 @@
     "productName": "Gleeok",
     "files": [
       "dist/**",
+      "assets/**",
       "package.json"
     ],
+    "win": {
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "icon": "assets/icon-512.png"
+    },
     "directories": {
       "output": "release"
     },
     "mac": {
       "target": "dir",
       "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
       "identity": "Gleeok Self-Signed",
       "hardenedRuntime": false,
       "gatekeeperAssess": false,

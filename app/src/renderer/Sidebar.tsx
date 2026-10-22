@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
+import icon from '../../assets/icon-64.png';
 
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
 export function SidebarToggle({ platform }: { platform: string }) {
@@ -32,7 +33,10 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
   return (
     <aside className="sidebar">
       <header>
-        <span className="brand">Gleeok</span>
+        <span className="brand">
+          <img src={icon} alt="" />
+          Gleeok
+        </span>
         <span className="spacer" />
         <span
           className={`dot ${server.status}`}

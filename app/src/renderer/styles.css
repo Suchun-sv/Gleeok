@@ -126,8 +126,16 @@ main {
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+.brand img {
+  width: 22px;
+  height: 22px;
 }
 
 .dot {

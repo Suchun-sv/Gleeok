@@ -1,3 +1,5 @@
+<img src="app/assets/icon-512.png" width="128" align="right" alt="">
+
 # Gleeok
 
 A browser workspace organised by project. Each project gets two or three browser panes side by
@@ -35,8 +37,9 @@ It pulls, runs `npm install` and `npm run build`, and restarts. By hand: `git pu
 && npm run build`, then restart.
 
 - **Linux**: `deploy/gleeok-linux.sh` starts it with Wayland input-method support (fcitx5 etc.);
-  `ln -sf ~/github/gleeok/deploy/gleeok-linux.sh ~/.local/bin/gleeok` and copy
-  `deploy/gleeok.desktop` to `~/.local/share/applications/` for a launcher entry.
+  `ln -sf ~/github/gleeok/deploy/gleeok-linux.sh ~/.local/bin/gleeok`, copy
+  `deploy/gleeok.desktop` to `~/.local/share/applications/` and `app/assets/icon-512.png` to
+  `~/.local/share/icons/hicolor/512x512/apps/gleeok.png` for a launcher entry with the icon.
 - **Windows**: `winget install OpenJS.NodeJS.LTS Git.Git`, then the steps above in PowerShell
   (if PowerShell refuses to run `npm`, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
   once, or use `npm.cmd`). `deploy\gleeok-windows.cmd` starts it.

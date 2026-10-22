@@ -13,7 +13,7 @@ app=~/Applications/Gleeok.app
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 
-icon="$repo/app/node_modules/electron/dist/Electron.app/Contents/Resources/electron.icns"
+icon="$repo/app/assets/icon.icns"
 [ -f "$icon" ] && cp "$icon" "$app/Contents/Resources/gleeok.icns"
 
 cat > "$app/Contents/Info.plist" <<PLIST

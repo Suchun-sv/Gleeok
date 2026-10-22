@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { BrowserWindow, screen, type Input, type Rectangle } from 'electron';
+import { BrowserWindow, app, screen, type Input, type Rectangle } from 'electron';
 import { type AppWindowState, paneName } from '../../../shared/src/model.ts';
 import { niriEnabled, niriMoveToOutput, niriOutputNames, niriOutputOf } from './niri.ts';
 
@@ -48,6 +48,8 @@ export class Shells {
       ...bounds,
       title: windowTitle(ws),
       backgroundColor: '#16171b',
+      // Taskbar/window icon on Linux and Windows; macOS takes the Dock icon instead.
+      icon: join(app.getAppPath(), 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'),
       autoHideMenuBar: true,
       show: false,
       webPreferences: { preload: join(__dirname, 'preload.js'), sandbox: true },

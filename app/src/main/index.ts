@@ -1219,6 +1219,8 @@ ipcMain.handle('project:refresh', async () => {
 });
 
 app.whenReady().then(async () => {
+  // Run from a checkout, the Dock would show Electron's icon; packaged builds carry their own.
+  if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'assets', 'icon.png'));
   // Present as plain Chrome: some sites refuse or degrade for UAs that mention Electron.
   const ses = session.fromPartition(PARTITION);
   ses.setUserAgent(ses.getUserAgent().replace(/ (Electron|gleeok)\/\S+/g, ''));
