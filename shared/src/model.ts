@@ -8,9 +8,13 @@ export interface Link {
   pinnedPane?: number;
   /**
    * Managed by the server from the Paseo sync: 'paseo' points at the project's most recently used
-   * workspace, 'paseo-terminal' at a terminal in that workspace (and disappears when it is closed).
+   * workspace, 'paseo-terminal' at a terminal in that workspace (and disappears when it is closed),
+   * 'paseo-code' at the project's folder in the daemon's code-server (when one is set for it).
+   * 'code' is a code-editor link the user added by hand.
    */
-  kind?: 'paseo' | 'paseo-terminal';
+  kind?: 'paseo' | 'paseo-terminal' | 'paseo-code' | 'code';
+  /** Code links only: the one the 代码 button opens. At most one per project. */
+  primary?: boolean;
   /** Favicon captured from the page itself when the link was saved. */
   icon?: string;
 }
@@ -41,6 +45,8 @@ export interface PaseoDaemon {
   version: string;
   /** Web UI origin used to build links, e.g. https://app.paseo.sh */
   webBase: string;
+  /** code-server on the daemon's machine (set by the user, not by the sync); projects get a 代码 link into it. */
+  codeServer?: string;
   syncedAt: string;
   projects: PaseoProject[];
 }
@@ -67,9 +73,25 @@ export function paseoTerminalUrl(daemon: Pick<PaseoDaemon, 'serverId' | 'webBase
   return `${base}/h/${daemon.serverId}/workspace/${p.latest.workspaceId}?open=terminal:${encodeURIComponent(p.latest.terminalId)}`;
 }
 
+/** code-server opens a folder from `?folder=`; slashes stay readable. */
+export function codeFolderUrl(base: string, path: string): string {
+  return `${base.replace(/\/+$/, '')}/?folder=${encodeURIComponent(path).replace(/%2F/g, '/')}`;
+}
+
+export const isManagedLink = (l: Link) => l.kind === 'paseo' || l.kind === 'paseo-terminal' || l.kind === 'paseo-code';
+export const isCodeLink = (l: Link) => l.kind === 'code' || l.kind === 'paseo-code';
+export const codeLinks = (p: Pick<Project, 'links'>) => p.links.filter(isCodeLink);
+/** The code link the 代码 button opens: the one marked primary, else the first. */
+export function primaryCodeLink(p: Pick<Project, 'links'>): Link | undefined {
+  const links = codeLinks(p);
+  return links.find((l) => l.primary) ?? links[0];
+}
+/** Code-server pages open in 草稿区. */
+export const CODE_PANE = 1;
+
 /** The server-managed links a Paseo project should carry, in order. */
 export function managedPaseoLinks(
-  daemon: Pick<PaseoDaemon, 'serverId' | 'webBase'>,
+  daemon: Pick<PaseoDaemon, 'serverId' | 'webBase' | 'hostname' | 'codeServer'>,
   p: PaseoProject,
   existing: Link[],
   newId: () => string,
@@ -82,6 +104,10 @@ export function managedPaseoLinks(
   if (termUrl) {
     const term = keep('paseo-terminal');
     out.push({ ...(term ?? { id: newId(), label: '终端' }), url: termUrl, kind: 'paseo-terminal' });
+  }
+  if (daemon.codeServer) {
+    const code = keep('paseo-code');
+    out.push({ ...(code ?? { id: newId(), label: `代码 · ${daemon.hostname}` }), url: codeFolderUrl(daemon.codeServer, p.path), kind: 'paseo-code' });
   }
   return out;
 }

@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
-import { managedPaseoLinks, type DeviceSession, type Link, type PaseoDaemon, type Project, type ProjectInput } from '../../shared/src/model.ts';
+import { isManagedLink, managedPaseoLinks, type DeviceSession, type Link, type PaseoDaemon, type Project, type ProjectInput } from '../../shared/src/model.ts';
 
 /** Projects are stored as JSON documents; the table is just id → document. */
 export class Store {
@@ -12,6 +12,7 @@ export class Store {
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, data TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS paseo_daemons (server_id TEXT PRIMARY KEY, data TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS paseo_daemon_settings (server_id TEXT PRIMARY KEY, data TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS sessions (
         project_id TEXT NOT NULL, device_id TEXT NOT NULL, data TEXT NOT NULL,
         PRIMARY KEY (project_id, device_id)
@@ -83,16 +84,39 @@ export class Store {
       .run(projectId, session.deviceId, JSON.stringify(session));
   }
 
+  /** Catalogs as the syncs reported them, plus the user's per-daemon settings (code-server). */
   listDaemons(): PaseoDaemon[] {
     const rows = this.#db.prepare('SELECT data FROM paseo_daemons').all() as { data: string }[];
-    return rows.map((r) => JSON.parse(r.data) as PaseoDaemon).sort((a, b) => a.hostname.localeCompare(b.hostname));
+    return rows
+      .map((r) => JSON.parse(r.data) as PaseoDaemon)
+      .map((d) => ({ ...d, ...this.#daemonSettings(d.serverId) }))
+      .sort((a, b) => a.hostname.localeCompare(b.hostname));
+  }
+
+  #daemonSettings(serverId: string): DaemonSettings {
+    const row = this.#db.prepare('SELECT data FROM paseo_daemon_settings WHERE server_id = ?').get(serverId) as { data: string } | undefined;
+    return row ? (JSON.parse(row.data) as DaemonSettings) : {};
   }
 
   /** Store a daemon's catalog and re-point managed Paseo links of projects imported from it. */
   putDaemon(daemon: PaseoDaemon): number {
+    const { codeServer: _, ...catalog } = daemon;
     this.#db
       .prepare('INSERT INTO paseo_daemons (server_id, data) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET data = excluded.data')
-      .run(daemon.serverId, JSON.stringify(daemon));
+      .run(daemon.serverId, JSON.stringify(catalog));
+    return this.#relink({ ...catalog, ...this.#daemonSettings(daemon.serverId) });
+  }
+
+  /** Returns undefined for an unknown daemon, else how many projects' links changed. */
+  setDaemonSettings(serverId: string, settings: DaemonSettings): number | undefined {
+    if (!this.#db.prepare('SELECT 1 FROM paseo_daemons WHERE server_id = ?').get(serverId)) return undefined;
+    this.#db
+      .prepare('INSERT INTO paseo_daemon_settings (server_id, data) VALUES (?, ?) ON CONFLICT(server_id) DO UPDATE SET data = excluded.data')
+      .run(serverId, JSON.stringify(settings));
+    return this.#relink(this.listDaemons().find((d) => d.serverId === serverId)!);
+  }
+
+  #relink(daemon: PaseoDaemon): number {
     let updated = 0;
     for (const project of this.list()) {
       if (project.paseo?.daemonId !== daemon.serverId) continue;
@@ -100,7 +124,7 @@ export class Store {
       if (!source) continue;
       // Managed links are rebuilt from the catalog; the user's own links keep their place after them.
       const managed = managedPaseoLinks(daemon, source, project.links, newLinkId);
-      const links = [...managed, ...project.links.filter((l) => !l.kind)];
+      const links = [...managed, ...project.links.filter((l) => !isManagedLink(l))];
       if (canonical(links) === canonical(project.links)) continue;
       this.#write({ ...project, links, version: project.version + 1, updatedAt: new Date().toISOString() });
       updated++;
@@ -138,6 +162,10 @@ export class Store {
       .prepare('INSERT INTO projects (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data')
       .run(p.id, JSON.stringify(p));
   }
+}
+
+export interface DaemonSettings {
+  codeServer?: string;
 }
 
 const newLinkId = () => `l_${randomUUID().slice(0, 8)}`;
@@ -210,7 +238,10 @@ export function parseProjectInput(body: unknown): ProjectInput | string {
         return 'each link needs id, label, url';
       const link: Link = { id: l.id, label: l.label, url: l.url };
       if (typeof l.pinnedPane === 'number') link.pinnedPane = l.pinnedPane;
-      if (l.kind === 'paseo' || l.kind === 'paseo-terminal') link.kind = l.kind;
+      if (l.kind === 'paseo' || l.kind === 'paseo-terminal' || l.kind === 'paseo-code' || l.kind === 'code') link.kind = l.kind;
+      // One primary code link per project: the first one marked wins.
+      if (l.primary === true && link.kind && link.kind !== 'paseo' && link.kind !== 'paseo-terminal' && !links.some((x) => x.primary))
+        link.primary = true;
       if (typeof l.icon === 'string' && l.icon.length <= 2048) link.icon = l.icon;
       links.push(link);
     }

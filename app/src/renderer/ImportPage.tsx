@@ -127,6 +127,7 @@ function DaemonSection({ daemon, snap }: { daemon: PaseoDaemon; snap: Snapshot }
       <div className="row">
         <input placeholder="筛选名称或路径" value={filter} onChange={(e) => setFilter(e.target.value)} />
         {message && <span className="meta">{message}</span>}
+        <CodeServerSetting daemon={daemon} />
         <button className="primary" disabled={picked.size === 0 || busy} onClick={() => void doImport()}>
           导入选中的 {picked.size} 个
         </button>
@@ -150,6 +151,52 @@ function DaemonSection({ daemon, snap }: { daemon: PaseoDaemon; snap: Snapshot }
         </tbody>
       </table>
     </section>
+  );
+}
+
+/** Optional: where this daemon's projects can be edited in code-server; every imported project gets a 代码 link. */
+function CodeServerSetting({ daemon }: { daemon: PaseoDaemon }) {
+  const [editing, setEditing] = useState(false);
+  const [url, setUrl] = useState(daemon.codeServer ?? '');
+  const [error, setError] = useState('');
+
+  async function save() {
+    const { error } = await gleeok.setCodeServer(daemon.serverId, url);
+    if (error) return setError(error);
+    setError('');
+    setEditing(false);
+  }
+
+  if (!editing) {
+    return (
+      <button
+        className={daemon.codeServer ? 'code-server set' : 'code-server'}
+        onClick={() => {
+          setUrl(daemon.codeServer ?? '');
+          setEditing(true);
+        }}
+        title={daemon.codeServer ? `这个 daemon 的项目都有一条「代码」链接，指向 ${daemon.codeServer}` : '可选：填上这台机器的 code-server 地址，导入的项目会自动带一条「代码」链接'}
+      >
+        {daemon.codeServer ? `</> ${daemon.codeServer.replace(/^https?:\/\//, '')}` : '</> code-server…'}
+      </button>
+    );
+  }
+  return (
+    <span className="code-server-edit">
+      <input
+        autoFocus
+        placeholder="https://主机:端口（留空表示不用）"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') void save();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+      <button onClick={() => void save()}>保存</button>
+      <button onClick={() => setEditing(false)}>取消</button>
+      {error && <span className="error">{error}</span>}
+    </span>
   );
 }
 

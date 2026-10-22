@@ -3,8 +3,11 @@ import { join } from 'node:path';
 import { BrowserWindow, Menu, app, clipboard, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
 import type { Action, Command, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 import {
+  CODE_PANE,
   NEW_TAB_URL,
   PANE_COUNT,
+  codeLinks,
+  primaryCodeLink,
   sameUrl,
   shortTitle,
   type DeviceSession,
@@ -905,6 +908,72 @@ function dispatch(action: Action) {
       paletteWindows.delete(action.winId);
       changed();
       return;
+    case 'openCode': {
+      const project = config.projects.find((p) => p.id === (action.projectId ?? state.currentProjectId));
+      if (!project) return;
+      const link = action.linkId ? project.links.find((l) => l.id === action.linkId) : primaryCodeLink(project);
+      if (!link) {
+        send({ type: 'toast', slot: state.focusedPane, text: `「${project.name}」还没有代码链接：可以在入口页添加` });
+        return;
+      }
+      if (state.currentProjectId !== project.id) dispatch({ type: 'selectProject', id: project.id });
+      const s = currentSession();
+      if (!s) return;
+      // An editor already open for this folder is brought forward instead of opening a second one.
+      for (let slot = 0; slot < PANE_COUNT; slot++) {
+        const tab = s.panes[slot].tabs.find((t) => sameCodePage(t.url, link.url));
+        if (!tab) continue;
+        state.view = 'panes';
+        s.panes[slot].activeTabId = tab.id;
+        if (!isLive(s)) startProject(s.projectId);
+        tabsChanged(s);
+        changed();
+        focusSlot(slot);
+        return;
+      }
+      const visible = allVisibleSlots();
+      dispatch({ type: 'openLink', url: link.url, slot: visible.includes(CODE_PANE) ? CODE_PANE : state.focusedPane, newTab: true });
+      return;
+    }
+    case 'codeMenu': {
+      const project = config.projects.find((p) => p.id === action.projectId);
+      if (!project) return;
+      const links = codeLinks(project);
+      const primary = primaryCodeLink(project);
+      const name = (l: (typeof links)[number]) => l.label || l.url;
+      Menu.buildFromTemplate([
+        ...links.map((l) => ({
+          label: `${l === primary ? '★ ' : ''}打开 ${name(l)}`,
+          click: () => dispatch({ type: 'openCode', projectId: project.id, linkId: l.id }),
+        })),
+        ...(links.length > 1
+          ? [
+              { type: 'separator' as const },
+              {
+                label: '设为主要',
+                submenu: links
+                  .filter((l) => l !== primary)
+                  .map((l) => ({ label: name(l), click: () => dispatch({ type: 'setPrimaryCode', projectId: project.id, linkId: l.id }) })),
+              },
+            ]
+          : []),
+        { type: 'separator' },
+        {
+          label: '编辑代码链接…',
+          click: () => {
+            dispatch({ type: 'selectProject', id: project.id });
+            dispatch({ type: 'setView', view: 'entry' });
+          },
+        },
+      ]).popup({ window: focusedWindow() ?? undefined });
+      return;
+    }
+    case 'setPrimaryCode':
+      void config
+        .setPrimaryCode(action.projectId, action.linkId)
+        .catch(() => send({ type: 'toast', slot: state.focusedPane, text: '保存失败：服务器连不上' }))
+        .then(changed);
+      return;
     case 'upsertLink': {
       const { projectId, link, slot } = action;
       void config
@@ -1207,6 +1276,16 @@ ipcMain.handle('paseo:pair', async (_e, url: string) => {
   await syncPaseo();
   return { error: pairingStatus.get(serverId)?.error };
 });
+ipcMain.handle('paseo:code-server', async (_e, serverId: string, url: string) => {
+  try {
+    await config.setDaemonSettings(serverId, { codeServer: url.trim() || null });
+    changed();
+    return {};
+  } catch (e) {
+    const m = /"error":"([^"]+)"/.exec(String(e));
+    return { error: m ? m[1] : String(e) };
+  }
+});
 ipcMain.handle('paseo:unpair', (_e, serverId: string) => {
   pairings = pairings.filter((p) => p.serverId !== serverId);
   savePairings(pairings);
@@ -1306,3 +1385,15 @@ app.on('before-quit', () => {
 // Windows record their placement as they close, which happens after before-quit.
 app.on('will-quit', () => saveState(statePath(), state));
 app.on('window-all-closed', () => app.quit());
+
+/** Same editor page: same origin and the same folder/workspace (code-server keeps `?folder=` in its URL). */
+function sameCodePage(tabUrl: string, linkUrl: string) {
+  try {
+    const a = new URL(tabUrl);
+    const b = new URL(linkUrl);
+    const key = (u: URL) => u.searchParams.get('folder') ?? u.searchParams.get('workspace') ?? u.pathname.replace(/\/+$/, '');
+    return a.origin === b.origin && key(a) === key(b);
+  } catch {
+    return false;
+  }
+}

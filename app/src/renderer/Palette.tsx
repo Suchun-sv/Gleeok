@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Action, Snapshot } from '../../../shared/src/ipc.ts';
-import { NEW_TAB_URL, paneName, type Project } from '../../../shared/src/model.ts';
+import { NEW_TAB_URL, codeLinks, isCodeLink, paneName, primaryCodeLink, type Project } from '../../../shared/src/model.ts';
 import { faviconFor } from './Panes.tsx';
 
 interface Item {
@@ -123,7 +123,19 @@ function buildItems(snap: Snapshot): Item[] {
   // Links: the current project's open in place; another project's switch to it first.
   const linkOwners = current ? [current, ...snap.projects.filter((p) => p !== current)] : snap.projects;
   for (const p of linkOwners) {
+    const primary = primaryCodeLink(p);
     for (const l of p.links) {
+      if (isCodeLink(l)) {
+        items.push({
+          id: `code:${p.id}:${l.id}`,
+          group: p === current ? '代码' : `代码 · ${p.name}`,
+          title: `${l === primary ? '★ ' : ''}${l.label || l.url}`,
+          detail: l.url,
+          icon: l.icon ?? faviconFor(l.url),
+          run: [{ type: 'openCode', projectId: p.id, linkId: l.id }],
+        });
+        continue;
+      }
       items.push({
         id: `link:${p.id}:${l.id}`,
         group: p === current ? '链接' : `链接 · ${p.name}`,
@@ -212,6 +224,13 @@ function commands(snap: Snapshot, current?: Project): Item[] {
       c('archive', `存档「${current.name}」`, [{ type: 'archiveProject', id: current.id, archived: true }]),
       c('adopt', `把「${current.name}」换成另一台电脑上的标签`, [{ type: 'adoptRemoteTabs', projectId: current.id }]),
     );
+    const primary = primaryCodeLink(current);
+    if (primary) {
+      out.push(c('code', `打开「${current.name}」的代码`, [{ type: 'openCode' }], snap.platform === 'darwin' ? '⌘⌥C' : 'Ctrl+Alt+C'));
+      for (const l of codeLinks(current).filter((x) => x !== primary)) {
+        out.push(c(`primary:${l.id}`, `把「${l.label || l.url}」设为主要代码链接`, [{ type: 'setPrimaryCode', projectId: current.id, linkId: l.id }]));
+      }
+    }
   }
   return out;
 }

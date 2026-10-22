@@ -102,7 +102,11 @@ export type Action =
   | { type: 'vaultSaveDialog' }
   | { type: 'vaultLock' }
   | { type: 'vaultCopy'; id: string; what: 'url' | 'username' | 'password'; index?: number }
-  | { type: 'closePalette'; winId: string };
+  | { type: 'closePalette'; winId: string }
+  /** Open a project's code link (its primary one by default), reusing a tab already showing it. */
+  | { type: 'openCode'; projectId?: string; linkId?: string }
+  | { type: 'codeMenu'; projectId: string }
+  | { type: 'setPrimaryCode'; projectId: string; linkId: string };
 
 /** Commands main sends to the shell renderer for things only the DOM can do. */
 export type Command =
@@ -138,4 +142,6 @@ export interface GleeokApi {
   /** Remember a daemon's pairing link on this machine and read its projects through the relay. */
   pairPaseo(url: string): Promise<{ error?: string }>;
   unpairPaseo(serverId: string): Promise<void>;
+  /** Set (or clear, with '') the code-server address projects from this daemon link into. */
+  setCodeServer(serverId: string, url: string): Promise<{ error?: string }>;
 }

@@ -63,6 +63,16 @@ A pairing link grants full control of its daemon, so it is kept only on the mach
 was pasted (`paseo-pairings.json` in Gleeok's user data, readable by you only); each machine
 pastes it once.
 
+### Code links (optional)
+
+A project can carry one or more code-editor links (code-server, vscode.dev, ...), one of them
+primary. Projects that have one show a `</>` button in the sidebar (and Prefix+C) that opens
+the primary link in 草稿区, or brings forward a tab already showing it; right-click it for the
+others. Add them on the project's entry page ("+ 添加代码链接"), or give a daemon its
+code-server address on the import page (the `</> code-server…` button): every project from
+that daemon then gets a managed link to its folder (`<address>/?folder=<project path>`).
+Without either, nothing code-related appears.
+
 In local mode Gleeok also reads a daemon on the same machine without pairing; `PASEO_URL`
 (default `http://127.0.0.1:6767`) and `PASEO_PASSWORD` point it elsewhere.
 
@@ -116,6 +126,7 @@ Prefix = Ctrl+Alt on Linux/Windows, Cmd+Opt on macOS.
 | Prefix+Shift+2 / 3 | two / three panes |
 | Prefix+F | toggle focus-expand |
 | Prefix+E | project entry page |
+| Prefix+C | open the project's primary code link |
 | Prefix+B | collapse / expand the sidebar |
 | Prefix+D | move the focused pane to its own window / back |
 | Ctrl/Cmd+Shift+K | command palette |

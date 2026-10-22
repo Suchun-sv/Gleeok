@@ -68,6 +68,18 @@ export function createApp(store: Store, opts: AppOptions = {}) {
     return c.json({ ok: true, projects: daemon.projects.length, linksUpdated: store.putDaemon(daemon) });
   });
 
+  // Per-daemon settings the user chooses (the sync never sends these).
+  app.put('/api/paseo/daemons/:serverId/settings', async (c) => {
+    const body = (await c.req.json().catch(() => null)) as { codeServer?: unknown } | null;
+    const raw = body?.codeServer;
+    if (raw !== null && raw !== undefined && typeof raw !== 'string') return c.json({ error: 'codeServer must be a URL or null' }, 400);
+    const codeServer = typeof raw === 'string' ? raw.trim().replace(/\/+$/, '') : '';
+    if (codeServer && !/^https?:\/\/[^/\s]+/.test(codeServer)) return c.json({ error: 'codeServer must start with http:// or https://' }, 400);
+    const updated = store.setDaemonSettings(c.req.param('serverId'), codeServer ? { codeServer } : {});
+    if (updated === undefined) return c.json({ error: 'unknown daemon' }, 404);
+    return c.json({ ok: true, linksUpdated: updated });
+  });
+
   app.post('/api/paseo/import', async (c) => {
     const body = (await c.req.json().catch(() => null)) as { serverId?: unknown; projectIds?: unknown } | null;
     if (typeof body?.serverId !== 'string' || !Array.isArray(body.projectIds)) {

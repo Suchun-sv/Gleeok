@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { PANE_COUNT, paneName, type Link, type Project } from '../../../shared/src/model.ts';
+import { PANE_COUNT, isCodeLink, paneName, primaryCodeLink, type Link, type Project } from '../../../shared/src/model.ts';
 import { faviconFor } from './Panes.tsx';
 
 /** Shows and edits a project's links. Edits stay local until saved to the server. */
@@ -16,6 +16,19 @@ export function EntryPage({ project, toggle }: { project: Project; toggle: React
     if (JSON.stringify(draft) === JSON.stringify(seen.current)) setDraft(project);
     seen.current = project;
   }, [project.version]);
+
+  // The primary-code column only appears once the project has a code link.
+  const hasCode = draft.links.some(isCodeLink);
+  const primary = primaryCodeLink(draft);
+  const makePrimary = (id: string) =>
+    setDraft({
+      ...draft,
+      links: draft.links.map((l) => {
+        if (!isCodeLink(l)) return l;
+        const { primary: _, ...rest } = l;
+        return l.id === id ? { ...rest, primary: true } : rest;
+      }),
+    });
 
   const setLink = (i: number, patch: Partial<Link>) =>
     setDraft({ ...draft, links: draft.links.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
@@ -62,6 +75,7 @@ export function EntryPage({ project, toggle }: { project: Project; toggle: React
             <th>名称</th>
             <th>链接</th>
             <th>默认栏</th>
+            {hasCode && <th title="侧边栏的 </> 按钮打开主要的代码链接">主要代码</th>}
             <th />
           </tr>
         </thead>
@@ -77,7 +91,7 @@ export function EntryPage({ project, toggle }: { project: Project; toggle: React
                 <input value={l.label} onChange={(e) => setLink(i, { label: e.target.value })} />
               </td>
               <td>
-                {l.kind ? (
+                {l.kind && l.kind !== 'code' ? (
                   <input
                     value={l.url}
                     readOnly
@@ -85,11 +99,17 @@ export function EntryPage({ project, toggle }: { project: Project; toggle: React
                     title={
                       l.kind === 'paseo'
                         ? '由 Paseo 同步自动维护：始终指向最近使用的 workspace'
-                        : '由 Paseo 同步自动维护：指向最近 workspace 里的终端，终端关掉后自动移除'
+                        : l.kind === 'paseo-code'
+                          ? '由 Paseo 同步自动维护：这个 daemon 的 code-server 里的项目文件夹（在「从 Paseo 导入」页设置地址）'
+                          : '由 Paseo 同步自动维护：指向最近 workspace 里的终端，终端关掉后自动移除'
                     }
                   />
                 ) : (
-                  <input value={l.url} onChange={(e) => setLink(i, { url: e.target.value })} />
+                  <input
+                    value={l.url}
+                    placeholder={l.kind === 'code' ? 'https://code-server 地址/?folder=/项目路径' : undefined}
+                    onChange={(e) => setLink(i, { url: e.target.value })}
+                  />
                 )}
               </td>
               <td>
@@ -105,6 +125,13 @@ export function EntryPage({ project, toggle }: { project: Project; toggle: React
                   ))}
                 </select>
               </td>
+              {hasCode && (
+                <td className="center">
+                  {isCodeLink(l) && (
+                    <input type="radio" name="primary-code" checked={l === primary} onChange={() => makePrimary(l.id)} title="设为主要代码链接" />
+                  )}
+                </td>
+              )}
               <td>
                 <button
                   className="icon"
@@ -129,6 +156,17 @@ export function EntryPage({ project, toggle }: { project: Project; toggle: React
           }
         >
           + 添加链接
+        </button>
+        <button
+          onClick={() =>
+            setDraft({
+              ...draft,
+              links: [...draft.links, { id: `l_${crypto.randomUUID().slice(0, 8)}`, label: '代码', url: '', kind: 'code' }],
+            })
+          }
+          title="code-server、vscode.dev 等网页编辑器；侧边栏的 </> 按钮打开主要的那一条"
+        >
+          + 添加代码链接
         </button>
         <span className="spacer" />
         {error && <span className="error">{error}</span>}

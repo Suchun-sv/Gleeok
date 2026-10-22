@@ -5,7 +5,7 @@ import { app } from 'electron';
 import { createApp } from '../../../server/src/app.ts';
 import { Store } from '../../../server/src/store.ts';
 import type { ServerStatus } from '../../../shared/src/ipc.ts';
-import { sameUrl, type DeviceSession, type Link, type PaseoDaemon, type Project } from '../../../shared/src/model.ts';
+import { isCodeLink, sameUrl, type DeviceSession, type Link, type PaseoDaemon, type Project } from '../../../shared/src/model.ts';
 
 interface ClientConfig {
   serverUrl: string;
@@ -141,6 +141,22 @@ export class ConfigClient {
       }
     }
     return false;
+  }
+
+  /** Mark one code link as the project's primary; the others lose the mark. */
+  async setPrimaryCode(projectId: string, linkId: string): Promise<boolean> {
+    return this.#editLinks(projectId, (links) =>
+      links.map((l) => {
+        if (!isCodeLink(l)) return l;
+        const { primary: _, ...rest } = l;
+        return l.id === linkId ? { ...rest, primary: true } : rest;
+      }),
+    );
+  }
+
+  async setDaemonSettings(serverId: string, settings: { codeServer: string | null }) {
+    await this.#request('PUT', `/api/paseo/daemons/${serverId}/settings`, settings);
+    await this.refresh();
   }
 
   /** Store a Paseo daemon's catalog (local mode feeds it from the local daemon). */

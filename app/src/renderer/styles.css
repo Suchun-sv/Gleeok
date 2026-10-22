@@ -1128,3 +1128,41 @@ input.managed {
   margin: 0;
   color: var(--danger);
 }
+
+/* Code links: </> opens the project's primary code-server page in 草稿区. */
+.project .code-btn {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  font: 11px ui-monospace, monospace;
+  color: var(--accent);
+  opacity: 0.75;
+}
+
+.project .code-btn:hover {
+  background: var(--line);
+  opacity: 1;
+}
+
+.links-table td.center {
+  text-align: center;
+}
+
+.import .code-server {
+  font: 12px ui-monospace, monospace;
+  color: var(--muted);
+}
+
+.import .code-server.set {
+  color: var(--accent);
+}
+
+.import .code-server-edit {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.import .code-server-edit input {
+  width: 260px;
+}

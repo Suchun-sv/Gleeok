@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
+import { primaryCodeLink } from '../../../shared/src/model.ts';
 import icon from '../../assets/icon-64.png';
 
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
@@ -64,6 +65,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         {snap.projects.map((p, i) => {
           const live = snap.live.includes(p.id);
           const mb = snap.memory[p.id];
+          const code = primaryCodeLink(p);
           const menu = (e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
@@ -82,6 +84,23 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
               <span className="status">{live && <span className="dot-live" />}</span>
               <span className="name">{p.name}</span>
               {live && mb ? <span className="mem">{mb} MB</span> : null}
+              {code && (
+                <button
+                  className="code-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    gleeok.dispatch({ type: 'openCode', projectId: p.id });
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    gleeok.dispatch({ type: 'codeMenu', projectId: p.id });
+                  }}
+                  title={`在草稿区打开代码：${code.label || code.url}（${mod}C）\n右键：其他代码链接、设为主要`}
+                >
+                  {'</>'}
+                </button>
+              )}
               <button className="kebab" onClick={menu} title="更多操作">
                 ⋯
               </button>
