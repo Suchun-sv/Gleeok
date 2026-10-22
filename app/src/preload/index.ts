@@ -23,6 +23,8 @@ const api: GleeokApi = {
   deleteProject: (id) => ipcRenderer.invoke('project:delete', id),
   refreshProjects: () => ipcRenderer.invoke('project:refresh'),
   importPaseo: (serverId, projectIds) => ipcRenderer.invoke('paseo:import', serverId, projectIds),
+  pairPaseo: (url) => ipcRenderer.invoke('paseo:pair', url),
+  unpairPaseo: (serverId) => ipcRenderer.invoke('paseo:unpair', serverId),
 };
 
 contextBridge.exposeInMainWorld('gleeok', api);

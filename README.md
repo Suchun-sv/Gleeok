@@ -48,12 +48,20 @@ Running from the checkout avoids code-signing prompts: npm's Electron binary is 
 
 ## Paseo
 
-If a Paseo daemon runs on the same machine, the "从 Paseo 导入" (import from Paseo) page lists
-its projects; imported projects get a link to their most recently used workspace (and to an
-open terminal there, if any). Before Paseo pages work inside Gleeok, pair once: paste the
-daemon's pairing link (`paseo daemon pair`) into the box at the top of that page.
+Paste a daemon's pairing link (Paseo → Settings → your host → Pair a device, or
+`paseo daemon pair`) into the box at the top of the "从 Paseo 导入" (import from Paseo) page.
+Gleeok remembers it and reads that daemon's projects every 2 minutes through Paseo's
+end-to-end encrypted relay, so the daemon can be on any machine, with no open port; paste one
+link per daemon. The same link also pairs Gleeok's built-in browser, so Paseo pages open there.
+Imported projects get a link to their most recently used workspace (and to an open terminal
+there, if any).
 
-`PASEO_URL` (default `http://127.0.0.1:6767`) and `PASEO_PASSWORD` point Gleeok at another daemon.
+A pairing link grants full control of its daemon, so it is kept only on the machine where it
+was pasted (`paseo-pairings.json` in Gleeok's user data, readable by you only); each machine
+pastes it once.
+
+In local mode Gleeok also reads a daemon on the same machine without pairing; `PASEO_URL`
+(default `http://127.0.0.1:6767`) and `PASEO_PASSWORD` point it elsewhere.
 
 ## Optional: sync server for several machines
 
@@ -73,9 +81,10 @@ On each machine, create `~/.config/gleeok/client.json`:
 { "serverUrl": "http://<server>:7420", "token": "<the same token>" }
 ```
 
-With this file Gleeok uses the server instead of local storage. Paseo projects then reach the
-server through `paseo-sync/sync.mjs`, run on each machine with a Paseo daemon
-(`deploy/gleeok-paseo-sync.{service,timer}` runs it every 2 minutes).
+With this file Gleeok uses the server instead of local storage. Daemons paired in any client
+reach the server from there; alternatively `paseo-sync/sync.mjs`, run on a machine with a Paseo
+daemon (`deploy/gleeok-paseo-sync.{service,timer}` runs it every 2 minutes), keeps that daemon's
+projects current even when no Gleeok is open.
 
 Open tabs are kept per device; opening a project hands over the tabs from whichever device
 changed them last (a sleeping project takes them, a running one offers to switch).

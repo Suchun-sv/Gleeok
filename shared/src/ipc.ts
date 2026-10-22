@@ -27,6 +27,8 @@ export interface Snapshot {
   projects: Project[];
   archivedProjects: Project[];
   paseo: PaseoDaemon[];
+  /** Daemons this machine reads through a pasted pairing link; `at`/`error` from the last attempt. */
+  paseoPairings: { serverId: string; at?: string; error?: string }[];
   downloads: Download[];
   /** Projects whose pages are loaded (green dot); the rest are hibernated or never opened. */
   live: string[];
@@ -128,4 +130,7 @@ export interface GleeokApi {
   deleteProject(id: string): Promise<void>;
   refreshProjects(): Promise<void>;
   importPaseo(serverId: string, projectIds: string[]): Promise<Project[]>;
+  /** Remember a daemon's pairing link on this machine and read its projects through the relay. */
+  pairPaseo(url: string): Promise<{ error?: string }>;
+  unpairPaseo(serverId: string): Promise<void>;
 }

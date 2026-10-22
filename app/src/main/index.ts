@@ -28,7 +28,7 @@ import { PARTITION, TabViews } from './views.ts';
 import { Shells } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate } from './updater.ts';
 import { VAULT_URL_DEFAULT, Vault, fillPage, readPage } from './vault.ts';
-import { readLocalPaseo } from './paseo-local.ts';
+import { type Pairing, loadPairings, parseOffer, readLocalPaseo, readPairedPaseo, savePairings } from './paseo.ts';
 
 app.setName('gleeok');
 if (process.platform === 'linux') {
@@ -456,11 +456,44 @@ function changed() {
   });
 }
 
+// --- Paseo daemons ---------------------------------------------------------------------------
+// Catalogs come from this machine's daemon (local mode; a server gets it from the sync timer)
+// and from daemons whose pairing links were pasted here, read through Paseo's relay.
+
+let pairings: Pairing[] = loadPairings();
+const pairingStatus = new Map<string, { at: string; error?: string }>();
+let paseoSyncing: Promise<void> | null = null;
+
+function syncPaseo(): Promise<void> {
+  paseoSyncing ??= (async () => {
+    const clientId = `gleeok-${device.id}`;
+    const local = config.local ? await readLocalPaseo(clientId) : null;
+    const found = local ? [local] : [];
+    await Promise.all(
+      pairings
+        .filter((p) => p.serverId !== local?.serverId)
+        .map(async (p) => {
+          try {
+            found.push(await readPairedPaseo(p.url, clientId));
+            pairingStatus.set(p.serverId, { at: new Date().toISOString() });
+          } catch (e) {
+            pairingStatus.set(p.serverId, { at: new Date().toISOString(), error: String((e as Error).message ?? e).slice(0, 200) });
+          }
+        }),
+    );
+    for (const c of found) await config.putPaseoDaemon(c.serverId, c.body).catch(() => {});
+    if (found.length) await config.refresh();
+    changed();
+  })().finally(() => (paseoSyncing = null));
+  return paseoSyncing;
+}
+
 function snapshot(): Snapshot {
   return {
     projects: visibleProjects(),
     archivedProjects: config.projects.filter((p) => p.archived),
     paseo: config.paseo,
+    paseoPairings: pairings.map((p) => ({ serverId: p.serverId, ...pairingStatus.get(p.serverId) })),
     downloads: downloads?.list ?? [],
     live: Object.values(state.sessions).filter(isLive).map((s) => s.projectId),
     memory: Object.fromEntries(memory),
@@ -1142,6 +1175,26 @@ ipcMain.handle('paseo:import', async (_e, serverId: string, projectIds: string[]
   changed();
   return created;
 });
+ipcMain.handle('paseo:pair', async (_e, url: string) => {
+  let serverId: string;
+  try {
+    serverId = parseOffer(url.trim()).serverId;
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  pairings = [...pairings.filter((p) => p.serverId !== serverId), { serverId, url: url.trim(), addedAt: new Date().toISOString() }];
+  savePairings(pairings);
+  // A sync already under way started without this link.
+  await paseoSyncing;
+  await syncPaseo();
+  return { error: pairingStatus.get(serverId)?.error };
+});
+ipcMain.handle('paseo:unpair', (_e, serverId: string) => {
+  pairings = pairings.filter((p) => p.serverId !== serverId);
+  savePairings(pairings);
+  pairingStatus.delete(serverId);
+  changed();
+});
 ipcMain.handle('project:refresh', async () => {
   await config.refresh();
   changed();
@@ -1166,18 +1219,8 @@ app.whenReady().then(async () => {
   for (const ws of state.windows) if (ws.role === 'satellite') shells.open(ws);
   await config.refresh();
   vault.serverUrl = config.vaultUrl ?? VAULT_URL_DEFAULT;
-  if (config.local) {
-    // Local mode: no sync timer on a daemon host feeds the catalog, so read the local daemon here.
-    const syncPaseo = async () => {
-      const found = await readLocalPaseo();
-      if (!found) return;
-      await config.putPaseoDaemon(found.serverId, found.body).catch(() => {});
-      await config.refresh();
-      changed();
-    };
-    void syncPaseo();
-    setInterval(() => void syncPaseo(), 2 * 60_000);
-  }
+  void syncPaseo();
+  setInterval(() => void syncPaseo(), 2 * 60_000);
   publishAllTabs();
   if (state.currentProjectId) void checkRemoteTabs(state.currentProjectId);
   hibernateStale();
