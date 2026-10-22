@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "install:all": "npm --prefix server install && npm --prefix app install",
+    "build": "npm --prefix app run build",
+    "start": "npm --prefix app start",
     "typecheck": "npm --prefix app run typecheck && npx --prefix app tsc --noEmit -p server",
     "server": "npm --prefix server start",
     "app": "npm --prefix app run build && npm --prefix app start"

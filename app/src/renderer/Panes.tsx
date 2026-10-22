@@ -444,6 +444,7 @@ const SUGGESTIONS = [
   { label: '做 PPT', name: 'OneDrive', url: 'https://www.office.com/launch/onedrive' },
   { label: '草稿', name: 'Notion', url: 'https://www.notion.so/' },
   { label: '画布', name: 'Miro', url: 'https://miro.com/app/dashboard/' },
+  { label: '娱乐', name: 'RedNote', url: 'https://www.rednote.com/' },
 ];
 
 function NewTab({
