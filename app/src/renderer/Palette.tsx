@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Action, Snapshot } from '../../../shared/src/ipc.ts';
-import { NEW_TAB_URL, type Project } from '../../../shared/src/model.ts';
+import { NEW_TAB_URL, paneName, type Project } from '../../../shared/src/model.ts';
 import { faviconFor } from './Panes.tsx';
 
 interface Item {
@@ -91,7 +91,7 @@ function buildItems(snap: Snapshot): Item[] {
         if (t.url === NEW_TAB_URL) continue;
         items.push({
           id: `tab:${t.id}`,
-          group: `标签 · 第${slot + 1}栏`,
+          group: `标签 · ${paneName(slot)}`,
           title: t.title || t.url,
           detail: t.url,
           icon: t.favicon ?? faviconFor(t.url),

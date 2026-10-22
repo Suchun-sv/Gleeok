@@ -333,6 +333,20 @@ main {
   scrollbar-width: none;
 }
 
+.pane-name {
+  flex: none;
+  align-self: center;
+  padding: 0 8px 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pane.focused .pane-name {
+  color: var(--accent);
+}
+
 .pane.focused .tabs {
   border-top-color: var(--accent);
 }

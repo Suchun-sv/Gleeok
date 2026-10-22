@@ -1,4 +1,5 @@
 import { Menu, clipboard, type ContextMenuParams, type MenuItemConstructorOptions, type WebContents } from 'electron';
+import { paneName } from '../../../shared/src/model.ts';
 
 export interface MenuOps {
   /** Pane indices currently visible, and the one this page sits in. */
@@ -6,8 +7,6 @@ export interface MenuOps {
   slot: number;
   openTab(slot: number, url: string): void;
 }
-
-const paneName = (i: number) => `第 ${i + 1} 栏`;
 
 export function showContextMenu(wc: WebContents, p: ContextMenuParams, ops: MenuOps) {
   const items: MenuItemConstructorOptions[] = [];

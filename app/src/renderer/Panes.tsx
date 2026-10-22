@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Command, PaneRects, Snapshot } from '../../../shared/src/ipc.ts';
 import {
   NEW_TAB_URL,
+  paneName,
   sameUrl,
   shortTitle,
   visibleSlots,
@@ -193,6 +194,7 @@ function PaneView(props: PaneProps) {
     >
       <div className="tabs">
         {leading && <div className="tabs-leading">{leading}</div>}
+        <span className="pane-name">{paneName(slot)}</span>
         {pane.tabs.map((t) => (
           <TabButton key={t.id} tab={t} slot={slot} active={t.id === tab.id} />
         ))}
@@ -310,7 +312,7 @@ function PaneView(props: PaneProps) {
         {covered && !isNew && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
         {dragging && (
           <div className="drop-zone">
-            <span>移到第 {slot + 1} 栏</span>
+            <span>移到{paneName(slot)}</span>
           </div>
         )}
       </div>

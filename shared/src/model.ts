@@ -93,6 +93,9 @@ export type ProjectInput = Pick<Project, 'name'> &
 
 export const NEW_TAB_URL = 'gleeok://newtab';
 export const PANE_COUNT = 3;
+/** What each pane is for, shown on its tab strip and wherever a pane is named. */
+export const PANE_NAMES = ['AI区', '草稿区', '产出区'];
+export const paneName = (slot: number) => PANE_NAMES[slot] ?? `第${slot + 1}栏`;
 
 export interface Tab {
   id: string;

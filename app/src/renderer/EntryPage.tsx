@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { PANE_COUNT, type Link, type Project } from '../../../shared/src/model.ts';
+import { PANE_COUNT, paneName, type Link, type Project } from '../../../shared/src/model.ts';
 import { faviconFor } from './Panes.tsx';
 
 /** Shows and edits a project's links. Edits stay local until saved to the server. */
@@ -100,7 +100,7 @@ export function EntryPage({ project, toggle }: { project: Project; toggle: React
                   <option value="">—</option>
                   {Array.from({ length: PANE_COUNT }, (_, p) => (
                     <option key={p} value={p}>
-                      第 {p + 1} 栏
+                      {paneName(p)}
                     </option>
                   ))}
                 </select>

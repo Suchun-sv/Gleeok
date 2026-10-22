@@ -131,7 +131,7 @@ Prefix = Ctrl+Alt on Linux/Windows, Cmd+Opt on macOS.
 
 ⧉ on a pane (or Prefix+D) moves it into its own window; ⇱ or closing that window puts it back.
 Placement is remembered (macOS: display and bounds; niri: output, via `niri msg`). Satellite
-windows have stable titles such as `Gleeok · 第3栏`, so a niri window rule can pin them.
+windows have stable titles such as `Gleeok · 产出区`, so a niri window rule can pin them.
 
 ## Layout
 

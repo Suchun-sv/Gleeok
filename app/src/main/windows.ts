@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { BrowserWindow, screen, type Input, type Rectangle } from 'electron';
-import type { AppWindowState } from '../../../shared/src/model.ts';
+import { type AppWindowState, paneName } from '../../../shared/src/model.ts';
 import { niriEnabled, niriMoveToOutput, niriOutputNames, niriOutputOf } from './niri.ts';
 
 export interface ShellHooks {
@@ -15,7 +15,7 @@ export interface ShellHooks {
 
 /** Stable per window, so niri window rules can match it (e.g. open-on-output by title). */
 export function windowTitle(ws: AppWindowState) {
-  return ws.role === 'main' ? 'Gleeok' : `Gleeok · 第${ws.slots.map((s) => s + 1).join('/')}栏`;
+  return ws.role === 'main' ? 'Gleeok' : `Gleeok · ${ws.slots.map(paneName).join(' / ')}`;
 }
 
 /**
