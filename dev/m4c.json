@@ -1,0 +1,19 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 6000 },
+  { "action": { "type": "detachPane", "slot": 2 } },
+  { "wait": 3000 },
+  { "capture": "a-detached" },
+  { "closeSatellites": true },
+  { "wait": 3000 },
+  { "capture": "b-closed" },
+  { "action": { "type": "detachPane", "slot": 1 } },
+  { "wait": 2000 },
+  { "action": { "type": "selectProject", "id": "$project:1" } },
+  { "wait": 1000 },
+  { "closeSatellites": true },
+  { "wait": 2000 },
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 3000 },
+  { "capture": "c-closed-after-switch" }
+]

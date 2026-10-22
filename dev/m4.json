@@ -1,0 +1,18 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 7000 },
+  { "action": { "type": "detachPane", "slot": 2 } },
+  { "wait": 5000 },
+  { "capture": "m4-a-detached" },
+  { "action": { "type": "selectProject", "id": "$project:1" } },
+  { "wait": 3000 },
+  { "capture": "m4-b-switched" },
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 2000 },
+  { "action": { "type": "attachPane", "slot": 2 } },
+  { "wait": 3000 },
+  { "capture": "m4-c-attached" },
+  { "action": { "type": "detachPane", "slot": 1 } },
+  { "wait": 3000 },
+  { "capture": "m4-d-detached-again" }
+]

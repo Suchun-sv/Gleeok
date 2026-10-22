@@ -1,0 +1,14 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "action": { "type": "startProject", "id": "$project:0" } },
+  { "wait": 1000 },
+  { "action": { "type": "navigate", "slot": 1, "url": "https://github.com/login" } },
+  { "action": { "type": "focusPane", "slot": 1 } },
+  { "wait": 6000 },
+  { "action": { "type": "vaultFill" } },
+  { "wait": 1200 },
+  { "evalMain": "(() => { const f = document.querySelector('.vault-form'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; const inputs = f.querySelectorAll('input'); const pw = inputs[inputs.length - 1]; set.call(pw, 'wrong-password'); pw.dispatchEvent(new Event('input', { bubbles: true })); window.__inputs = inputs.length; })()" },
+  { "evalMain": "document.querySelector('.vault-form').requestSubmit()" },
+  { "evalMain": "(async () => { for (let i = 0; i < 200; i++) { if (document.querySelector('.vault-form .error')) return; await new Promise(r => setTimeout(r, 100)); } })()" },
+  { "capture": "v5" }
+]

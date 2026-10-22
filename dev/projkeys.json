@@ -1,0 +1,11 @@
+[
+  { "action": { "type": "selectProjectIndex", "index": 0 } },
+  { "wait": 500 },
+  { "action": { "type": "selectProjectDelta", "delta": 1 } },
+  { "wait": 300 },
+  { "capture": "k1" },
+  { "action": { "type": "selectProjectDelta", "delta": -1 } },
+  { "action": { "type": "selectProjectDelta", "delta": -1 } },
+  { "wait": 300 },
+  { "capture": "k2" }
+]

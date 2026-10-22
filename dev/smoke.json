@@ -1,0 +1,20 @@
+[
+  { "action": { "type": "selectProjectIndex", "index": 0 } },
+  { "wait": 9000 },
+  { "capture": "1-three" },
+  { "action": { "type": "toggleFocusExpand" } },
+  { "action": { "type": "focusPane", "slot": 1 } },
+  { "wait": 1500 },
+  { "capture": "2-focus" },
+  { "action": { "type": "toggleFocusExpand" } },
+  { "action": { "type": "setLayoutMode", "mode": "two" } },
+  { "wait": 1500 },
+  { "capture": "3-two" },
+  { "action": { "type": "setLayoutMode", "mode": "three" } },
+  { "action": { "type": "newTab", "slot": 2 } },
+  { "wait": 1500 },
+  { "capture": "4-newtab" },
+  { "action": { "type": "toggleEntry" } },
+  { "wait": 1500 },
+  { "capture": "5-entry" }
+]

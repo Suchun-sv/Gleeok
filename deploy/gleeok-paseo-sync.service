@@ -1,0 +1,12 @@
+# Runs on each machine that hosts a Paseo daemon. Install:
+#   echo "PATH=$(dirname "$(which paseo)"):$(dirname "$(which node)"):/usr/bin:/bin" > ~/.config/gleeok/paseo-sync.env
+#   cp deploy/gleeok-paseo-sync.{service,timer} ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now gleeok-paseo-sync.timer
+# PATH must reach both `paseo` (the script borrows its @getpaseo/client) and `node`.
+[Unit]
+Description=Push Paseo project catalog to Gleeok
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/gleeok/paseo-sync.env
+ExecStart=/usr/bin/env node %h/github/gleeok/paseo-sync/sync.mjs

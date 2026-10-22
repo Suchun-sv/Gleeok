@@ -1,0 +1,10 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "action": { "type": "toggleFocusExpand" } },
+  { "action": { "type": "focusPane", "slot": 0 } },
+  { "wait": 6000 },
+  { "action": { "type": "detachPane", "slot": 2 } },
+  { "action": { "type": "focusPane", "slot": 0 } },
+  { "wait": 3000 },
+  { "capture": "even" }
+]

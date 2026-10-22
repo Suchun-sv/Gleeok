@@ -1,0 +1,18 @@
+# systemd --user unit. Install:
+#   cp deploy/gleeok-server.service ~/.config/systemd/user/
+#   systemctl --user enable --now gleeok-server
+# Secrets and bind address live in ~/.config/gleeok/server.env:
+#   GLEEOK_TOKEN=...   GLEEOK_HOST=<tailnet ip>   GLEEOK_PORT=7420
+[Unit]
+Description=Gleeok config server
+After=network-online.target tailscaled.service
+
+[Service]
+EnvironmentFile=%h/.config/gleeok/server.env
+WorkingDirectory=%h/github/gleeok/server
+ExecStart=/usr/bin/node src/index.ts
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

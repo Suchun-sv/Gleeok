@@ -1,0 +1,14 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 7000 },
+  { "action": { "type": "selectProject", "id": "$project:1" } },
+  { "action": { "type": "navigate", "slot": 0, "url": "example.com" } },
+  { "wait": 12000 },
+  { "capture": "m3-a-both-live" },
+  { "action": { "type": "hibernate", "id": "$project:0" } },
+  { "wait": 1000 },
+  { "capture": "m3-b-hibernated" },
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 7000 },
+  { "capture": "m3-c-revived" }
+]

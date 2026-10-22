@@ -1,0 +1,1199 @@
+import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
+import { BrowserWindow, Menu, app, clipboard, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
+import type { Action, Command, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
+import {
+  NEW_TAB_URL,
+  PANE_COUNT,
+  sameUrl,
+  shortTitle,
+  type DeviceSession,
+  type Pane,
+  visibleSlots,
+  type AppWindowState,
+  type Project,
+  type ProjectSession,
+  type Rect,
+} from '../../../shared/src/model.ts';
+import { setupGoogleSignIn } from './compat.ts';
+import { ConfigClient } from './config.ts';
+import { showContextMenu } from './contextmenu.ts';
+import { runDevScript } from './devscript.ts';
+import { loadDevice } from './device.ts';
+import { Downloads } from './downloads.ts';
+import { setupPermissions } from './permissions.ts';
+import { matchShortcut } from './shortcuts.ts';
+import { activeTab, createSession, loadState, looksLikeUrl, newTab, normalizeUrl, saveState } from './state.ts';
+import { PARTITION, TabViews } from './views.ts';
+import { Shells } from './windows.ts';
+import { VAULT_URL_DEFAULT, Vault, fillPage, readPage } from './vault.ts';
+import { readLocalPaseo } from './paseo-local.ts';
+
+app.setName('gleeok');
+if (process.platform === 'linux') {
+  // Stable Wayland app-id ("gleeok") for the launcher entry and niri window rules.
+  app.setDesktopName('gleeok.desktop');
+  app.commandLine.appendSwitch('class', 'gleeok');
+}
+if (process.env.GLEEOK_USER_DATA) app.setPath('userData', process.env.GLEEOK_USER_DATA);
+if (process.env.GLEEOK_DOWNLOADS) app.setPath('downloads', process.env.GLEEOK_DOWNLOADS);
+
+const statePath = () => join(app.getPath('userData'), 'state.json');
+const config = new ConfigClient();
+let state = loadState(statePath());
+/** Reported by each window's renderer: where its pane boxes are. */
+const paneRects = new Map<string, PaneRects>();
+/** While a tab is dragged, pages are hidden (screenshots stand in) so panes can receive the drop. */
+let tabDragging = false;
+/** Windows showing the command palette: their pages are hidden behind screenshots too. */
+const paletteWindows = new Set<string>();
+let dragToken = 0;
+let downloads: Downloads | null = null;
+/** Per project, most recently closed tabs last; for reopen-closed-tab. Not persisted. */
+const closedTabs = new Map<string, { slot: number; url: string }[]>();
+
+const views = new TabViews({
+  onUpdate(tabId, patch) {
+    const hit = findTab(tabId);
+    if (!hit) return;
+    // Loading a page reports its URL too; only an actual change of address counts for sync.
+    const moved = patch.url !== undefined && !sameUrl(patch.url, hit.tab.url);
+    Object.assign(hit.tab, patch);
+    notePendingLink(tabId, patch);
+    if (moved) tabsChanged(hit.session);
+    changed();
+  },
+  onFocus(tabId) {
+    const hit = findTab(tabId);
+    if (!hit || hit.session.projectId !== state.currentProjectId) return;
+    touch(hit.session);
+    if (state.focusedPane !== hit.slot) {
+      state.focusedPane = hit.slot;
+      changed();
+    }
+  },
+  onInput: handleInput,
+  onOpenTab(tabId, url) {
+    const hit = findTab(tabId);
+    if (hit) openTab(hit.session, hit.slot, url);
+  },
+  onContextMenu(tabId, wc, params) {
+    const hit = findTab(tabId);
+    if (!hit) return;
+    showContextMenu(wc, params, {
+      slots: allVisibleSlots(),
+      slot: hit.slot,
+      openTab: (slot, url) => openTab(hit.session, slot, url),
+    });
+  },
+  onFound(tabId, active, total) {
+    const hit = findTab(tabId);
+    if (hit) send({ type: 'findResult', slot: hit.slot, active, total });
+  },
+});
+
+// ---- state helpers ----
+
+function mainWindowState(): AppWindowState {
+  return state.windows.find((w) => w.role === 'main')!;
+}
+
+function openWindows(): AppWindowState[] {
+  return state.windows.filter((w) => shells.get(w.id));
+}
+
+/** Every pane slot on screen, across all windows, in order. */
+function allVisibleSlots(): number[] {
+  return openWindows()
+    .flatMap((w) => visibleSlots(w))
+    .sort((a, b) => a - b);
+}
+
+function windowOfSlot(slot: number): AppWindowState | null {
+  return openWindows().find((w) => visibleSlots(w).includes(slot)) ?? null;
+}
+
+function focusedWindow(): BrowserWindow | null {
+  return BrowserWindow.getFocusedWindow() ?? shells.get('main');
+}
+
+function visibleProjects(): Project[] {
+  return config.projects.filter((p) => !p.archived);
+}
+
+function currentSession(): ProjectSession | null {
+  const id = state.currentProjectId;
+  if (!id) return null;
+  const project = config.projects.find((p) => p.id === id);
+  if (!state.sessions[id] && project) state.sessions[id] = createSession(project);
+  return state.sessions[id] ?? null;
+}
+
+function findTab(tabId: string) {
+  for (const session of Object.values(state.sessions)) {
+    for (const [slot, pane] of session.panes.entries()) {
+      const tab = pane.tabs.find((t) => t.id === tabId);
+      if (tab) return { session, slot, pane, tab };
+    }
+  }
+  return null;
+}
+
+function touch(session: ProjectSession) {
+  session.lastActiveAt = Date.now();
+}
+
+function openTab(session: ProjectSession, slot: number, url: string) {
+  const tab = newTab(url);
+  const pane = session.panes[slot];
+  const i = pane.tabs.findIndex((t) => t.id === pane.activeTabId);
+  pane.tabs.splice(i + 1, 0, tab);
+  pane.activeTabId = tab.id;
+  tabsChanged(session);
+  changed();
+  focusSlot(slot);
+}
+
+// ---- open tabs synced across devices ----
+//
+// The server keeps one row per (project, device); a device only ever writes its own row, so
+// devices never overwrite each other. Instead of merging, opening a project hands off: if
+// another device changed that project's tabs more recently, a sleeping project adopts them
+// (with undo) and a running one is offered the switch.
+
+const device = loadDevice();
+const pushTimers = new Map<string, NodeJS.Timeout>();
+/** Tabs as they were before adopting another device's, for undo. Not persisted. */
+const tabsBeforeAdopt = new Map<string, Pane[]>();
+
+function tabsChanged(session: ProjectSession) {
+  session.changedAt = Date.now();
+  clearTimeout(pushTimers.get(session.projectId));
+  pushTimers.set(session.projectId, setTimeout(() => void pushTabs(session.projectId), 3000));
+}
+
+function deviceSession(session: ProjectSession): DeviceSession {
+  return {
+    deviceId: device.id,
+    deviceName: device.name,
+    changedAt: session.changedAt ?? 0,
+    panes: session.panes.map((p) => {
+      const tabs = p.tabs.filter((t) => t.url !== NEW_TAB_URL);
+      return {
+        tabs: tabs.map((t) => ({ url: t.url, title: t.title, ...(t.favicon ? { favicon: t.favicon } : {}) })),
+        active: Math.max(0, tabs.findIndex((t) => t.id === p.activeTabId)),
+      };
+    }),
+  };
+}
+
+async function pushTabs(projectId: string) {
+  pushTimers.delete(projectId);
+  const session = state.sessions[projectId];
+  if (!session || !config.projects.some((p) => p.id === projectId)) return;
+  await config.putSession(projectId, deviceSession(session)).catch(() => {
+    // Offline: the next change pushes again.
+  });
+}
+
+/**
+ * Push every project's tabs once at launch: tabs that were already open never trigger a change,
+ * so without this a device would stay invisible until its first edit. Sessions from before
+ * sync existed have no changedAt; their last use stands in for it.
+ */
+function publishAllTabs() {
+  for (const s of Object.values(state.sessions)) {
+    s.changedAt ??= s.lastActiveAt;
+    void pushTabs(s.projectId);
+  }
+}
+
+const tabUrls = (panes: { tabs: { url: string }[] }[]) => JSON.stringify(panes.map((p) => p.tabs.map((t) => t.url)));
+
+function adoptTabs(session: ProjectSession, remote: DeviceSession) {
+  tabsBeforeAdopt.set(session.projectId, session.panes);
+  for (const pane of session.panes) for (const t of pane.tabs) views.destroy(t.id);
+  const panes: Pane[] = [];
+  for (let i = 0; i < PANE_COUNT; i++) {
+    const r = remote.panes[i];
+    const tabs = (r?.tabs ?? []).map((t) => ({ ...newTab(t.url), title: t.title, ...(t.favicon ? { favicon: t.favicon } : {}) }));
+    if (tabs.length === 0) tabs.push(newTab());
+    panes.push({ tabs, activeTabId: (tabs[r?.active ?? 0] ?? tabs[0]).id });
+  }
+  session.panes = panes;
+  // Same moment as the source: neither device now counts as newer than the other.
+  session.changedAt = remote.changedAt;
+  changed();
+  void pushTabs(session.projectId);
+}
+
+function ago(ms: number) {
+  const min = Math.round((Date.now() - ms) / 60_000);
+  if (min < 1) return '刚刚';
+  if (min < 60) return `${min} 分钟前`;
+  if (min < 24 * 60) return `${Math.round(min / 60)} 小时前`;
+  return `${Math.round(min / 1440)} 天前`;
+}
+
+async function checkRemoteTabs(projectId: string) {
+  const remote = (await config.listSessions(projectId).catch(() => [] as DeviceSession[])).find(
+    (r) => r.deviceId !== device.id,
+  );
+  const session = state.sessions[projectId];
+  if (!remote || !session || remote.changedAt <= (session.changedAt ?? 0)) return;
+  if (tabUrls(remote.panes) === tabUrls(deviceSession(session).panes)) {
+    session.changedAt = remote.changedAt;
+    return;
+  }
+  const slot = state.focusedPane;
+  if (session.lifecycle !== 'live') {
+    adoptTabs(session, remote);
+    send({
+      type: 'toast',
+      slot,
+      text: `已接上「${remote.deviceName}」上的标签（${ago(remote.changedAt)}）`,
+      undo: { type: 'restoreTabs', projectId },
+      ms: 8000,
+    });
+  } else if (projectId === state.currentProjectId) {
+    send({
+      type: 'toast',
+      slot,
+      text: `「${remote.deviceName}」上的标签更新（${ago(remote.changedAt)}）`,
+      undo: { type: 'adoptRemoteTabs', projectId },
+      undoLabel: '换过去',
+      ms: 30_000,
+    });
+  }
+}
+
+// ---- links saved from pasted URLs ----
+
+interface PendingLink {
+  projectId: string;
+  slot: number;
+  url: string;
+  /** Title/favicon only count once the pasted page has committed, not the page it replaces. */
+  committed: boolean;
+  title?: string;
+  icon?: string;
+  settle?: NodeJS.Timeout;
+  deadline: NodeJS.Timeout;
+}
+const pendingLinks = new Map<string, PendingLink>();
+
+function startPendingLink(tabId: string, projectId: string, slot: number, url: string) {
+  const old = pendingLinks.get(tabId);
+  if (old) {
+    clearTimeout(old.settle);
+    clearTimeout(old.deadline);
+  }
+  pendingLinks.set(tabId, {
+    projectId,
+    slot,
+    url,
+    committed: false,
+    // Pages that never report a title still get saved, under their host name.
+    deadline: setTimeout(() => void savePendingLink(tabId), 10_000),
+  });
+}
+
+function notePendingLink(tabId: string, patch: { url?: string; title?: string; favicon?: string }) {
+  const p = pendingLinks.get(tabId);
+  if (!p) return;
+  if (patch.url) p.committed = true;
+  if (!p.committed) return;
+  if (patch.title) p.title = patch.title;
+  if (patch.favicon) p.icon = patch.favicon;
+  if (p.title) {
+    // Titles often change once or twice while a page boots; take the one that sticks.
+    clearTimeout(p.settle);
+    p.settle = setTimeout(() => void savePendingLink(tabId), 2000);
+  }
+}
+
+async function savePendingLink(tabId: string) {
+  const p = pendingLinks.get(tabId);
+  if (!p) return;
+  pendingLinks.delete(tabId);
+  clearTimeout(p.settle);
+  clearTimeout(p.deadline);
+  const link = {
+    id: `l_${randomUUID().slice(0, 8)}`,
+    label: shortTitle(p.title) || new URL(p.url).hostname,
+    url: p.url,
+    ...(p.icon && p.icon.length <= 2048 ? { icon: p.icon } : {}),
+  };
+  try {
+    if (await config.addLink(p.projectId, link)) {
+      const name = config.projects.find((x) => x.id === p.projectId)?.name ?? '';
+      send({
+        type: 'toast',
+        slot: p.slot,
+        text: `已保存到「${name}」：${link.label}`,
+        undo: { type: 'removeLink', projectId: p.projectId, linkId: link.id },
+      });
+    }
+  } catch {
+    // Offline or rejected: the page still opened; only the bookmark is skipped.
+  }
+  changed();
+}
+
+// ---- lifecycle ----
+
+/** A "day" starts at 04:00, so working past midnight still counts as the same day. */
+const DAY_START_HOUR = 4;
+
+function dayStart(now = new Date()): number {
+  const d = new Date(now);
+  d.setHours(DAY_START_HOUR, 0, 0, 0);
+  if (now.getTime() < d.getTime()) d.setDate(d.getDate() - 1);
+  return d.getTime();
+}
+
+function isLive(session: ProjectSession) {
+  return session.panes.some((p) => p.tabs.some((t) => views.has(t.id)));
+}
+
+/** Close every page of a project but keep its tabs, so reopening reloads them lazily. */
+function hibernate(projectId: string) {
+  const session = state.sessions[projectId];
+  if (!session) return;
+  for (const pane of session.panes) for (const t of pane.tabs) views.destroy(t.id);
+  session.lifecycle = 'hibernated';
+  memory.delete(projectId);
+  changed();
+}
+
+function startProject(projectId: string) {
+  const session = state.sessions[projectId];
+  if (!session || session.lifecycle === 'live') return;
+  session.lifecycle = 'live';
+  touch(session);
+  changed();
+}
+
+/** Archive: out of the sidebar and its pages closed, but tabs kept so unarchiving picks up again. */
+async function setArchived(id: string, archived: boolean, open = false) {
+  if (archived) {
+    if (state.currentProjectId === id) {
+      state.currentProjectId = visibleProjects().find((p) => p.id !== id)?.id ?? null;
+    }
+    hibernate(id);
+  }
+  await config.setArchived(id, archived).catch(() => {});
+  if (!archived && open) dispatch({ type: 'selectProject', id });
+  changed();
+}
+
+async function deleteProject(id: string) {
+  await config.remove(id);
+  for (const pane of state.sessions[id]?.panes ?? []) for (const t of pane.tabs) views.destroy(t.id);
+  delete state.sessions[id];
+  if (state.currentProjectId === id) state.currentProjectId = visibleProjects()[0]?.id ?? null;
+  changed();
+}
+
+async function confirmDelete(id: string) {
+  const project = config.projects.find((p) => p.id === id);
+  if (!project) return;
+  const options = {
+    type: 'warning' as const,
+    buttons: ['删除', '取消'],
+    defaultId: 1,
+    cancelId: 1,
+    message: `删除项目「${project.name}」？`,
+    detail: '只删除 Gleeok 里的这个项目（链接和打开的标签），不影响 Paseo 和网站上的任何东西。',
+  };
+  const win = focusedWindow();
+  const { response } = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options);
+  if (response === 0) await deleteProject(id).catch(() => {});
+}
+
+/** Projects untouched since the start of today go to sleep; anything used today stays alive. */
+function hibernateStale() {
+  const cutoff = dayStart();
+  for (const s of Object.values(state.sessions)) {
+    if (s.projectId !== state.currentProjectId && s.lastActiveAt < cutoff && isLive(s)) hibernate(s.projectId);
+  }
+}
+
+const memory = new Map<string, number>();
+
+function sampleMemory() {
+  const kbByPid = new Map(app.getAppMetrics().map((m) => [m.pid, m.memory.workingSetSize]));
+  memory.clear();
+  for (const s of Object.values(state.sessions)) {
+    const pids = new Set<number>();
+    for (const pane of s.panes) {
+      for (const t of pane.tabs) {
+        const pid = views.get(t.id)?.webContents.getOSProcessId();
+        if (pid) pids.add(pid);
+      }
+    }
+    if (pids.size) memory.set(s.projectId, Math.round([...pids].reduce((n, pid) => n + (kbByPid.get(pid) ?? 0), 0) / 1024));
+  }
+  changed();
+}
+
+// ---- change propagation ----
+
+let pending = false;
+let saveTimer: NodeJS.Timeout | undefined;
+
+/** Coalesce every mutation in this tick into one render, one view sync and one (debounced) save. */
+function changed() {
+  if (pending) return;
+  pending = true;
+  queueMicrotask(() => {
+    pending = false;
+    shells.broadcast('snapshot', snapshot());
+    syncViews();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => saveState(statePath(), state), 500);
+  });
+}
+
+function snapshot(): Snapshot {
+  return {
+    projects: visibleProjects(),
+    archivedProjects: config.projects.filter((p) => p.archived),
+    paseo: config.paseo,
+    downloads: downloads?.list ?? [],
+    live: Object.values(state.sessions).filter(isLive).map((s) => s.projectId),
+    memory: Object.fromEntries(memory),
+    tabDragging,
+    vault: {
+      unlocked: vault?.unlocked ?? false,
+      email: vault?.email ?? '',
+      serverUrl: vault?.serverUrl ?? '',
+      entries: vault?.entries() ?? [],
+    },
+    paletteWindows: [...paletteWindows],
+    state,
+    platform: process.platform,
+    server: { status: config.status, url: config.serverUrl, error: config.error },
+  };
+}
+
+function syncViews() {
+  const session = currentSession();
+  for (const ws of state.windows) {
+    const bw = shells.get(ws.id);
+    if (!bw) continue;
+    const desired = new Map<string, { url: string; bounds: Rect }>();
+    // The entry/import pages replace the panes in the main window only; satellites keep showing pages.
+    const hidden = tabDragging || paletteWindows.has(ws.id);
+    if (session?.lifecycle === 'live' && !hidden && (ws.role !== 'main' || state.view === 'panes')) {
+      const rects = paneRects.get(ws.id) ?? {};
+      for (const slot of visibleSlots(ws)) {
+        const tab = activeTab(session!.panes[slot]);
+        const rect = rects[slot];
+        if (rect && tab.url !== NEW_TAB_URL) desired.set(tab.id, { url: tab.url, bounds: rect });
+      }
+    }
+    views.sync(bw, desired);
+  }
+}
+
+/** Commands go to the window that shows the slot they are about. */
+function send(command: Command) {
+  const ws = windowOfSlot(command.slot) ?? mainWindowState();
+  shells.get(ws.id)?.webContents.send('command', command);
+}
+
+function shellOfSlot(slot: number): BrowserWindow | null {
+  return shells.get((windowOfSlot(slot) ?? mainWindowState()).id);
+}
+
+/** Screenshot every visible page, hand the images to each window, then take the pages away. */
+/** Send a window screenshots of its visible pages, so they can stand in while the pages are hidden. */
+async function sendPageImages(ws: AppWindowState) {
+  const session = currentSession();
+  const images: Record<number, string> = {};
+  for (const slot of session?.lifecycle === 'live' ? visibleSlots(ws) : []) {
+    const view = views.get(activeTab(session!.panes[slot]).id);
+    if (view && !view.webContents.isDestroyed()) images[slot] = (await view.webContents.capturePage()).toDataURL();
+  }
+  shells.get(ws.id)?.webContents.send('drag-images', images);
+}
+
+/** Show something over the focused window's pages (palette, vault dialogs): pages become screenshots. */
+async function openOverlay(channel: string, payload?: unknown) {
+  const bw = focusedWindow();
+  const ws = state.windows.find((w) => shells.get(w.id) === bw);
+  if (!bw || !ws) return;
+  if (!paletteWindows.has(ws.id)) {
+    await sendPageImages(ws);
+    paletteWindows.add(ws.id);
+    changed();
+  }
+  bw.webContents.focus();
+  bw.webContents.send(channel, payload);
+}
+
+const openPalette = () => openOverlay('palette');
+
+// ---- password vault ----
+
+let vault: Vault | null = null;
+/** Logins offered in the last pick dialog, with passwords; kept in main only. */
+let pickedLogins = new Map<string, { username: string; password: string; name: string }>();
+
+/** The page in the focused pane, if one is loaded. */
+function focusedPage() {
+  const session = currentSession();
+  if (!session) return null;
+  const slot = state.focusedPane;
+  const view = views.get(activeTab(session.panes[slot]).id);
+  if (!view || view.webContents.isDestroyed()) return null;
+  const url = view.webContents.getURL();
+  return /^https?:/.test(url) ? { slot, wc: view.webContents, url, host: new URL(url).hostname } : null;
+}
+
+async function vaultFill() {
+  const page = focusedPage();
+  if (!vault) return;
+  if (!page) return send({ type: 'toast', slot: state.focusedPane, text: '先在这一栏打开要登录的网页' });
+  if (!vault.unlocked) return openOverlay('vault-dialog', { mode: 'unlock', email: vault.email, then: 'fill' } satisfies VaultDialog);
+  try {
+    const logins = await vault.loginsFor(page.url);
+    if (logins.length === 0) {
+      return send({
+        type: 'toast',
+        slot: page.slot,
+        text: `密码库里没有 ${page.host} 的账号`,
+        undo: { type: 'vaultSaveDialog' },
+        undoLabel: '保存账号',
+        ms: 8000,
+      });
+    }
+    if (logins.length === 1) return void fillAndReport(page, logins[0]);
+    pickedLogins = new Map(logins.map((l) => [l.id, l]));
+    void openOverlay('vault-dialog', {
+      mode: 'pick',
+      host: page.host,
+      logins: logins.map(({ id, name, username }) => ({ id, name, username })),
+    } satisfies VaultDialog);
+  } catch (e) {
+    send({ type: 'toast', slot: page.slot, text: `密码库出错：${String(e).slice(0, 80)}` });
+  }
+}
+
+async function fillAndReport(page: NonNullable<ReturnType<typeof focusedPage>>, login: { name: string; username: string; password: string }) {
+  const ok = await fillPage(page.wc, login.username, login.password);
+  send({
+    type: 'toast',
+    slot: page.slot,
+    text: ok
+      ? `已填写：${login.name}（${login.username}）`
+      : `匹配到「${login.name}」，但这个页面上没有登录框可填。只想打开它保存的网址的话，在命令面板里搜这条记录`,
+    ms: ok ? 5000 : 9000,
+  });
+  if (ok) page.wc.focus();
+}
+
+async function vaultSaveDialog() {
+  const page = focusedPage();
+  if (!vault) return;
+  if (!page) return send({ type: 'toast', slot: state.focusedPane, text: '先在这一栏打开要保存账号的网页' });
+  if (!vault.unlocked) return openOverlay('vault-dialog', { mode: 'unlock', email: vault.email, then: 'save' } satisfies VaultDialog);
+  const typed = await readPage(page.wc);
+  void openOverlay('vault-dialog', {
+    mode: 'save',
+    name: page.host.replace(/^www\./, ''),
+    url: new URL(page.url).origin,
+    username: typed.username,
+    password: typed.password,
+  } satisfies VaultDialog);
+}
+
+async function startTabDrag() {
+  const token = ++dragToken;
+  await Promise.all(openWindows().map(sendPageImages));
+  if (token !== dragToken) return; // the drag already ended
+  tabDragging = true;
+  changed();
+}
+
+// ---- multi-window ----
+
+/** Move a pane slot out of the main window into its own window (another monitor, ideally). */
+function detachPane(slot: number) {
+  const main = mainWindowState();
+  if (!main.slots.includes(slot) || visibleSlots(main).filter((s) => s !== slot).length === 0) return;
+  main.slots = main.slots.filter((s) => s !== slot);
+  const ws: AppWindowState = {
+    id: `w_${randomUUID().slice(0, 6)}`,
+    role: 'satellite',
+    slots: [slot],
+    layout: { mode: 'three', focusExpand: false, focusRatio: 2 },
+  };
+  state.windows.push(ws);
+  shells.open(ws, { awayFrom: shells.get('main') });
+  changed();
+}
+
+/** Put a slot back into the main window; a satellite left empty closes. */
+function attachPane(slot: number, opts: { closeWindow?: boolean } = {}) {
+  const ws = state.windows.find((w) => w.role === 'satellite' && w.slots.includes(slot));
+  if (!ws) return;
+  ws.slots = ws.slots.filter((s) => s !== slot);
+  const main = mainWindowState();
+  main.slots = [...main.slots, slot].sort((a, b) => a - b);
+  if (ws.slots.length === 0) {
+    state.windows = state.windows.filter((w) => w !== ws);
+    paneRects.delete(ws.id);
+    if (opts.closeWindow !== false) shells.closeQuietly(ws.id);
+  }
+  changed();
+}
+
+/** Put keyboard focus into a pane: its page if one is loaded, otherwise the new-tab search box. */
+function focusSlot(slot: number) {
+  state.focusedPane = slot;
+  changed();
+  const session = currentSession();
+  const bw = shellOfSlot(slot);
+  if (!session || !bw) return;
+  const tab = activeTab(session.panes[slot]);
+  queueMicrotask(() => {
+    if (!bw.isFocused()) bw.focus();
+    const view = views.get(tab.id);
+    if (tab.url !== NEW_TAB_URL && view) {
+      view.webContents.focus();
+    } else {
+      bw.webContents.focus();
+      send({ type: 'focusNewTab', slot });
+    }
+  });
+}
+
+// ---- actions ----
+
+function dispatch(action: Action) {
+  const session = currentSession();
+  const slots = allVisibleSlots();
+  const slotOf = (s?: number) => s ?? state.focusedPane;
+
+  switch (action.type) {
+    case 'selectProject': {
+      state.currentProjectId = action.id;
+      state.view = 'panes';
+      // Entering a sleeping project shows its tabs but loads nothing until it is started.
+      const s = currentSession();
+      if (s) touch(s);
+      void checkRemoteTabs(action.id);
+      hibernateStale();
+      changed();
+      focusSlot(slots.includes(state.focusedPane) ? state.focusedPane : slots[0]);
+      return;
+    }
+    case 'selectProjectIndex': {
+      const p = visibleProjects()[action.index];
+      if (p) dispatch({ type: 'selectProject', id: p.id });
+      return;
+    }
+    case 'selectProjectDelta': {
+      const list = visibleProjects();
+      if (list.length === 0) return;
+      const i = list.findIndex((p) => p.id === state.currentProjectId);
+      const next = list[(i + action.delta + list.length) % list.length];
+      dispatch({ type: 'selectProject', id: next.id });
+      return;
+    }
+    case 'focusPane':
+      focusSlot(action.slot);
+      return;
+    case 'focusPaneDelta': {
+      const i = slots.indexOf(state.focusedPane);
+      focusSlot(slots[(i + action.delta + slots.length) % slots.length]);
+      return;
+    }
+    case 'setLayoutMode': {
+      mainWindowState().layout.mode = action.mode;
+      const visible = allVisibleSlots();
+      if (!visible.includes(state.focusedPane)) focusSlot(visible[visible.length - 1]);
+      changed();
+      return;
+    }
+    case 'toggleFocusExpand':
+      mainWindowState().layout.focusExpand = !mainWindowState().layout.focusExpand;
+      changed();
+      return;
+    case 'showDownload': {
+      const d = downloads?.list.find((x) => x.id === action.id);
+      if (d?.state === 'completed') shell.showItemInFolder(d.path);
+      return;
+    }
+    case 'hibernate':
+      hibernate(action.id);
+      return;
+    case 'startProject':
+      startProject(action.id);
+      return;
+    case 'archiveProject':
+      void setArchived(action.id, action.archived, action.open);
+      return;
+    case 'tabDrag':
+      if (action.active) void startTabDrag();
+      else {
+        dragToken++;
+        tabDragging = false;
+        changed();
+      }
+      return;
+    case 'openPalette':
+      void openPalette();
+      return;
+    case 'vaultFill':
+      void vaultFill();
+      return;
+    case 'vaultFillItem': {
+      const login = pickedLogins.get(action.itemId);
+      const page = focusedPage();
+      pickedLogins.clear();
+      if (login && page) void fillAndReport(page, login);
+      return;
+    }
+    case 'vaultSaveDialog':
+      void vaultSaveDialog();
+      return;
+    case 'vaultCopy': {
+      const value = vault?.field(action.id, action.what, action.index);
+      if (!value) return;
+      clipboard.writeText(value);
+      const label = { url: '网址', username: '用户名', password: '密码' }[action.what];
+      if (action.what === 'password') {
+        // Like password managers do: wipe it after a while, unless something else was copied since.
+        setTimeout(() => {
+          void Promise.resolve(clipboard.readText()).then((now) => {
+            if (now === value) clipboard.clear();
+          });
+        }, 30_000);
+      }
+      send({
+        type: 'toast',
+        slot: state.focusedPane,
+        text: action.what === 'password' ? `已复制${label}，30 秒后自动清除` : `已复制${label}`,
+      });
+      return;
+    }
+    case 'vaultLock':
+      void vault?.lock().then(changed);
+      send({ type: 'toast', slot: state.focusedPane, text: '密码库已锁定' });
+      return;
+    case 'adoptRemoteTabs': {
+      const s = state.sessions[action.projectId];
+      if (!s) return;
+      void config
+        .listSessions(action.projectId)
+        .then((list) => {
+          const remote = list.find((r) => r.deviceId !== device.id);
+          if (remote) adoptTabs(s, remote);
+        })
+        .catch(() => {});
+      return;
+    }
+    case 'restoreTabs': {
+      const s = state.sessions[action.projectId];
+      const before = tabsBeforeAdopt.get(action.projectId);
+      if (!s || !before) return;
+      for (const pane of s.panes) for (const t of pane.tabs) views.destroy(t.id);
+      s.panes = before;
+      tabsBeforeAdopt.delete(action.projectId);
+      tabsChanged(s);
+      changed();
+      return;
+    }
+    case 'closePalette':
+      paletteWindows.delete(action.winId);
+      changed();
+      return;
+    case 'upsertLink': {
+      const { projectId, link, slot } = action;
+      void config
+        .upsertLink(projectId, link)
+        .then((ok) => {
+          const name = config.projects.find((x) => x.id === projectId)?.name ?? '';
+          if (ok) send({ type: 'toast', slot, text: `已保存到「${name}」：${link.label}` });
+        })
+        .catch(() => send({ type: 'toast', slot, text: '保存失败：服务器连不上' }))
+        .then(changed);
+      return;
+    }
+    case 'openSaveLink': {
+      const s = currentSession();
+      const slot = slotOf(action.slot);
+      if (!s || activeTab(s.panes[slot]).url === NEW_TAB_URL) return;
+      shellOfSlot(slot)?.webContents.focus();
+      send({ type: 'openSaveLink', slot });
+      return;
+    }
+    case 'removeLink':
+      void config
+        .removeLink(action.projectId, action.linkId)
+        .catch(() => {})
+        .then(changed);
+      return;
+    case 'projectMenu': {
+      const s = state.sessions[action.id];
+      const live = !!s && isLive(s);
+      if (config.projects.find((p) => p.id === action.id)?.archived) {
+        Menu.buildFromTemplate([
+          { label: '取消存档并打开', click: () => void setArchived(action.id, false, true) },
+          { label: '取消存档', click: () => void setArchived(action.id, false) },
+          { type: 'separator' },
+          { label: '删除项目…', click: () => void confirmDelete(action.id) },
+        ]).popup({ window: focusedWindow() ?? undefined });
+        return;
+      }
+      Menu.buildFromTemplate([
+        { label: '打开', click: () => dispatch({ type: 'selectProject', id: action.id }) },
+        {
+          label: '入口页',
+          click: () => {
+            dispatch({ type: 'selectProject', id: action.id });
+            dispatch({ type: 'setView', view: 'entry' });
+          },
+        },
+        { type: 'separator' },
+        live
+          ? { label: '休眠：关闭网页，释放内存', click: () => hibernate(action.id) }
+          : {
+              label: '启动',
+              click: () => {
+                dispatch({ type: 'selectProject', id: action.id });
+                startProject(action.id);
+              },
+            },
+        { type: 'separator' },
+        { label: '存档', click: () => void setArchived(action.id, true) },
+        { label: '删除项目…', click: () => void confirmDelete(action.id) },
+      ]).popup({ window: focusedWindow() ?? undefined });
+      return;
+    }
+    case 'detachPane':
+      detachPane(slotOf(action.slot));
+      return;
+    case 'attachPane':
+      attachPane(slotOf(action.slot));
+      return;
+    case 'togglePaneWindow': {
+      const slot = state.focusedPane;
+      if (mainWindowState().slots.includes(slot)) detachPane(slot);
+      else attachPane(slot);
+      return;
+    }
+    case 'toggleSidebar': {
+      const w = mainWindowState();
+      w.sidebarCollapsed = !w.sidebarCollapsed;
+      changed();
+      return;
+    }
+    case 'setView':
+      state.view = action.view;
+      changed();
+      return;
+    case 'toggleEntry':
+      state.view = state.view === 'entry' ? 'panes' : 'entry';
+      changed();
+      return;
+  }
+
+  if (!session) return;
+  touch(session);
+  if (session.lifecycle !== 'live' && (action.type === 'navigate' || action.type === 'openLink' || action.type === 'history')) {
+    startProject(session.projectId);
+  }
+  switch (action.type) {
+    case 'newTab':
+      openTab(session, slotOf(action.slot), action.url ? normalizeUrl(action.url) : NEW_TAB_URL);
+      return;
+    case 'closeTab': {
+      const slot = slotOf(action.slot);
+      const pane = session.panes[slot];
+      const id = action.tabId ?? pane.activeTabId;
+      const i = pane.tabs.findIndex((t) => t.id === id);
+      if (i < 0) return;
+      if (pane.tabs[i].url !== NEW_TAB_URL) {
+        const stack = closedTabs.get(session.projectId) ?? [];
+        stack.push({ slot, url: pane.tabs[i].url });
+        closedTabs.set(session.projectId, stack.slice(-20));
+      }
+      views.destroy(id);
+      pane.tabs.splice(i, 1);
+      if (pane.tabs.length === 0) pane.tabs.push(newTab());
+      if (pane.activeTabId === id) pane.activeTabId = pane.tabs[Math.min(i, pane.tabs.length - 1)].id;
+      tabsChanged(session);
+      changed();
+      focusSlot(slot);
+      return;
+    }
+    case 'activateTab':
+      session.panes[action.slot].activeTabId = action.tabId;
+      tabsChanged(session);
+      changed();
+      focusSlot(action.slot);
+      return;
+    case 'cycleTab': {
+      const pane = session.panes[state.focusedPane];
+      const i = pane.tabs.findIndex((t) => t.id === pane.activeTabId);
+      pane.activeTabId = pane.tabs[(i + action.delta + pane.tabs.length) % pane.tabs.length].id;
+      tabsChanged(session);
+      changed();
+      focusSlot(state.focusedPane);
+      return;
+    }
+    case 'navigate':
+    case 'openLink': {
+      const slot = slotOf(action.slot);
+      const url = normalizeUrl(action.url);
+      const tab = activeTab(session.panes[slot]);
+      // From the entry/import pages, links open as new tabs; elsewhere they replace a blank tab.
+      if (action.type === 'openLink' && (state.view !== 'panes' || action.newTab)) {
+        state.view = 'panes';
+        if (tab.url !== NEW_TAB_URL) return openTab(session, slot, url);
+      }
+      // A live page reports its real URL once navigation commits (a download never does);
+      // a blank tab has no page yet, so its URL is what creates one.
+      if (action.type === 'navigate' && action.save && looksLikeUrl(action.url)) {
+        startPendingLink(tab.id, session.projectId, slot, url);
+      }
+      const view = views.get(tab.id);
+      if (view) view.webContents.loadURL(url).catch(() => {});
+      else {
+        tab.url = url;
+        tabsChanged(session);
+      }
+      changed();
+      focusSlot(slot);
+      return;
+    }
+    case 'history': {
+      const view = views.get(activeTab(session.panes[slotOf(action.slot)]).id);
+      if (!view) return;
+      const nav = view.webContents.navigationHistory;
+      if (action.op === 'back' && nav.canGoBack()) nav.goBack();
+      if (action.op === 'forward' && nav.canGoForward()) nav.goForward();
+      if (action.op === 'reload') view.webContents.reload();
+      return;
+    }
+    case 'focusAddress':
+      shellOfSlot(state.focusedPane)?.webContents.focus();
+      send({ type: 'focusAddress', slot: state.focusedPane });
+      return;
+    case 'moveTab': {
+      const hit = findTab(action.tabId);
+      if (!hit || hit.session !== session || hit.slot === action.toSlot) return;
+      const from = hit.pane;
+      const i = from.tabs.indexOf(hit.tab);
+      from.tabs.splice(i, 1);
+      if (from.tabs.length === 0) from.tabs.push(newTab());
+      if (from.activeTabId === hit.tab.id) from.activeTabId = from.tabs[Math.min(i, from.tabs.length - 1)].id;
+      const to = session.panes[action.toSlot];
+      to.tabs.splice(to.tabs.findIndex((t) => t.id === to.activeTabId) + 1, 0, hit.tab);
+      to.activeTabId = hit.tab.id;
+      tabsChanged(session);
+      changed();
+      focusSlot(action.toSlot);
+      return;
+    }
+    case 'reopenTab': {
+      const last = closedTabs.get(session.projectId)?.pop();
+      if (last) openTab(session, last.slot, last.url);
+      return;
+    }
+    case 'zoom': {
+      const wc = views.get(activeTab(session.panes[state.focusedPane]).id)?.webContents;
+      if (wc) wc.setZoomLevel(action.delta === 0 ? 0 : wc.getZoomLevel() + action.delta * 0.5);
+      return;
+    }
+    case 'openFind': {
+      const slot = slotOf(action.slot);
+      if (activeTab(session.panes[slot]).url === NEW_TAB_URL) return;
+      shellOfSlot(slot)?.webContents.focus();
+      send({ type: 'openFind', slot });
+      return;
+    }
+    case 'find': {
+      const wc = views.get(activeTab(session.panes[action.slot]).id)?.webContents;
+      if (wc && action.text) wc.findInPage(action.text, { forward: action.forward ?? true, findNext: action.findNext ?? false });
+      return;
+    }
+    case 'stopFind':
+      views.get(activeTab(session.panes[action.slot]).id)?.webContents.stopFindInPage('clearSelection');
+      return;
+  }
+}
+
+function handleInput(input: Input): boolean {
+  const action = matchShortcut(input, process.platform);
+  if (!action) return false;
+  dispatch(action);
+  return true;
+}
+
+// ---- window & ipc ----
+
+let lastFocusRefresh = 0;
+const shells = new Shells({
+  onInput: handleInput,
+  onUserClosed(id) {
+    if (id === 'main') return app.quit();
+    // Closing a satellite hands its panes back to the main window.
+    const ws = state.windows.find((w) => w.id === id);
+    for (const slot of ws?.slots ?? []) attachPane(slot, { closeWindow: false });
+  },
+  onPlacementChanged: () => changed(),
+  onClosing: (bw) => views.detachAll(bw),
+  onFocus: () => {
+    if (Date.now() - lastFocusRefresh < 30_000) return;
+    lastFocusRefresh = Date.now();
+    void config.refresh().then(changed);
+    if (state.currentProjectId) void checkRemoteTabs(state.currentProjectId);
+  },
+});
+
+ipcMain.handle('snapshot:get', () => snapshot());
+ipcMain.handle('vault:unlock', async (_e, email: string, password: string, server?: string) => {
+  try {
+    await vault!.unlock(email, password, server);
+    changed();
+    return {};
+  } catch (e) {
+    return { error: String(e).replace(/^Error: /, '').slice(0, 200) };
+  }
+});
+ipcMain.handle('vault:save', async (_e, login: { name: string; url: string; username: string; password: string }) => {
+  try {
+    await vault!.save(login);
+    send({ type: 'toast', slot: state.focusedPane, text: `已存进密码库：${login.name}（${login.username}）` });
+    return {};
+  } catch (e) {
+    return { error: String(e).replace(/^Error: /, '').slice(0, 200) };
+  }
+});
+ipcMain.on('action', (_e, action: Action) => dispatch(action));
+ipcMain.on('pane-rects', (_e, winId: string, rects: PaneRects) => {
+  paneRects.set(winId, rects);
+  syncViews();
+});
+ipcMain.handle('project:create', async (_e, name: string) => {
+  const p = await config.create(name);
+  dispatch({ type: 'selectProject', id: p.id });
+  dispatch({ type: 'setView', view: 'entry' });
+  return p;
+});
+ipcMain.handle('project:save', async (_e, project: Project) => {
+  try {
+    return await config.save(project);
+  } finally {
+    changed();
+  }
+});
+ipcMain.handle('project:delete', (_e, id: string) => deleteProject(id));
+ipcMain.handle('paseo:import', async (_e, serverId: string, projectIds: string[]) => {
+  const created = await config.importPaseo(serverId, projectIds);
+  changed();
+  return created;
+});
+ipcMain.handle('project:refresh', async () => {
+  await config.refresh();
+  changed();
+});
+
+app.whenReady().then(async () => {
+  // Present as plain Chrome: some sites refuse or degrade for UAs that mention Electron.
+  const ses = session.fromPartition(PARTITION);
+  ses.setUserAgent(ses.getUserAgent().replace(/ (Electron|gleeok)\/\S+/g, ''));
+  setupGoogleSignIn(ses);
+  downloads = new Downloads(ses, changed);
+  setupPermissions(ses, focusedWindow);
+
+  // After a restart nothing is loaded yet; only the project on screen resumes, the rest wait
+  // for an explicit start.
+  for (const s of Object.values(state.sessions)) if (s.projectId !== state.currentProjectId) s.lifecycle = 'hibernated';
+  config.load();
+  vault = new Vault(config.vaultUrl);
+  vault.onChange = changed;
+  vault.prewarm();
+  const main = shells.open(mainWindowState());
+  for (const ws of state.windows) if (ws.role === 'satellite') shells.open(ws);
+  await config.refresh();
+  vault.serverUrl = config.vaultUrl ?? VAULT_URL_DEFAULT;
+  if (config.local) {
+    // Local mode: no sync timer on a daemon host feeds the catalog, so read the local daemon here.
+    const syncPaseo = async () => {
+      const found = await readLocalPaseo();
+      if (!found) return;
+      await config.putPaseoDaemon(found.serverId, found.body).catch(() => {});
+      await config.refresh();
+      changed();
+    };
+    void syncPaseo();
+    setInterval(() => void syncPaseo(), 2 * 60_000);
+  }
+  publishAllTabs();
+  if (state.currentProjectId) void checkRemoteTabs(state.currentProjectId);
+  hibernateStale();
+  setInterval(hibernateStale, 10 * 60_000);
+  powerMonitor.on('resume', hibernateStale);
+  // A locked screen locks the vault too (and drops the decrypted logins from memory).
+  powerMonitor.on('lock-screen', () => {
+    if (vault?.unlocked) void vault.lock().then(changed);
+  });
+  powerMonitor.on('unlock-screen', hibernateStale);
+  setInterval(sampleMemory, 10_000);
+  // Pick up edits from other machines and Paseo link updates pushed by the sync timers.
+  setInterval(() => void config.refresh().then(changed), 60_000);
+  if (!state.currentProjectId && visibleProjects()[0]) state.currentProjectId = visibleProjects()[0].id;
+  changed();
+  // Unlock the vault right away (machines that used it before), so filling is instant later.
+  if (vault.email && !process.env.GLEEOK_DEV_SCRIPT) {
+    const askUnlock = () => void openOverlay('vault-dialog', { mode: 'unlock', email: vault!.email } satisfies VaultDialog);
+    if (main.webContents.isLoading()) main.webContents.once('did-finish-load', askUnlock);
+    else askUnlock();
+  }
+  if (process.env.GLEEOK_DEV_SCRIPT) {
+    if (main.webContents.isLoading()) await new Promise((r) => main.webContents.once('did-finish-load', () => r(undefined)));
+    await runDevScript(() => shells.all(), views, dispatch, () => state, snapshot, {
+      fillFocused: async (u, p) => {
+        const page = focusedPage();
+        return page ? fillPage(page.wc, u, p) : false;
+      },
+      readFocused: async () => {
+        const page = focusedPage();
+        return page ? readPage(page.wc) : null;
+      },
+      pressKey: async (key) => {
+        const page = focusedPage();
+        if (!page) return;
+        page.wc.sendInputEvent({ type: 'keyDown', keyCode: key });
+        page.wc.sendInputEvent({ type: 'char', keyCode: key === 'Enter' ? '\r' : key });
+        page.wc.sendInputEvent({ type: 'keyUp', keyCode: key });
+      },
+      pageText: async (click) => {
+        const page = focusedPage();
+        if (!page) return null;
+        if (click) await page.wc.executeJavaScript(`document.querySelector(${JSON.stringify(click)})?.click()`).catch(() => {});
+        const text = (await page.wc.executeJavaScript('document.body.innerText').catch(() => '')) as string;
+        const traits = await page.wc
+          .executeJavaScript('JSON.stringify({ uaData: typeof navigator.userAgentData, chrome: typeof window.chrome, vendor: navigator.vendor, ua: navigator.userAgent.slice(0, 40) })')
+          .catch(() => '');
+        return { url: page.wc.getURL().slice(0, 90), traits, text: text.replace(/\s+/g, ' ').slice(0, 300) };
+      },
+    });
+  }
+});
+
+app.on('before-quit', () => {
+  vault?.dispose();
+  void vault?.lock();
+  shells.quitting = true;
+  saveState(statePath(), state);
+});
+// Windows record their placement as they close, which happens after before-quit.
+app.on('will-quit', () => saveState(statePath(), state));
+app.on('window-all-closed', () => app.quit());

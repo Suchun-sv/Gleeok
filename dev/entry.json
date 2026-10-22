@@ -1,0 +1,6 @@
+[
+  { "action": { "type": "selectProjectIndex", "index": 0 } },
+  { "action": { "type": "setView", "view": "entry" } },
+  { "wait": 1500 },
+  { "capture": "entry" }
+]

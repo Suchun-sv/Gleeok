@@ -1,0 +1,11 @@
+# On the machine that keeps the backups:
+#   cp deploy/gleeok-backup.{service,timer} ~/.config/systemd/user/
+#   (edit GLEEOK_BACKUP_HOST below, and ExecStart if the checkout lives elsewhere)
+#   systemctl --user daemon-reload && systemctl --user enable --now gleeok-backup.timer
+[Unit]
+Description=Pull backup of the Gleeok server's data
+
+[Service]
+Type=oneshot
+Environment=GLEEOK_BACKUP_HOST=my-server
+ExecStart=%h/github/gleeok/deploy/backup-pull.sh

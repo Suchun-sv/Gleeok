@@ -1,0 +1,29 @@
+[
+  {
+    "wait": 2500
+  },
+  {
+    "evalMain": "(async () => { const s = await gleeok.getSnapshot(); return ('MODE ' + JSON.stringify({ status: s.server.status, projects: s.projects.length, vault: s.vault.serverUrl, daemons: s.paseo.map(d => d.hostname + ':' + d.projects.length) })); })()"
+  },
+  {
+    "evalMain": "gleeok.createProject('本地测试')"
+  },
+  {
+    "wait": 1500
+  },
+  {
+    "action": {
+      "type": "setView",
+      "view": "import"
+    }
+  },
+  {
+    "wait": 6000
+  },
+  {
+    "evalMain": "(async () => { const s = await gleeok.getSnapshot(); return ('MODE ' + JSON.stringify({ status: s.server.status, projects: s.projects.map(p => p.name), daemons: s.paseo.map(d => d.hostname + ':' + d.projects.length) })); })()"
+  },
+  {
+    "capture": "mode"
+  }
+]

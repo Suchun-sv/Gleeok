@@ -1,0 +1,20 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "action": { "type": "startProject", "id": "$project:0" } },
+  { "wait": 1500 },
+  { "action": { "type": "navigate", "slot": 1, "url": "https://github.com/login" } },
+  { "action": { "type": "focusPane", "slot": 1 } },
+  { "wait": 7000 },
+  { "fillFocused": { "username": "test-user@example.com", "password": "not-a-real-password" } },
+  { "wait": 500 },
+  { "readFocused": true },
+  { "capture": "v1-filled" },
+  { "action": { "type": "vaultFill" } },
+  { "wait": 1500 },
+  { "capture": "v2-unlock" },
+  { "evalMain": "(() => { const f = document.querySelector('.vault-form'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; const [email, pw] = f.querySelectorAll('input'); set.call(email, 'nobody@example.invalid'); email.dispatchEvent(new Event('input', { bubbles: true })); set.call(pw, 'wrong-password'); pw.dispatchEvent(new Event('input', { bubbles: true })); })()" },
+  { "wait": 300 },
+  { "evalMain": "document.querySelector('.vault-form').requestSubmit()" },
+  { "wait": 15000 },
+  { "capture": "v3-error" }
+]

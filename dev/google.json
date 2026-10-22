@@ -1,0 +1,57 @@
+[
+  {
+    "action": {
+      "type": "selectProject",
+      "id": "$project:0"
+    }
+  },
+  {
+    "action": {
+      "type": "startProject",
+      "id": "$project:0"
+    }
+  },
+  {
+    "wait": 1000
+  },
+  {
+    "action": {
+      "type": "navigate",
+      "slot": 1,
+      "url": "https://accounts.google.com/signin/v2/identifier?hl=en"
+    }
+  },
+  {
+    "action": {
+      "type": "focusPane",
+      "slot": 1
+    }
+  },
+  {
+    "wait": 6000
+  },
+  {
+    "fillFocused": {
+      "username": "gleeok.probe.nonexistent.4821@gmail.com",
+      "password": ""
+    }
+  },
+  {
+    "wait": 500
+  },
+  {
+    "pressKey": "Enter"
+  },
+  {
+    "pageText": {}
+  },
+  {
+    "wait": 7000
+  },
+  {
+    "pageText": {}
+  },
+  {
+    "capture": "g1"
+  }
+]

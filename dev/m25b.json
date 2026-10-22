@@ -1,0 +1,9 @@
+[
+  { "action": { "type": "selectProjectIndex", "index": 0 } },
+  { "wait": 7000 },
+  { "action": { "type": "navigate", "slot": 1, "url": "https://httpbin.org/response-headers?Content-Disposition=attachment%3B%20filename%3Dgleeok-test.txt" } },
+  { "wait": 5000 },
+  { "action": { "type": "navigate", "slot": 2, "url": "example.com" } },
+  { "wait": 4000 },
+  { "capture": "f-nav" }
+]

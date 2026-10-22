@@ -1,0 +1,4 @@
+[
+  { "wait": 7000 },
+  { "capture": "m4-e-restored" }
+]

@@ -1,0 +1,19 @@
+# Self-hosted Bitwarden-compatible password server, run as a user service next to the Gleeok
+# server (no /etc changes needed). Install:
+#   cp deploy/vaultwarden.service ~/.config/systemd/user/
+#   systemctl --user enable --now vaultwarden
+# Settings live in ~/.config/vaultwarden/vaultwarden.env (see deploy/vaultwarden.env.example).
+# HTTPS for clients comes from `tailscale serve --bg 8222` (tailnet only).
+[Unit]
+Description=Vaultwarden (user)
+After=network-online.target
+
+[Service]
+EnvironmentFile=%h/.config/vaultwarden/vaultwarden.env
+WorkingDirectory=%h/.local/share/vaultwarden
+ExecStart=/usr/bin/vaultwarden
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

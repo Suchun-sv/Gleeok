@@ -1,0 +1,11 @@
+[
+  { "action": { "type": "selectProjectIndex", "index": 0 } },
+  { "wait": 8000 },
+  { "capture": "s1-expanded" },
+  { "action": { "type": "toggleSidebar" } },
+  { "wait": 1500 },
+  { "capture": "s2-collapsed" },
+  { "action": { "type": "setView", "view": "entry" } },
+  { "wait": 1000 },
+  { "capture": "s3-collapsed-entry" }
+]

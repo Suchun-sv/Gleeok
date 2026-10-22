@@ -1,0 +1,72 @@
+[
+  {
+    "action": {
+      "type": "selectProject",
+      "id": "$project:0"
+    }
+  },
+  {
+    "action": {
+      "type": "startProject",
+      "id": "$project:0"
+    }
+  },
+  {
+    "wait": 6000
+  },
+  {
+    "action": {
+      "type": "openPalette"
+    }
+  },
+  {
+    "wait": 1200
+  },
+  {
+    "capture": "p1-open"
+  },
+  {
+    "evalMain": "(() => { const i = document.querySelector('.palette input'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, '二栏'); i.dispatchEvent(new Event('input', { bubbles: true })); })()"
+  },
+  {
+    "wait": 400
+  },
+  {
+    "capture": "p2-query"
+  },
+  {
+    "evalMain": "document.querySelector('.palette input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))"
+  },
+  {
+    "wait": 2500
+  },
+  {
+    "capture": "p3-after-enter"
+  },
+  {
+    "action": {
+      "type": "openPalette"
+    }
+  },
+  {
+    "wait": 1000
+  },
+  {
+    "evalMain": "(() => { const i = document.querySelector('.palette input'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, 'example.com'); i.dispatchEvent(new Event('input', { bubbles: true })); })()"
+  },
+  {
+    "wait": 400
+  },
+  {
+    "capture": "p4-url"
+  },
+  {
+    "evalMain": "document.querySelector('.palette input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))"
+  },
+  {
+    "wait": 1500
+  },
+  {
+    "capture": "p5-closed"
+  }
+]

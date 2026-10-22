@@ -1,0 +1,14 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 7000 },
+  { "action": { "type": "tabDrag", "active": true } },
+  { "wait": 1500 },
+  { "capture": "drag" },
+  { "evalMain": "(() => { const dt = new DataTransfer(); dt.setData('application/x-gleeok-tab', 'x'); document.querySelectorAll('.pane')[2].querySelector('.drop-zone').dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true })); })()" },
+  { "wait": 500 },
+  { "capture": "hover" },
+  { "moveActiveTab": { "from": 0, "to": 2 } },
+  { "action": { "type": "tabDrag", "active": false } },
+  { "wait": 2000 },
+  { "capture": "dropped" }
+]
