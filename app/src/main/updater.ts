@@ -39,6 +39,9 @@ export async function pendingUpdates(): Promise<{ head: string; commits: string[
 /** Pull, install and build; reports each step. Throws with the failing step's tail on error. */
 export async function selfUpdate(step: (text: string) => void) {
   step('拉取最新代码…');
+  // npm may rewrite the lockfiles (an older npm on Windows does); they are npm's, not the user's,
+  // and a modified one would make the fast-forward refuse.
+  await run('git', ['checkout', '--', 'app/package-lock.json', 'server/package-lock.json'], repoDir).catch(() => {});
   await run('git', ['pull', '--ff-only'], repoDir);
   step('安装依赖…');
   await run('npm', ['install', '--no-fund', '--no-audit'], appDir);

@@ -42,7 +42,8 @@ It pulls, runs `npm install` and `npm run build`, and restarts. By hand: `git pu
   `~/.local/share/icons/hicolor/512x512/apps/gleeok.png` for a launcher entry with the icon.
 - **Windows**: `winget install OpenJS.NodeJS.LTS Git.Git`, then the steps above in PowerShell
   (if PowerShell refuses to run `npm`, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
-  once, or use `npm.cmd`). `deploy\gleeok-windows.cmd` starts it.
+  once, or use `npm.cmd`). `deploy\gleeok-windows.cmd` starts it; `powershell -ExecutionPolicy Bypass -File deploy\windows-shortcut.ps1`
+  puts a Gleeok shortcut (with its icon, no console window) on the desktop and in the Start menu.
 - **macOS**: `deploy/macos-launcher.sh` (run once from Terminal) creates `~/Applications/Gleeok.app`
   that starts the checkout — open it from Spotlight or keep it in the Dock. For a packaged,
   self-signed `Gleeok.app` instead: `../dev/mac-selfsign.sh` once, then `npm run dist:mac`.
