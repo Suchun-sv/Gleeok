@@ -26,6 +26,7 @@ import { matchShortcut } from './shortcuts.ts';
 import { activeTab, createSession, loadState, looksLikeUrl, newTab, normalizeUrl, saveState } from './state.ts';
 import { PARTITION, TabViews } from './views.ts';
 import { Shells } from './windows.ts';
+import { canSelfUpdate, pendingUpdates, selfUpdate } from './updater.ts';
 import { VAULT_URL_DEFAULT, Vault, fillPage, readPage } from './vault.ts';
 import { readLocalPaseo } from './paseo-local.ts';
 
@@ -464,6 +465,7 @@ function snapshot(): Snapshot {
     live: Object.values(state.sessions).filter(isLive).map((s) => s.projectId),
     memory: Object.fromEntries(memory),
     tabDragging,
+    canSelfUpdate: canSelfUpdate(),
     vault: {
       unlocked: vault?.unlocked ?? false,
       email: vault?.email ?? '',
@@ -534,6 +536,41 @@ async function openOverlay(channel: string, payload?: unknown) {
 }
 
 const openPalette = () => openOverlay('palette');
+
+// ---- self-update (git checkout) ----
+
+let updating = false;
+
+async function checkUpdate(announceNone: boolean) {
+  if (!canSelfUpdate()) return;
+  try {
+    const n = await pendingUpdates();
+    if (n > 0) {
+      send({ type: 'toast', slot: state.focusedPane, text: `Gleeok 有 ${n} 个更新`, undo: { type: 'selfUpdate' }, undoLabel: '更新并重启', ms: 20_000 });
+    } else if (announceNone) {
+      send({ type: 'toast', slot: state.focusedPane, text: 'Gleeok 已经是最新版本' });
+    }
+  } catch (e) {
+    if (announceNone) send({ type: 'toast', slot: state.focusedPane, text: `检查更新失败：${String(e).slice(0, 80)}` });
+  }
+}
+
+async function runSelfUpdate() {
+  if (updating || !canSelfUpdate()) return;
+  updating = true;
+  const say = (text: string, ms = 120_000) => send({ type: 'toast', slot: state.focusedPane, text, ms });
+  try {
+    await selfUpdate((s) => say(`正在更新 Gleeok：${s}`));
+    say('更新完成，正在重启…', 5000);
+    // Dev scripts must not relaunch themselves in a loop.
+    if (!process.env.GLEEOK_NO_RELAUNCH) app.relaunch();
+    setTimeout(() => app.quit(), 800);
+  } catch (e) {
+    say(`更新失败：${String(e).replace(/^Error: /, '').slice(0, 140)}`, 30_000);
+  } finally {
+    updating = false;
+  }
+}
 
 // ---- password vault ----
 
@@ -746,6 +783,12 @@ function dispatch(action: Action) {
       return;
     case 'openPalette':
       void openPalette();
+      return;
+    case 'checkUpdate':
+      void checkUpdate(true);
+      return;
+    case 'selfUpdate':
+      void runSelfUpdate();
       return;
     case 'vaultFill':
       void vaultFill();
@@ -1148,6 +1191,9 @@ app.whenReady().then(async () => {
   setInterval(sampleMemory, 10_000);
   // Pick up edits from other machines and Paseo link updates pushed by the sync timers.
   setInterval(() => void config.refresh().then(changed), 60_000);
+  // Running from a git checkout: look for new commits shortly after launch and every 6 hours.
+  setTimeout(() => void checkUpdate(false), 20_000);
+  setInterval(() => void checkUpdate(false), 6 * 3600_000);
   if (!state.currentProjectId && visibleProjects()[0]) state.currentProjectId = visibleProjects()[0].id;
   changed();
   // Unlock the vault right away (machines that used it before), so filling is instant later.

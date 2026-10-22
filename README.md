@@ -29,7 +29,10 @@ npm run build
 npm start
 ```
 
-Update later with `git pull && npm install && npm run build`, then restart.
+**Updating**: when run from a git checkout, Gleeok checks for new commits after launch and every
+6 hours and offers "更新并重启" (update and restart); the command palette has "更新 Gleeok" too.
+It pulls, runs `npm install` and `npm run build`, and restarts. By hand: `git pull && npm install
+&& npm run build`, then restart.
 
 - **Linux**: `deploy/gleeok-linux.sh` starts it with Wayland input-method support (fcitx5 etc.);
   `ln -sf ~/github/gleeok/deploy/gleeok-linux.sh ~/.local/bin/gleeok` and copy
@@ -37,9 +40,9 @@ Update later with `git pull && npm install && npm run build`, then restart.
 - **Windows**: `winget install OpenJS.NodeJS.LTS Git.Git`, then the steps above in PowerShell
   (if PowerShell refuses to run `npm`, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
   once, or use `npm.cmd`). `deploy\gleeok-windows.cmd` starts it.
-- **macOS**: `npm start` works as is. For a packaged `Gleeok.app` signed with a stable local
-  certificate (so keychain access survives rebuilds): `../dev/mac-selfsign.sh` once, then
-  `npm run dist:mac`.
+- **macOS**: `deploy/macos-launcher.sh` (run once from Terminal) creates `~/Applications/Gleeok.app`
+  that starts the checkout — open it from Spotlight or keep it in the Dock. For a packaged,
+  self-signed `Gleeok.app` instead: `../dev/mac-selfsign.sh` once, then `npm run dist:mac`.
 
 Running from the checkout avoids code-signing prompts: npm's Electron binary is already signed.
 

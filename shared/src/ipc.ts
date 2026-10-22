@@ -34,6 +34,8 @@ export interface Snapshot {
   memory: Record<string, number>;
   /** A tab is being dragged: pages are swapped for screenshots so whole panes can take the drop. */
   tabDragging: boolean;
+  /** Running from a git checkout, so the palette can offer "update Gleeok". */
+  canSelfUpdate: boolean;
   vault: {
     unlocked: boolean;
     email: string;
@@ -86,6 +88,8 @@ export type Action =
   | { type: 'openSaveLink'; slot?: number }
   | { type: 'tabDrag'; active: boolean }
   | { type: 'openPalette' }
+  | { type: 'checkUpdate' }
+  | { type: 'selfUpdate' }
   | { type: 'adoptRemoteTabs'; projectId: string }
   | { type: 'restoreTabs'; projectId: string }
   | { type: 'vaultFill' }

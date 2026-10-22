@@ -192,6 +192,12 @@ function commands(snap: Snapshot, current?: Project): Item[] {
     c('reopen', '恢复刚关闭的标签', [{ type: 'reopenTab' }]),
     c('save', '把当前页面存进项目链接', [{ type: 'openSaveLink' }]),
     c('import', '从 Paseo 导入项目', [{ type: 'setView', view: 'import' }]),
+    ...(snap.canSelfUpdate
+      ? [
+          c('update', '更新 Gleeok（拉取最新代码、构建并重启）', [{ type: 'selfUpdate' }]),
+          c('checkUpdate', '检查 Gleeok 有没有更新', [{ type: 'checkUpdate' }]),
+        ]
+      : []),
     c('vaultFill', '填写这个网站的账号密码', [{ type: 'vaultFill' }], snap.platform === 'darwin' ? '⌘⇧L' : 'Ctrl+Shift+L'),
     c('vaultSave', '把这个网站的账号存进密码库', [{ type: 'vaultSaveDialog' }]),
     ...(snap.vault.unlocked ? [c('vaultLock', '锁定密码库', [{ type: 'vaultLock' }])] : []),
