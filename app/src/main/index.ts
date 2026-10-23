@@ -6,7 +6,7 @@ import type { Action, Command, PaneRects, Snapshot, VaultDialog } from '../../..
 import {
   CODE_PANE,
   NEW_TAB_URL,
-  PANE_COUNT,
+  MAX_PANES,
   codeLinks,
   isInternalUrl,
   isTerminalUrl,
@@ -16,6 +16,7 @@ import {
   shortTitle,
   type DeviceSession,
   type Pane,
+  paneName,
   visibleSlots,
   type AppWindowState,
   type Project,
@@ -92,6 +93,7 @@ const views = new TabViews({
     showContextMenu(wc, params, {
       slots: allVisibleSlots(),
       slot: hit.slot,
+      name: (slot) => paneName(state.paneNames, slot),
       openTab: (slot, url) => openTab(hit.session, slot, url),
     });
   },
@@ -223,7 +225,7 @@ function adoptTabs(session: ProjectSession, remote: DeviceSession) {
   tabsBeforeAdopt.set(session.projectId, session.panes);
   for (const pane of session.panes) for (const t of pane.tabs) views.destroy(t.id);
   const panes: Pane[] = [];
-  for (let i = 0; i < PANE_COUNT; i++) {
+  for (let i = 0; i < MAX_PANES; i++) {
     const r = remote.panes[i];
     const tabs = (r?.tabs ?? []).map((t) => ({ ...newTab(t.url), title: t.title, ...(t.favicon ? { favicon: t.favicon } : {}) }));
     if (tabs.length === 0) tabs.push(newTab());
@@ -745,10 +747,53 @@ function detachPane(slot: number) {
     id: `w_${randomUUID().slice(0, 6)}`,
     role: 'satellite',
     slots: [slot],
-    layout: { mode: 'three', focusExpand: false, focusRatio: 2 },
+    layout: { visible: 1, focusExpand: false, focusRatio: 2 },
   };
   state.windows.push(ws);
   shells.open(ws, { awayFrom: shells.get('main') });
+  changed();
+}
+
+/**
+ * Change how many panes projects have (and their names). Panes past the new count leave every
+ * window, their tabs kept for when the count grows again; new panes join the main window.
+ */
+function setPanes(names: string[]) {
+  const count = Math.min(Math.max(1, names.length), MAX_PANES);
+  const before = mainWindowState().slots.length;
+  const main = mainWindowState();
+  const showingAll = main.layout.visible >= before;
+  state.paneNames = names.slice(0, count).map((n) => n.trim().slice(0, 24));
+  for (const ws of state.windows.filter((w) => w.role === 'satellite')) {
+    ws.slots = ws.slots.filter((s) => s < count);
+    if (ws.slots.length === 0) {
+      state.windows = state.windows.filter((w) => w !== ws);
+      paneRects.delete(ws.id);
+      shells.closeQuietly(ws.id);
+    }
+  }
+  const owned = new Set(state.windows.flatMap((w) => (w.role === 'satellite' ? w.slots : [])));
+  main.slots = Array.from({ length: count }, (_, i) => i).filter((s) => !owned.has(s));
+  // Every pane detached: the main window takes the first one back.
+  if (main.slots.length === 0) {
+    attachPane(Math.min(...owned));
+    return setPanes(state.paneNames);
+  }
+  main.layout.visible = showingAll ? main.slots.length : Math.min(main.layout.visible, main.slots.length);
+  for (const ws of state.windows) shells.retitle(ws);
+  const visible = allVisibleSlots();
+  if (!visible.includes(state.focusedPane)) focusSlot(visible[visible.length - 1]);
+  changed();
+}
+
+/** Swap a window's pages for screenshots (while a pane divider is dragged) and back. */
+async function coverPages(winId: string, active: boolean) {
+  const ws = state.windows.find((w) => w.id === winId);
+  if (!ws) return;
+  if (active && !paletteWindows.has(winId)) {
+    await sendPageImages(ws);
+    paletteWindows.add(winId);
+  } else if (!active) paletteWindows.delete(winId);
   changed();
 }
 
@@ -828,13 +873,27 @@ function dispatch(action: Action) {
       focusSlot(slots[(i + action.delta + slots.length) % slots.length]);
       return;
     }
-    case 'setLayoutMode': {
-      mainWindowState().layout.mode = action.mode;
+    case 'setVisiblePanes': {
+      const main = mainWindowState();
+      main.layout.visible = Math.min(Math.max(1, action.count), main.slots.length);
       const visible = allVisibleSlots();
       if (!visible.includes(state.focusedPane)) focusSlot(visible[visible.length - 1]);
       changed();
       return;
     }
+    case 'setPanes':
+      setPanes(action.names);
+      return;
+    case 'setPaneWeights': {
+      const ws = state.windows.find((w) => w.id === action.winId);
+      if (!ws) return;
+      ws.layout.weights = { ...ws.layout.weights, ...action.weights };
+      changed();
+      return;
+    }
+    case 'coverPages':
+      void coverPages(action.winId, action.active);
+      return;
     case 'toggleFocusExpand':
       mainWindowState().layout.focusExpand = !mainWindowState().layout.focusExpand;
       changed();
@@ -949,7 +1008,7 @@ function dispatch(action: Action) {
       const s = currentSession();
       if (!s) return;
       // An editor already open for this folder is brought forward instead of opening a second one.
-      for (let slot = 0; slot < PANE_COUNT; slot++) {
+      for (let slot = 0; slot < state.paneNames.length; slot++) {
         const tab = s.panes[slot].tabs.find((t) => sameCodePage(t.url, link.url));
         if (!tab) continue;
         state.view = 'panes';
@@ -1262,6 +1321,7 @@ const shells = new Shells({
   },
   onPlacementChanged: () => changed(),
   onClosing: (bw) => views.detachAll(bw),
+  paneName: (slot) => paneName(state.paneNames, slot),
   onFocus: () => {
     if (Date.now() - lastFocusRefresh < 30_000) return;
     lastFocusRefresh = Date.now();

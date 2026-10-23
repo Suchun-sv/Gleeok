@@ -43,6 +43,47 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
   const canDetach = win.role === 'main' && slots.length > 1;
   const boxes = useRef(new Map<number, HTMLDivElement>());
   const lastSent = useRef('');
+  const names = snap.state.paneNames;
+  // Widths while a divider is being dragged; dropped once main has the new weights.
+  const [live, setLive] = useState<Record<number, number> | null>(null);
+  const savedWeights = JSON.stringify(win.layout.weights ?? {});
+  useEffect(() => setLive(null), [savedWeights]);
+  const weightOf = (slot: number) => live?.[slot] ?? win.layout.weights?.[slot] ?? 1;
+  const focusOf = (slot: number) => (focusExpand && snap.state.focusedPane === slot ? focusRatio : 1);
+
+  /** Drag the divider between two panes. Pages turn into screenshots meanwhile, so the pointer is never lost to them. */
+  function startResize(e: React.PointerEvent<HTMLDivElement>, left: number, right: number) {
+    if (e.button !== 0) return;
+    const a = boxes.current.get(left)?.closest('.pane');
+    const b = boxes.current.get(right)?.closest('.pane');
+    if (!a || !b) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    gleeok.dispatch({ type: 'coverPages', winId: win.id, active: true });
+    const wa = a.getBoundingClientRect().width;
+    const total = wa + b.getBoundingClientRect().width;
+    const sum = weightOf(left) * focusOf(left) + weightOf(right) * focusOf(right);
+    const startX = e.clientX;
+    let latest: Record<number, number> | null = null;
+    const move = (ev: PointerEvent) => {
+      if (ev.buttons === 0) return end();
+      const width = Math.min(Math.max(wa + ev.clientX - startX, MIN_PANE_WIDTH), total - MIN_PANE_WIDTH);
+      const grow = (sum * width) / total;
+      latest = { [left]: grow / focusOf(left), [right]: (sum - grow) / focusOf(right) };
+      setLive((prev) => ({ ...prev, ...latest }));
+    };
+    const end = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', end);
+      el.removeEventListener('lostpointercapture', end);
+      if (latest) gleeok.dispatch({ type: 'setPaneWeights', winId: win.id, weights: latest });
+      gleeok.dispatch({ type: 'coverPages', winId: win.id, active: false });
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', end);
+    el.addEventListener('lostpointercapture', end);
+  }
 
   function measure() {
     const rects: PaneRects = {};
@@ -74,9 +115,21 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
 
   return (
     <div className="panes">
-      {slots.map((slot, i) => (
+      {slots.map((slot, i) => [
+        i > 0 && (
+          <div
+            key={`divider-${slot}`}
+            className="pane-divider"
+            onPointerDown={(e) => startResize(e, slots[i - 1], slot)}
+            onDoubleClick={() =>
+              gleeok.dispatch({ type: 'setPaneWeights', winId: win.id, weights: Object.fromEntries(slots.map((s) => [s, 1])) })
+            }
+            title="拖动调整宽度，双击恢复等宽"
+          />
+        ),
         <PaneView
           platform={snap.platform}
+          name={paneName(names, slot)}
           leading={i === 0 ? leading : null}
           trailing={i === slots.length - 1 ? trailing : null}
           key={slot}
@@ -84,7 +137,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
           pane={session.panes[slot]}
           project={project}
           focused={snap.state.focusedPane === slot}
-          grow={focusExpand && snap.state.focusedPane === slot ? focusRatio : 1}
+          grow={weightOf(slot) * focusOf(slot)}
           boxRef={(el) => (el ? boxes.current.set(slot, el) : boxes.current.delete(slot))}
           command={command?.slot === slot ? command : null}
           dragging={snap.tabDragging}
@@ -102,14 +155,18 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
               </button>
             ) : null
           }
-        />
-      ))}
+        />,
+      ])}
     </div>
   );
 }
 
+/** A dragged divider stops short of squeezing either pane below this. */
+const MIN_PANE_WIDTH = 220;
+
 interface PaneProps {
   platform: string;
+  name: string;
   slot: number;
   pane: Pane;
   project: Project;
@@ -130,7 +187,7 @@ interface PaneProps {
 }
 
 function PaneView(props: PaneProps) {
-  const { platform, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep } = props;
+  const { platform, name, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep } = props;
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
   const isTerm = isTerminalUrl(tab.url);
@@ -209,7 +266,7 @@ function PaneView(props: PaneProps) {
     >
       <div className="tabs">
         {leading && <div className="tabs-leading">{leading}</div>}
-        <span className="pane-name">{paneName(slot)}</span>
+        <span className="pane-name">{name}</span>
         {pane.tabs.map((t) => (
           <TabButton key={t.id} tab={t} slot={slot} active={t.id === tab.id} />
         ))}
@@ -330,7 +387,7 @@ function PaneView(props: PaneProps) {
         {!isNew && !isTerm && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
         {dragging && (
           <div className="drop-zone">
-            <span>移到{paneName(slot)}</span>
+            <span>移到{name}</span>
           </div>
         )}
       </div>

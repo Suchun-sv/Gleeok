@@ -17,7 +17,9 @@ type Step =
   | { pageText: { click?: string } }
   | { pressKey: string }
   /** A real key press in the main window's shell (goes through before-input-event), e.g. into a terminal. */
-  | { shellKey: { key: string; modifiers?: ('control' | 'shift' | 'alt' | 'meta')[] } };
+  | { shellKey: { key: string; modifiers?: ('control' | 'shift' | 'alt' | 'meta')[] } }
+  /** Real mouse input to the main window's shell (e.g. dragging a pane divider): press, move in steps, release. */
+  | { mouseDrag: { selector: string; index?: number; dx: number; dy?: number; steps?: number } };
 
 export interface DevHooks {
   fillFocused(username: string, password: string): Promise<boolean>;
@@ -83,6 +85,24 @@ export async function runDevScript(
       wc?.sendInputEvent({ type: 'keyUp', keyCode: key, modifiers });
     }
     if ('pageText' in step) console.log('[devscript] page ->', JSON.stringify(await hooks.pageText(step.pageText.click)));
+    if ('mouseDrag' in step) {
+      const wc = getWindows().find(([id]) => id === 'main')?.[1].webContents;
+      const { selector, index = 0, dx, dy = 0, steps = 10 } = step.mouseDrag;
+      // Start from the middle of the matching element.
+      const from = (await wc?.executeJavaScript(
+        `(() => { const r = document.querySelectorAll(${JSON.stringify(selector)})[${index}]?.getBoundingClientRect(); return r ? [r.x + r.width / 2, r.y + r.height / 2] : null; })()`,
+      )) as [number, number] | null;
+      if (!from) console.log('[devscript] mouseDrag: nothing matches', selector);
+      const at = (t: number) => ({ x: Math.round((from?.[0] ?? 0) + dx * t), y: Math.round((from?.[1] ?? 0) + dy * t) });
+      wc?.sendInputEvent({ type: 'mouseMove', ...at(0) });
+      wc?.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...at(0) });
+      for (let i = 1; i <= steps; i++) {
+        await new Promise((r) => setTimeout(r, 60));
+        wc?.sendInputEvent({ type: 'mouseMove', button: 'left', ...at(i / steps), modifiers: ['leftbuttondown'] });
+      }
+      await new Promise((r) => setTimeout(r, 200));
+      wc?.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...at(1) });
+    }
     if ('wait' in step) await new Promise((r) => setTimeout(r, step.wait));
     if ('capture' in step) {
       // One composite per window: <name>__<windowId>.png

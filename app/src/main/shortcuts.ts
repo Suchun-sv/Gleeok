@@ -24,9 +24,7 @@ export function matchShortcut(input: Input, platform: string): Action | null {
 
   if (prefix) {
     if (digit && input.shift) {
-      if (digit[1] === '2') return { type: 'setLayoutMode', mode: 'two' };
-      if (digit[1] === '3') return { type: 'setLayoutMode', mode: 'three' };
-      return null;
+      return { type: 'setVisiblePanes', count: Number(digit[1]) };
     }
     if (mac && code === 'BracketLeft') return { type: 'history', op: 'back' };
     if (mac && code === 'BracketRight') return { type: 'history', op: 'forward' };

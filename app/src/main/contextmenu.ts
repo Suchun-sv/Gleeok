@@ -1,10 +1,10 @@
 import { Menu, clipboard, type ContextMenuParams, type MenuItemConstructorOptions, type WebContents } from 'electron';
-import { paneName } from '../../../shared/src/model.ts';
 
 export interface MenuOps {
   /** Pane indices currently visible, and the one this page sits in. */
   slots: number[];
   slot: number;
+  name(slot: number): string;
   openTab(slot: number, url: string): void;
 }
 
@@ -15,7 +15,7 @@ export function showContextMenu(wc: WebContents, p: ContextMenuParams, ops: Menu
   if (p.linkURL) {
     items.push({ label: '在新标签页中打开链接', click: () => ops.openTab(ops.slot, p.linkURL) });
     for (const s of ops.slots) {
-      if (s !== ops.slot) items.push({ label: `在${paneName(s)}打开链接`, click: () => ops.openTab(s, p.linkURL) });
+      if (s !== ops.slot) items.push({ label: `在${ops.name(s)}打开链接`, click: () => ops.openTab(s, p.linkURL) });
     }
     items.push({ label: '复制链接地址', click: () => clipboard.writeText(p.linkURL) });
     sep();

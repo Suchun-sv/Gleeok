@@ -7,7 +7,7 @@ side, each with its own tabs; a sidebar switches projects. Inspired by
 [Paseo](https://paseo.sh), and built to sit next to it: projects can be imported from a Paseo
 daemon, with a pane that always opens the project's most recently used Paseo workspace.
 
-- Per-project panes and tabs; 2/3-pane layouts; focus-expand; drag tabs between panes
+- Per-project panes and tabs: up to six named panes (Settings → 栏), dividers dragged to resize, focus-expand, tabs dragged between panes
 - Projects keep running in the background; idle ones hibernate overnight; start/sleep/archive by hand
 - Project links (new-tab page, and the project-settings drawer, top right, where they are edited and saved as you type); a pasted URL or ☆ saves the current page as a link
 - Command palette for projects, links, open tabs and commands
@@ -143,7 +143,7 @@ Prefix = Ctrl+Alt on Linux/Windows, Cmd+Opt on macOS.
 | Cmd+1..9 (macOS), Prefix+1..9 | switch project |
 | Cmd+[ / ] (macOS), Prefix+↑/↓ or K/J | previous / next project |
 | Prefix+←/→ or H/L | focus previous/next pane |
-| Prefix+Shift+2 / 3 | two / three panes |
+| Prefix+Shift+2..6 | show that many panes |
 | Prefix+F | toggle focus-expand |
 | Prefix+E | project settings drawer (links, archive, delete) |
 | Prefix+C | open the project's primary code link |

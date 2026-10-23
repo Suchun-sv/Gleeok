@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import {
+  DEFAULT_PANE_NAMES,
+  MAX_PANES,
   NEW_TAB_URL,
-  PANE_COUNT,
   isTerminalUrl,
   terminalTitle,
   type GlobalState,
@@ -22,10 +23,11 @@ export function defaultState(): GlobalState {
         id: 'main',
         role: 'main',
         slots: [0, 1, 2],
-        layout: { mode: 'three', focusExpand: false, focusRatio: 2 },
+        layout: { visible: 3, focusExpand: false, focusRatio: 2 },
       },
     ],
     sessions: {},
+    paneNames: [...DEFAULT_PANE_NAMES],
   };
 }
 
@@ -34,6 +36,13 @@ export function loadState(path: string): GlobalState {
     const s = { ...defaultState(), ...(JSON.parse(readFileSync(path, 'utf8')) as GlobalState) };
     // Older builds also had full-page 'entry' and 'import' views.
     if (s.view !== 'settings') s.view = 'panes';
+    // Older builds had exactly three panes and a 'two' | 'three' layout mode.
+    for (const w of s.windows) {
+      const old = w.layout as typeof w.layout & { mode?: string };
+      if (old.visible === undefined) old.visible = old.mode === 'two' ? 2 : 3;
+      delete old.mode;
+    }
+    for (const session of Object.values(s.sessions)) padPanes(session.panes);
     return s;
   } catch {
     return defaultState();
@@ -51,12 +60,20 @@ export function newTab(url = NEW_TAB_URL): Tab {
 /** First time a project is opened on this machine: pinned links fill their panes, the rest start blank. */
 export function createSession(project: Project): ProjectSession {
   const panes: Pane[] = [];
-  for (let i = 0; i < PANE_COUNT; i++) {
+  for (let i = 0; i < MAX_PANES; i++) {
     const tabs = project.links.filter((l) => l.pinnedPane === i).map((l) => ({ ...newTab(l.url), title: l.label }));
     if (tabs.length === 0) tabs.push(newTab());
     panes.push({ tabs, activeTabId: tabs[0].id });
   }
   return { projectId: project.id, panes, lastActiveAt: Date.now(), lifecycle: 'hibernated' };
+}
+
+/** Sessions from builds with fewer panes get blank ones up to MAX_PANES. */
+export function padPanes(panes: Pane[]) {
+  while (panes.length < MAX_PANES) {
+    const tab = newTab();
+    panes.push({ tabs: [tab], activeTabId: tab.id });
+  }
 }
 
 export function activeTab(pane: Pane): Tab {

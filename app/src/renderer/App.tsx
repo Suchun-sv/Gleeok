@@ -158,7 +158,7 @@ export function App() {
             win={win}
             dragImages={dragImages}
             leading={toggle}
-            trailing={<LayoutControls mode={win.layout.mode} focusExpand={win.layout.focusExpand} platform={snap.platform} />}
+            trailing={<LayoutControls visible={win.layout.visible} max={win.slots.length} focusExpand={win.layout.focusExpand} platform={snap.platform} />}
           />
         ) : null}
       </main>

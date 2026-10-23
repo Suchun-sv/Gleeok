@@ -350,8 +350,30 @@ main {
   flex: 1;
   display: flex;
   min-width: 0;
-  gap: 1px;
+  background: var(--panel);
+}
+
+/* Between two panes: a 1px line inside a wider grab area. */
+.pane-divider {
+  position: relative;
+  flex: none;
+  width: 5px;
+  margin: 0 -2px;
+  z-index: 1;
+  cursor: col-resize;
+}
+
+.pane-divider::after {
+  content: '';
+  position: absolute;
+  inset: 0 2px;
   background: var(--line);
+}
+
+.pane-divider:hover::after,
+.pane-divider:active::after {
+  inset: 0 1px;
+  background: var(--accent);
 }
 
 .pane {
@@ -570,6 +592,33 @@ main {
 
 .card .row input {
   flex: 1;
+}
+
+.card .seg {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.card .seg button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 0;
+  color: var(--muted);
+}
+
+.card .seg button + button {
+  border-left: 1px solid var(--line);
+}
+
+.card .seg button.on {
+  background: var(--panel-2);
+  color: var(--accent);
+}
+
+.card .pane-index {
+  width: 56px;
 }
 
 .card .row button {

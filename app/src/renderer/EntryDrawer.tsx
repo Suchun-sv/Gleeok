@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
 import {
-  PANE_COUNT,
   isCodeLink,
   isManagedLink,
   paneName,
@@ -170,9 +169,9 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
           title="在一台电脑上第一次打开这个项目时，自动在哪一栏打开"
         >
           <option value="">不自动打开</option>
-          {Array.from({ length: PANE_COUNT }, (_, p) => (
+          {snap.state.paneNames.map((_, p) => (
             <option key={p} value={p}>
-              {paneName(p)}
+              {paneName(snap.state.paneNames, p)}
             </option>
           ))}
         </select>
@@ -218,9 +217,9 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
           title="在一台电脑上第一次打开这个项目时，自动在哪一栏打开"
         >
           <option value="">不自动打开</option>
-          {Array.from({ length: PANE_COUNT }, (_, p) => (
+          {snap.state.paneNames.map((_, p) => (
             <option key={p} value={p}>
-              {paneName(p)}
+              {paneName(snap.state.paneNames, p)}
             </option>
           ))}
         </select>

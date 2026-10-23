@@ -1,4 +1,4 @@
-import type { GlobalState, LayoutMode, Link, PaseoDaemon, Project, Rect, View } from './model.ts';
+import type { GlobalState, Link, PaseoDaemon, Project, Rect, View } from './model.ts';
 
 export interface VaultLoginSummary {
   id: string;
@@ -69,7 +69,13 @@ export type Action =
   | { type: 'navigate'; slot: number; url: string; /** typed by pasting: remember it as a project link */ save?: boolean }
   | { type: 'openLink'; url: string; slot?: number; /** open beside the current page rather than replacing it */ newTab?: boolean }
   | { type: 'history'; slot?: number; op: 'back' | 'forward' | 'reload' }
-  | { type: 'setLayoutMode'; mode: LayoutMode }
+  /** Main window: show its first `count` panes. */
+  | { type: 'setVisiblePanes'; count: number }
+  /** How many panes projects have, and their names. */
+  | { type: 'setPanes'; names: string[] }
+  /** Relative widths after dragging a divider (slot → weight); `cover` hides the pages while dragging. */
+  | { type: 'setPaneWeights'; winId: string; weights: Record<number, number> }
+  | { type: 'coverPages'; winId: string; active: boolean }
   | { type: 'toggleFocusExpand' }
   | { type: 'toggleSidebar' }
   | { type: 'setView'; view: View }

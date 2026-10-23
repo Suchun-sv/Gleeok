@@ -1,18 +1,5 @@
 /** Lucide glyphs (the icon set Paseo uses), drawn as muted icon buttons like Paseo's chrome. */
 const paths = {
-  columns2: (
-    <>
-      <rect width="18" height="18" x="3" y="3" rx="2" />
-      <path d="M12 3v18" />
-    </>
-  ),
-  columns3: (
-    <>
-      <rect width="18" height="18" x="3" y="3" rx="2" />
-      <path d="M9 3v18" />
-      <path d="M15 3v18" />
-    </>
-  ),
   focus: (
     <>
       <circle cx="12" cy="12" r="3" />
@@ -57,12 +44,39 @@ export function IconButton({ icon, title, on, onClick, size = 15 }: { icon: Icon
 }
 
 /** Layout switches and the project-settings drawer, at the right end of the main window's last tab strip. */
-export function LayoutControls({ mode, focusExpand, platform }: { mode: 'two' | 'three'; focusExpand: boolean; platform: string }) {
+const COUNT_NAMES = ['', '一', '二', '三', '四', '五', '六'];
+
+/** A box split into n columns, in the same style as the lucide glyphs. */
+function Columns({ n }: { n: number }) {
+  return (
+    <>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      {Array.from({ length: n - 1 }, (_, i) => {
+        const x = 3 + (18 * (i + 1)) / n;
+        return <path key={i} d={`M${x} 3v18`} />;
+      })}
+    </>
+  );
+}
+
+/** One button per pane count the main window can show (2 up to the panes it holds), then focus-expand and settings. */
+export function LayoutControls({ visible, max, focusExpand, platform }: { visible: number; max: number; focusExpand: boolean; platform: string }) {
   const mod = platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+';
   return (
     <>
-      <IconButton icon="columns2" on={mode === 'two'} title={`二栏（${mod}Shift+2）`} onClick={() => gleeok.dispatch({ type: 'setLayoutMode', mode: 'two' })} />
-      <IconButton icon="columns3" on={mode === 'three'} title={`三栏（${mod}Shift+3）`} onClick={() => gleeok.dispatch({ type: 'setLayoutMode', mode: 'three' })} />
+      {Array.from({ length: Math.max(0, max - 1) }, (_, i) => i + 2).map((n) => (
+        <button
+          key={n}
+          className={`icon-btn ${Math.min(visible, max) === n ? 'on' : ''}`}
+          onClick={() => gleeok.dispatch({ type: 'setVisiblePanes', count: n })}
+          title={`${COUNT_NAMES[n]}栏（${mod}Shift+${n}）`}
+          aria-pressed={Math.min(visible, max) === n}
+        >
+          <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Columns n={n} />
+          </svg>
+        </button>
+      ))}
       <IconButton
         icon="focus"
         on={focusExpand}

@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { BrowserWindow, app, screen, type Input, type Rectangle } from 'electron';
-import { type AppWindowState, paneName } from '../../../shared/src/model.ts';
+import type { AppWindowState } from '../../../shared/src/model.ts';
 import { niriEnabled, niriMoveToOutput, niriOutputNames, niriOutputOf } from './niri.ts';
 
 export interface ShellHooks {
@@ -11,10 +11,11 @@ export interface ShellHooks {
   onFocus(id: string): void;
   /** Runs before the window goes away: move its pages somewhere safe. */
   onClosing(win: BrowserWindow): void;
+  paneName(slot: number): string;
 }
 
 /** Stable per window, so niri window rules can match it (e.g. open-on-output by title). */
-export function windowTitle(ws: AppWindowState) {
+export function windowTitle(ws: AppWindowState, paneName: (slot: number) => string) {
   return ws.role === 'main' ? 'Gleeok' : `Gleeok · ${ws.slots.map(paneName).join(' / ')}`;
 }
 
@@ -46,7 +47,7 @@ export class Shells {
     const bounds = initialBounds(ws, opts.awayFrom ?? null);
     const win = new BrowserWindow({
       ...bounds,
-      title: windowTitle(ws),
+      title: windowTitle(ws, this.#hooks.paneName),
       backgroundColor: '#16171b',
       // Taskbar/window icon on Linux and Windows; macOS takes the Dock icon instead.
       icon: join(app.getAppPath(), 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'),
@@ -90,6 +91,12 @@ export class Shells {
   }
 
   /** Close without treating it as the user dismissing the window. */
+  /** Pane names changed: keep titles current (niri rules and placement look windows up by title). */
+  retitle(ws: AppWindowState) {
+    const win = this.#wins.get(ws.id);
+    if (win && !win.isDestroyed()) win.setTitle(windowTitle(ws, this.#hooks.paneName));
+  }
+
   closeQuietly(id: string) {
     const win = this.#wins.get(id);
     if (!win) return;
@@ -110,7 +117,7 @@ export class Shells {
 
   async #remember(ws: AppWindowState, win: BrowserWindow) {
     if (!niriEnabled()) return this.#rememberSync(ws, win);
-    const output = await niriOutputOf(windowTitle(ws)).catch(() => null);
+    const output = await niriOutputOf(windowTitle(ws, this.#hooks.paneName)).catch(() => null);
     if (output && !win.isDestroyed()) {
       ws.placement = { displayKey: `niri:${output}`, bounds: win.getNormalBounds() };
       this.#hooks.onPlacementChanged();
@@ -126,7 +133,7 @@ export class Shells {
         const mainOutput = await niriOutputOf(awayFrom.getTitle());
         target = outputs.find((o) => o !== mainOutput) ?? null;
       }
-      if (target && outputs.includes(target)) await niriMoveToOutput(windowTitle(ws), target);
+      if (target && outputs.includes(target)) await niriMoveToOutput(windowTitle(ws, this.#hooks.paneName), target);
     } catch {
       // niri unavailable or the window vanished; leaving it where it opened is fine.
     }

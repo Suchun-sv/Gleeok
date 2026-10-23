@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
+import { DEFAULT_PANE_NAMES, MAX_PANES, paneName } from '../../../shared/src/model.ts';
 import { PaseoSettings } from './PaseoSettings.tsx';
 
 const TABS = [
+  { id: 'panes', label: '栏' },
   { id: 'paseo', label: 'Paseo' },
   { id: 'sync', label: '同步' },
   { id: 'vault', label: '密码库' },
@@ -14,7 +16,7 @@ const close = () => gleeok.dispatch({ type: 'setView', view: 'panes' });
 
 /** Global settings, in place of the panes: a tab list on the left like Paseo's settings. */
 export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.ReactNode }) {
-  const [tab, setTab] = useState<Tab>('paseo');
+  const [tab, setTab] = useState<Tab>('panes');
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !(e.target instanceof HTMLInputElement) && close();
@@ -39,12 +41,57 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
         <button className="settings-close icon-btn" onClick={close} title="关闭（Esc）">
           ×
         </button>
+        {tab === 'panes' && <PaneSettings snap={snap} />}
         {tab === 'paseo' && <PaseoSettings snap={snap} />}
         {tab === 'sync' && <SyncSettings snap={snap} />}
         {tab === 'vault' && <VaultSettings snap={snap} />}
         {tab === 'about' && <About snap={snap} />}
       </div>
     </div>
+  );
+}
+
+/** How many panes each project has and what they are called. Widths are set by dragging the dividers. */
+function PaneSettings({ snap }: { snap: Snapshot }) {
+  const saved = snap.state.paneNames;
+  // Names are edited here and saved on Enter / leaving the field, so trimming never fights the typing.
+  const [draft, setDraft] = useState(saved);
+  useEffect(() => setDraft(saved), [saved.join('\n')]);
+  const save = (names: string[]) => gleeok.dispatch({ type: 'setPanes', names });
+  const setCount = (n: number) =>
+    save(Array.from({ length: n }, (_, i) => (i < saved.length ? saved[i] : (DEFAULT_PANE_NAMES[i] ?? ''))));
+  return (
+    <section className="card">
+      <h3>栏</h3>
+      <div className="row">
+        <span className="meta">每个项目</span>
+        <div className="seg">
+          {Array.from({ length: MAX_PANES }, (_, i) => i + 1).map((n) => (
+            <button key={n} className={saved.length === n ? 'on' : ''} onClick={() => setCount(n)}>
+              {n} 栏
+            </button>
+          ))}
+        </div>
+      </div>
+      {draft.map((name, i) => (
+        <div className="row" key={i}>
+          <span className="meta pane-index">第 {i + 1} 栏</span>
+          <input
+            value={name}
+            placeholder={`第${i + 1}栏`}
+            maxLength={24}
+            onChange={(e) => setDraft(draft.map((d, j) => (j === i ? e.target.value : d)))}
+            onBlur={() => draft[i] !== saved[i] && save(draft)}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        </div>
+      ))}
+      <p className="hint">
+        栏名显示在每栏标签条的最左边，也用在右键菜单、命令面板和拆出去的窗口标题里（{draft.map((_, i) => paneName(draft, i)).join(' / ')}）。
+        减少栏数时，多出来那几栏的标签页会保留，再加回来就还在。拖动两栏之间的分隔线可以调宽度，双击分隔线恢复等宽。
+        主窗口显示其中几栏用标签条右侧的布局按钮切换（{snap.platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+'}Shift+数字）。
+      </p>
+    </section>
   );
 }
 

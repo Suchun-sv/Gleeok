@@ -87,11 +87,12 @@ function buildItems(snap: Snapshot): Item[] {
   // Open tabs of the current project first: switching between them is the most common jump.
   if (session) {
     session.panes.forEach((pane, slot) => {
+      if (slot >= snap.state.paneNames.length) return;
       for (const t of pane.tabs) {
         if (t.url === NEW_TAB_URL) continue;
         items.push({
           id: `tab:${t.id}`,
-          group: `标签 · ${paneName(slot)}`,
+          group: `标签 · ${paneName(snap.state.paneNames, slot)}`,
           title: t.title || t.url,
           detail: t.url,
           icon: t.favicon ?? faviconFor(t.url),
@@ -195,8 +196,10 @@ function commands(snap: Snapshot, current?: Project): Item[] {
   const main = snap.state.windows.find((w) => w.role === 'main')!;
   const c = (id: string, title: string, run: Action[], detail?: string): Item => ({ id: `cmd:${id}`, group: '命令', title, detail, run });
   const out = [
-    c('three', '三栏布局', [{ type: 'setLayoutMode', mode: 'three' }]),
-    c('two', '二栏布局', [{ type: 'setLayoutMode', mode: 'two' }]),
+    ...Array.from({ length: Math.max(0, main.slots.length - 1) }, (_, i) => i + 2).map((n) =>
+      c(`panes${n}`, `${n} 栏布局`, [{ type: 'setVisiblePanes', count: n }]),
+    ),
+    c('panes', '设置栏数和栏名', [{ type: 'setView', view: 'settings' }]),
     c('focus', main.layout.focusExpand ? '关闭焦点放大' : '打开焦点放大', [{ type: 'toggleFocusExpand' }]),
     c('sidebar', main.sidebarCollapsed ? '展开侧边栏' : '收起侧边栏', [{ type: 'toggleSidebar' }]),
     c('detach', '把焦点栏拆到新窗口 / 合并回主窗口', [{ type: 'togglePaneWindow' }]),

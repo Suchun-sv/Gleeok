@@ -161,10 +161,11 @@ export function terminalTitle(url: string): string {
   const dir = t.cwd?.replace(/\/+$/, '').split('/').pop() || '~';
   return t.host ? `${t.host}:${dir}` : `终端 ${dir}`;
 }
-export const PANE_COUNT = 3;
-/** What each pane is for, shown on its tab strip and wherever a pane is named. */
-export const PANE_NAMES = ['AI区', '草稿区', '产出区'];
-export const paneName = (slot: number) => PANE_NAMES[slot] ?? `第${slot + 1}栏`;
+/** Every project keeps this many panes; GlobalState.paneNames says how many are in use. */
+export const MAX_PANES = 6;
+export const DEFAULT_PANE_NAMES = ['AI区', '草稿区', '产出区'];
+/** What a pane is for, shown on its tab strip and wherever a pane is named; set in Settings. */
+export const paneName = (names: string[], slot: number) => names[slot]?.trim() || `第${slot + 1}栏`;
 
 export interface Tab {
   id: string;
@@ -191,19 +192,20 @@ export interface ProjectSession {
   projectId: string;
   /** Last time this device's tabs for the project changed; compared against other devices. */
   changedAt?: number;
-  /** Always PANE_COUNT long; the layout decides how many are visible. */
+  /** Always MAX_PANES long; the pane count and the layout decide which are visible. */
   panes: Pane[];
   lastActiveAt: number;
   lifecycle: 'live' | 'hibernated';
 }
 
-export type LayoutMode = 'three' | 'two';
-
 export interface Layout {
-  mode: LayoutMode;
+  /** Main window: how many of its panes are shown (the first ones). */
+  visible: number;
   /** When on, the focused pane is focusRatio times as wide as the others. */
   focusExpand: boolean;
   focusRatio: number;
+  /** Relative pane widths by slot (1 when unset), set by dragging the dividers between panes. */
+  weights?: Record<number, number>;
 }
 
 export interface Rect {
@@ -235,10 +237,12 @@ export interface GlobalState {
   view: View;
   windows: AppWindowState[];
   sessions: Record<string, ProjectSession>;
+  /** One name per pane in use (1..MAX_PANES). */
+  paneNames: string[];
 }
 
 export function visibleSlots(win: AppWindowState): number[] {
-  return win.layout.mode === 'two' ? win.slots.slice(0, 2) : win.slots;
+  return win.role === 'main' ? win.slots.slice(0, Math.max(1, win.layout.visible)) : win.slots;
 }
 
 /** URLs that differ only by trailing slashes or case count as the same link. */

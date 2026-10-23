@@ -1,0 +1,135 @@
+[
+ {
+  "evalMain": "gleeok.createProject('分栏测试').then(p=>'created '+p.name)"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "action": {
+   "type": "toggleEntry"
+  }
+ },
+ {
+  "action": {
+   "type": "startProject",
+   "id": "$project:0"
+  }
+ },
+ {
+  "wait": 2500
+ },
+ {
+  "action": {
+   "type": "setPanes",
+   "names": [
+    "AI区",
+    "草稿区",
+    "产出区",
+    "参考区"
+   ]
+  }
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "capture": "1-four"
+ },
+ {
+  "evalMain": "'widths before: '+JSON.stringify([...document.querySelectorAll('.pane')].map(p=>Math.round(p.getBoundingClientRect().width)))"
+ },
+ {
+  "mouseDrag": {
+   "selector": ".pane-divider",
+   "index": 0,
+   "dx": 200
+  }
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "evalMain": "'widths after drag: '+JSON.stringify([...document.querySelectorAll('.pane')].map(p=>Math.round(p.getBoundingClientRect().width)))"
+ },
+ {
+  "evalMain": "gleeok.getSnapshot().then(s=>'weights '+JSON.stringify(s.state.windows[0].layout)+' covered '+JSON.stringify(s.paletteWindows))"
+ },
+ {
+  "capture": "2-dragged"
+ },
+ {
+  "action": {
+   "type": "setVisiblePanes",
+   "count": 2
+  }
+ },
+ {
+  "wait": 1000
+ },
+ {
+  "capture": "3-two"
+ },
+ {
+  "action": {
+   "type": "setVisiblePanes",
+   "count": 4
+  }
+ },
+ {
+  "action": {
+   "type": "detachPane",
+   "slot": 3
+  }
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "action": {
+   "type": "setPanes",
+   "names": [
+    "写作",
+    "资料"
+   ]
+  }
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "evalMain": "gleeok.getSnapshot().then(s=>'after shrink: '+JSON.stringify({names:s.state.paneNames, windows:s.state.windows.map(w=>({id:w.id,slots:w.slots,visible:w.layout.visible})), focused:s.state.focusedPane, panes:s.state.sessions[s.state.currentProjectId].panes.length}))"
+ },
+ {
+  "capture": "4-two-panes"
+ },
+ {
+  "action": {
+   "type": "setPanes",
+   "names": [
+    "写作",
+    "资料",
+    "产出区",
+    "参考区"
+   ]
+  }
+ },
+ {
+  "wait": 1000
+ },
+ {
+  "evalMain": "gleeok.getSnapshot().then(s=>'regrow: '+JSON.stringify(s.state.windows.map(w=>({slots:w.slots,visible:w.layout.visible}))))"
+ },
+ {
+  "action": {
+   "type": "setView",
+   "view": "settings"
+  }
+ },
+ {
+  "wait": 1000
+ },
+ {
+  "capture": "5-settings"
+ }
+]
