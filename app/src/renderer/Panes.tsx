@@ -314,7 +314,8 @@ function PaneView(props: PaneProps) {
             </button>
           </div>
         )}
-        {covered && !isNew && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
+        {/* Painted beneath the page just before main hides it (see App), so covering never flashes. */}
+        {!isNew && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
         {dragging && (
           <div className="drop-zone">
             <span>移到{paneName(slot)}</span>

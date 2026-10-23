@@ -555,8 +555,21 @@ async function sendPageImages(ws: AppWindowState) {
     const view = views.get(activeTab(session!.panes[slot]).id);
     if (view && !view.webContents.isDestroyed()) images[slot] = (await view.webContents.capturePage()).toDataURL();
   }
-  shells.get(ws.id)?.webContents.send('drag-images', images);
+  const shell = shells.get(ws.id);
+  if (!shell) return;
+  // Wait until the window has painted them (beneath the pages); hiding the pages before that
+  // flashes the empty panes for a frame.
+  const shown = new Promise<void>((resolve) => {
+    imagesShown.set(ws.id, resolve);
+    setTimeout(resolve, 400);
+  });
+  shell.webContents.send('drag-images', images);
+  await shown;
+  imagesShown.delete(ws.id);
 }
+
+const imagesShown = new Map<string, () => void>();
+ipcMain.on('page-images-shown', (_e, winId: string) => imagesShown.get(winId)?.());
 
 /** Show something over the focused window's pages (palette, vault dialogs): pages become screenshots. */
 async function openOverlay(channel: string, payload?: unknown) {

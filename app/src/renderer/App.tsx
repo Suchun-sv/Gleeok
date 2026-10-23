@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Command, Snapshot, VaultDialog as VaultDialogState } from '../../../shared/src/ipc.ts';
 import { EntryDrawer } from './EntryDrawer.tsx';
 import { SettingsPage } from './Settings.tsx';
@@ -26,7 +26,19 @@ export function App() {
     const offSnap = gleeok.onSnapshot(setSnap);
     let seq = 0;
     const offCmd = gleeok.onCommand((c) => setCommand({ ...c, seq: ++seq }));
-    const offImages = gleeok.onDragImages(setDragImages);
+    const offImages = gleeok.onDragImages((images) => {
+      // Decode, paint beneath the pages, then tell main it may take the pages away.
+      void Promise.all(
+        Object.values(images).map((src) => {
+          const img = new Image();
+          img.src = src;
+          return img.decode().catch(() => {});
+        }),
+      ).then(() => {
+        setDragImages(images);
+        requestAnimationFrame(() => requestAnimationFrame(() => gleeok.pageImagesShown(WIN_ID)));
+      });
+    });
     const offPalette = gleeok.onPalette(() => setPaletteOpen(true));
     const offVault = gleeok.onVaultDialog((d) => {
       setPaletteOpen(false);
@@ -56,6 +68,21 @@ export function App() {
       offVault();
     };
   }, []);
+
+  // Screenshots are painted before main hides the pages, so they must go once the pages are
+  // back (a little later, so the pages have repainted), or if the cover never came.
+  const covered = !!snap && (snap.tabDragging || snap.paletteWindows.includes(WIN_ID));
+  const wasCovered = useRef(false);
+  useEffect(() => {
+    if (covered) {
+      wasCovered.current = true;
+      return;
+    }
+    if (Object.keys(dragImages).length === 0) return;
+    const t = setTimeout(() => setDragImages({}), wasCovered.current ? 150 : 1500);
+    wasCovered.current = false;
+    return () => clearTimeout(t);
+  }, [covered, dragImages]);
 
   if (!snap) return null;
   const project = snap.projects.find((p) => p.id === snap.state.currentProjectId) ?? null;

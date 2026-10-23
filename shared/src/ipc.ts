@@ -127,6 +127,8 @@ export interface GleeokApi {
   onCommand(cb: (c: Command) => void): () => void;
   /** Screenshots of this window's panes, keyed by slot, sent when pages are about to be hidden. */
   onDragImages(cb: (images: Record<number, string>) => void): () => void;
+  /** The screenshots are painted (under the pages), so main can take the pages away without a blank frame. */
+  pageImagesShown(winId: string): void;
   /** Main asks this window to show the command palette. */
   onPalette(cb: () => void): () => void;
   onVaultDialog(cb: (d: VaultDialog) => void): () => void;

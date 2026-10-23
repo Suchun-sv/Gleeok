@@ -19,6 +19,7 @@ const api: GleeokApi = {
   vaultUnlock: (email, password, server) => ipcRenderer.invoke('vault:unlock', email, password, server),
   vaultSave: (login) => ipcRenderer.invoke('vault:save', login),
   dispatch: (action) => ipcRenderer.send('action', action),
+  pageImagesShown: (winId) => ipcRenderer.send('page-images-shown', winId),
   reportPaneRects: (winId, rects) => ipcRenderer.send('pane-rects', winId, rects),
   createProject: (name) => ipcRenderer.invoke('project:create', name),
   saveProject: (project) => ipcRenderer.invoke('project:save', project),
