@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src", "../shared/src"]
+  "include": ["src", "test", "../shared/src"]
 }

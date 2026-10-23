@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
 import { detectCodeServer } from './codeserver.ts';
+import { type Library, libraryRoutes } from './library.ts';
 import { type Store, parseDaemon, parseProjectInput, parseSession } from './store.ts';
 
 export interface AppOptions {
@@ -10,6 +11,8 @@ export interface AppOptions {
   vaultUrl?: string;
   /** In-process (local mode): a code-server on localhost is reachable by the only client there is. */
   local?: boolean;
+  /** The 文献库; its API lives under /api/library. */
+  library?: Library;
 }
 
 const DETECT_EVERY_MS = 10 * 60_000;
@@ -33,6 +36,8 @@ export function createApp(store: Store, opts: AppOptions = {}) {
   if (opts.token) app.use('/api/*', bearerAuth({ token: opts.token }));
 
   app.get('/api/client-config', (c) => c.json({ vaultUrl: opts.vaultUrl ?? null }));
+
+  if (opts.library) app.route('/api/library', libraryRoutes(opts.library));
 
   app.get('/api/projects', (c) => c.json(store.list()));
 

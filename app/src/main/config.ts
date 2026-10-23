@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { createApp } from '../../../server/src/app.ts';
+import { Library } from '../../../server/src/library.ts';
 import { Store } from '../../../server/src/store.ts';
 import type { ServerStatus } from '../../../shared/src/ipc.ts';
 import { isCodeLink, sameUrl, type DeviceSession, type Link, type PaseoDaemon, type Project } from '../../../shared/src/model.ts';
@@ -49,7 +50,10 @@ export class ConfigClient {
       this.#conf = JSON.parse(readFileSync(path, 'utf8')) as ClientConfig;
       this.status = 'offline';
     } catch {
-      this.#local = createApp(new Store(join(app.getPath('userData'), 'gleeok.db')), { local: true });
+      this.#local = createApp(new Store(join(app.getPath('userData'), 'gleeok.db')), {
+        local: true,
+        library: new Library(app.getPath('userData')),
+      });
       this.status = 'local';
       return;
     }
