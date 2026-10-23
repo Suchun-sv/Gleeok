@@ -461,6 +461,8 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
 /** Tools offered on every new-tab page, after the project's own links. */
 const SUGGESTIONS = [
   { label: '终端', name: '本机', url: TERMINAL_URL },
+  { label: 'AI 对话', name: 'ChatGPT', url: 'https://chatgpt.com/' },
+  { label: 'AI 对话', name: 'Claude', url: 'https://claude.ai/' },
   { label: '读论文', name: 'alphaXiv', url: 'https://www.alphaxiv.org/' },
   { label: '做 PPT', name: 'OneDrive', url: 'https://www.office.com/launch/onedrive' },
   { label: '草稿', name: 'Notion', url: 'https://www.notion.so/' },
