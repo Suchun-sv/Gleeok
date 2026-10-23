@@ -286,14 +286,19 @@ main {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 6px 8px;
+  padding: 6px 4px 6px 8px;
   border-top: 1px solid var(--line);
 }
 
+/* Settings at the left, build time centred, check-update against the right edge. */
 .footer-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 2px;
+}
+
+.footer-row > :last-child {
+  justify-self: end;
 }
 
 /* Paseo-style chrome: borderless muted glyphs, a soft background on hover, accent when on. */

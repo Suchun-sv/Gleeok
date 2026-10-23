@@ -193,12 +193,13 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
             title="设置：Paseo 导入、同步、密码库"
             onClick={() => gleeok.dispatch({ type: 'setView', view: state.view === 'settings' ? 'panes' : 'settings' })}
           />
-          <span className="spacer" />
           <span className="build" title={__GLEEOK_BUILD__}>
             {new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
           </span>
-          {snap.canSelfUpdate && (
+          {snap.canSelfUpdate ? (
             <IconButton icon="refresh" size={13} title="检查 Gleeok 有没有更新" onClick={() => gleeok.dispatch({ type: 'checkUpdate' })} />
+          ) : (
+            <span />
           )}
         </div>
       </footer>
