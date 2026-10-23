@@ -10,6 +10,7 @@ daemon, with a pane that always opens the project's most recently used Paseo wor
 - Per-project panes and tabs: up to six named panes (Settings → 栏), dividers dragged to resize, focus-expand, tabs dragged between panes
 - Projects keep running in the background; idle ones hibernate overnight; start/sleep/archive by hand
 - A 常用 row of everyday sites on every new-tab page, edited in Settings → 常用
+- 文献库: a Zotero-style reference library (collections, tags, notes, PDFs) with Zotero's PDF reader for highlights and annotations, synced through the server
 - Project links (new-tab page, and the project-settings drawer, top right, where they are edited and saved as you type); a pasted URL or ☆ saves the current page as a link
 - Command palette for projects, links, open tabs and commands
 - Multiple windows/monitors: move a pane into its own window; every window follows the project
@@ -60,6 +61,21 @@ only accept a production signature, which castLabs' free
 come before code signing).
 `app/.npmrc` lets npm 12 install this Electron, which comes from a GitHub release rather than the
 npm registry.
+
+## 文献库 (reference library)
+
+📚 above the sidebar footer (or Prefix+P) opens the library in place of the panes; "在栏中打开"
+or the new-tab page opens it as a tab in a pane, where it folds into one column when narrow.
+It works like Zotero: nested collections, tags, a sortable and searchable item list, each item's
+fields (Zotero's item types and field names), creators, notes and PDF attachments, and a trash.
+Drop PDFs onto the list (or "添加 PDF") to add them.
+
+PDFs open in a pane (the third by default) in [Zotero's reader](https://github.com/zotero/reader):
+highlights, underlines, notes, text boxes, area and ink annotations, outline, search, and a
+reading position that follows you between machines. Items, annotations and files live in
+`library.db` and `library/` next to the server's database (or in Gleeok's user data in local
+mode); other machines pick up changes within a minute. The design is in [docs/library.md](docs/library.md);
+the reader is built by `dev/build-reader.sh` into `app/vendor/zotero-reader/`.
 
 ## Terminal tabs
 
@@ -190,4 +206,8 @@ windows have stable titles such as `Gleeok · 产出区`, so a niri window rule 
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE). Copyright 2026 Suchun-sv.
+GNU Affero General Public License v3.0 — see [LICENSE](LICENSE). Copyright 2026 Suchun-sv.
+
+Gleeok includes Zotero's PDF reader (`app/vendor/zotero-reader/`, AGPL-3.0, copyright Corporation
+for Digital Scholarship; see its LICENSE and SOURCE.md). Versions before the 文献库 reader was
+added were released under the Apache License 2.0.

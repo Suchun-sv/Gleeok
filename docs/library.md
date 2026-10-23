@@ -1,6 +1,6 @@
 # Gleeok 文献库 — Spec v3
 
-第一期：管理界面 + PDF 阅读器。状态：已确认，按 M1 → M4 实施。
+第一期：管理界面 + PDF 阅读器。状态：M1–M3 已完成（2026-10-23），M4（设置页、缓存上限、性能打磨）待做。
 
 ## 1. 目标与范围
 
@@ -87,7 +87,7 @@
 
 ## 5. PDF 阅读器
 
-**打开**：条目上回车或双击，在栏里新开标签页 `gleeok://reader?item=<key>&attachment=<key>`，
+**打开**：条目上回车或双击，在栏里新开标签页 `gleeok://reader/?attachment=<key>`，
 默认在第 3 栏（设置可改）；右键可选别的栏。标签标题用短标题，如「Vaswani 2017」。标签页随项目保存，
 也参与跨设备接着用。
 
@@ -114,7 +114,7 @@
 **存储**
 
 - 元数据：单独的 `library.db`（条目、分类、标签、笔记、批注、阅读位置）
-- 文件：`<数据目录>/library/<附件key>/<文件名>.pdf`（服务器上默认 `~/.local/share/gleeok/library/`）
+- 文件：`<数据目录>/library/<附件key>/file`（服务器上默认 `~/.local/share/gleeok/library/`）
 - 备份：扩展现有每日备份，带上 `library.db` 和文件目录（文件增量）
 
 **数据格式**：条目用 Zotero 条目 JSON（8 位 key、`itemType`、字段、`creators`、`collections`、`tags`、
@@ -123,9 +123,9 @@
 
 **接口**（仿 Zotero Web API，增量同步）
 
-- `GET /api/library/{items,collections,annotations,states}?since=<版本>`：返回该版本之后的改动和删除
+- `GET /api/library?since=<版本>`：返回该版本之后所有种类（items、collections、annotations、states）的改动和删除
 - `POST` 新建；`PATCH` / `PUT` 带 `If-Unmodified-Since-Version`，版本不符返回 409
-- `GET` / `PUT /api/library/attachments/:key/file`：带 SHA-256 校验
+- `GET` / `PUT /api/library/items/<附件key>/file`：带 SHA-256 校验（`X-Content-SHA256`）
 - 全库一个递增版本号，每次写入加一
 
 **客户端缓存**：元数据本地缓存，离线可浏览、搜索；PDF 首次打开时下载到本地缓存，之后离线可读；

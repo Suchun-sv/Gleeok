@@ -146,6 +146,11 @@ export const isTerminalUrl = (url: string) => url === TERMINAL_URL || url.starts
 export const LIBRARY_URL = 'gleeok://library';
 export const isLibraryUrl = (url: string) => url === LIBRARY_URL || url.startsWith(`${LIBRARY_URL}?`);
 export const isInternalUrl = (url: string) => url === NEW_TAB_URL || isTerminalUrl(url) || isLibraryUrl(url);
+/** A 文献库 PDF in Zotero's reader: a real page (served by Gleeok), so it lives in a pane like any site. */
+export const READER_ORIGIN = 'gleeok://reader';
+export const readerUrl = (attachment: string) => `${READER_ORIGIN}/?attachment=${attachment}`;
+export const isReaderUrl = (url: string) => url.startsWith(`${READER_ORIGIN}/`);
+export const readerAttachment = (url: string) => (isReaderUrl(url) ? new URL(url).searchParams.get('attachment') : null);
 export function terminalUrl(t: TerminalTarget): string {
   const q = new URLSearchParams();
   if (t.host?.trim()) q.set('host', t.host.trim());

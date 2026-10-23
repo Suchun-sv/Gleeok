@@ -1,0 +1,19 @@
+[
+ {"evalMain":"gleeok.createProject('阅读测试').then(()=>'project')"},{"wait":800},{"action":{"type":"toggleEntry"}},{"wait":500},
+ {"evalMain":"gleeok.library({op:'addFiles',paths:['../dev/fixtures/sample.pdf']}).then(r=>r.error||'added '+r.result[0].title)"},
+ {"wait":500},
+ {"evalMain":"gleeok.getLibrary().then(s=>{const a=s.items.find(i=>i.itemType==='attachment');window.__att=a.key;return 'attachment '+a.key})"},
+ {"evalMain":"(async()=>{const s=await gleeok.getLibrary();const a=s.items.find(i=>i.itemType==='attachment');gleeok.dispatch({type:'openReader',attachment:a.key});return 'opening'})()"},
+ {"wait":6000},
+ {"capture":"1-reader"},
+ {"pageText":{}},
+ {"evalPage":"JSON.stringify({title:document.title, reader: typeof window._reader, lang: document.documentElement.lang})"},
+ {"evalPage":"(async()=>{const key=new URLSearchParams(location.search).get('attachment');await window.gleeokReader.saveAnnotations(key,[{id:'HL2345AB',type:'highlight',color:'#ffd400',sortIndex:'00000|000100|00100',pageLabel:'1',position:{pageIndex:0,rects:[[72,655,400,672]]},text:'Attention is all you need to highlight this sentence.',comment:'',tags:[],dateCreated:new Date().toISOString(),dateModified:new Date().toISOString(),authorName:'me'}]);return 'saved'})()"},
+ {"wait":800},
+ {"evalMain":"gleeok.getLibrary().then(s=>'readStatus '+s.items.find(i=>i.itemType==='document').readStatus+' lastReadAt '+!!s.items.find(i=>i.itemType==='document').lastReadAt)"},
+ {"evalMain":"gleeok.library({op:'patch',kind:'annotations',key:'HL2345AB',fields:{comment:'来自另一台设备的评论'}}).then(r=>r.error||'patched v'+r.result.version)"},
+ {"wait":1500},
+ {"evalPage":"JSON.stringify((window._reader._state.annotations||[]).map(a=>({id:a.id,comment:a.comment})))"},
+ {"wait":2500},
+ {"capture":"2-reader-annotated"}
+]

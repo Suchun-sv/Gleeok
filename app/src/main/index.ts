@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { freemem, hostname, totalmem } from 'node:os';
+import { freemem, hostname, totalmem, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { BrowserWindow, Menu, app, clipboard, components, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
+import { shortName } from '../../../shared/src/library-format.ts';
 import type { Action, Command, LibraryOp, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 import { LibraryClient } from './library.ts';
+import { ReaderBridge, registerReaderScheme, serveReader } from './reader.ts';
 import {
   CODE_PANE,
   NEW_TAB_URL,
@@ -12,6 +14,7 @@ import {
   isInternalUrl,
   isLibraryUrl,
   isTerminalUrl,
+  readerUrl,
   primaryCodeLink,
   terminalTitle,
   sameUrl,
@@ -42,6 +45,7 @@ import { VAULT_URL_DEFAULT, Vault, fillPage, readPage } from './vault.ts';
 import { type Pairing, loadPairings, parseOffer, readLocalPaseo, readPairedPaseo, savePairings } from './paseo.ts';
 
 app.setName('gleeok');
+registerReaderScheme();
 if (process.platform === 'linux') {
   // Stable Wayland app-id ("gleeok") for the launcher entry and niri window rules.
   app.setDesktopName('gleeok.desktop');
@@ -676,8 +680,60 @@ let libraryTimer: NodeJS.Timeout | undefined;
 // The library goes out on its own channel, coalesced: it can be large and change in bursts.
 library.onChange = () => {
   clearTimeout(libraryTimer);
-  libraryTimer = setTimeout(() => shells.broadcast('library', library.snapshot()), 80);
+  libraryTimer = setTimeout(() => {
+    shells.broadcast('library', library.snapshot());
+    readerBridge.push();
+  }, 80);
 };
+
+const readerBridge = new ReaderBridge(library, {
+  authorName: () => userInfo().username,
+  // A link in a PDF opens beside it, in the reader's own pane.
+  openLink(url, from) {
+    for (const s of Object.values(state.sessions)) {
+      s.panes.forEach((pane, slot) => {
+        if (pane.tabs.some((t) => views.get(t.id)?.webContents === from)) openTab(s, slot, url);
+      });
+    }
+  },
+});
+
+/** Read a PDF: bring its tab forward if this project has one open, else open it in the reading pane. */
+function openReader(attachment: string, slot?: number) {
+  const session = currentSession();
+  const item = library.item(attachment);
+  if (!session || !item) return send({ type: 'toast', slot: state.focusedPane, text: session ? '这个附件已经不在文献库里了' : '先在左边选一个项目' });
+  const url = readerUrl(attachment);
+  state.view = 'panes';
+  for (const [s, pane] of session.panes.entries()) {
+    const tab = pane.tabs.find((t) => t.url === url);
+    if (tab && allVisibleSlots().includes(s)) {
+      pane.activeTabId = tab.id;
+      tabsChanged(session);
+      changed();
+      return focusSlot(s);
+    }
+  }
+  const visible = allVisibleSlots();
+  const target = slot !== undefined && visible.includes(slot) ? slot : visible.includes(READER_PANE) ? READER_PANE : visible[visible.length - 1];
+  const parent = item.parentItem ? library.item(item.parentItem) : undefined;
+  const title = parent ? shortName(parent) : String(item.filename ?? 'PDF');
+  const tab = activeTab(session.panes[target]);
+  if (tab.url === NEW_TAB_URL) {
+    tab.url = url;
+    tab.title = title;
+    tabsChanged(session);
+    changed();
+    focusSlot(target);
+  } else {
+    openTab(session, target, url);
+    activeTab(session.panes[target]).title = title;
+  }
+  if (!isLive(session)) startProject(session.projectId);
+}
+
+/** PDFs open in the third pane (产出区 by default) unless told otherwise. */
+const READER_PANE = 2;
 
 async function libraryCall(op: LibraryOp): Promise<unknown> {
   switch (op.op) {
@@ -1234,7 +1290,7 @@ function dispatch(action: Action) {
       openTab(session, slotOf(action.slot), action.url ? normalizeUrl(action.url) : NEW_TAB_URL);
       return;
     case 'openReader':
-      send({ type: 'toast', slot: state.focusedPane, text: '阅读器正在开发中（下一步）' });
+      openReader(action.attachment, action.slot);
       return;
     case 'closeTab': {
       const slot = slotOf(action.slot);
@@ -1508,6 +1564,7 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'assets', 'icon.png'));
   // Present as plain Chrome: some sites refuse or degrade for UAs that mention Electron.
   const ses = session.fromPartition(PARTITION);
+  serveReader(ses);
   ses.setUserAgent(ses.getUserAgent().replace(/ (Electron|gleeok)\/\S+/g, ''));
   setupGoogleSignIn(ses);
   downloads = new Downloads(ses, changed);
@@ -1571,6 +1628,12 @@ app.whenReady().then(async () => {
         page.wc.sendInputEvent({ type: 'keyDown', keyCode: key });
         page.wc.sendInputEvent({ type: 'char', keyCode: key === 'Enter' ? '\r' : key });
         page.wc.sendInputEvent({ type: 'keyUp', keyCode: key });
+      },
+      evalPage: async (js) => {
+        const session = currentSession();
+        const view = session && views.get(activeTab(session.panes[state.focusedPane]).id);
+        if (!view || view.webContents.isDestroyed()) return 'no focused page';
+        return view.webContents.executeJavaScript(js).catch((e: unknown) => `eval failed: ${String(e)}`);
       },
       pageText: async (click) => {
         const page = focusedPage();

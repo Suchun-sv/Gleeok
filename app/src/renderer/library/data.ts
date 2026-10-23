@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import type { LibraryOp, LibrarySnapshot } from '../../../../shared/src/ipc.ts';
-import type { Creator, LibraryCollection, LibraryItem } from '../../../../shared/src/library.ts';
+import type { LibraryCollection, LibraryItem } from '../../../../shared/src/library.ts';
 import { PUBLICATION_FIELDS } from '../../../../shared/src/library-schema.ts';
+export { creatorsShort, shortName, yearOf } from '../../../../shared/src/library-format.ts';
 
 // One subscription for every view of the library in this window.
 let current: LibrarySnapshot | null = null;
@@ -41,28 +42,10 @@ export function childrenOf(snap: LibrarySnapshot, key: string, type?: 'note' | '
   return snap.items.filter((i) => i.parentItem === key && !i.deleted && (!type || i.itemType === type));
 }
 
-const lastName = (c: Creator) => c.lastName || c.name || c.firstName || '';
-
-/** "Vaswani", "Vaswani 和 Shazeer", "Vaswani 等" (authors first, like Zotero's creator column). */
-export function creatorsShort(item: LibraryItem): string {
-  const all = item.creators ?? [];
-  const authors = all.filter((c) => c.creatorType === 'author' || c.creatorType === 'presenter');
-  const list = authors.length ? authors : all;
-  if (list.length === 0) return '';
-  if (list.length === 1) return lastName(list[0]);
-  if (list.length === 2) return `${lastName(list[0])} 和 ${lastName(list[1])}`;
-  return `${lastName(list[0])} 等`;
-}
-
-export const yearOf = (item: LibraryItem) => /\b(1[5-9]\d\d|20\d\d|21\d\d)\b/.exec(String(item.date ?? ''))?.[1] ?? '';
-
 export function publicationOf(item: LibraryItem): string {
   for (const f of PUBLICATION_FIELDS) if (typeof item[f] === 'string' && item[f]) return item[f] as string;
   return '';
 }
-
-/** "Vaswani 2017" for tab titles. */
-export const shortName = (item: LibraryItem) => [creatorsShort(item).replace(/ 等$/, ''), yearOf(item)].filter(Boolean).join(' ') || String(item.title ?? '未命名');
 
 const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
 

@@ -9,5 +9,5 @@
     "server": "npm --prefix server start",
     "app": "npm --prefix app run build && npm --prefix app start"
   },
-  "license": "Apache-2.0"
+  "license": "AGPL-3.0-only"
 }

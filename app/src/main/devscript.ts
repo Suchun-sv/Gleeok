@@ -15,6 +15,8 @@ type Step =
   | { fillFocused: { username: string; password: string } }
   | { readFocused: true }
   | { pageText: { click?: string } }
+  /** Run JS in the focused page (e.g. the 文献库 reader) and log what it returns. */
+  | { evalPage: string }
   | { pressKey: string }
   /** A real key press in the main window's shell (goes through before-input-event), e.g. into a terminal. */
   | { shellKey: { key: string; modifiers?: ('control' | 'shift' | 'alt' | 'meta')[] } }
@@ -26,6 +28,7 @@ export interface DevHooks {
   readFocused(): Promise<unknown>;
   /** Optionally click a selector in the focused page, then return its URL and visible text. */
   pageText(click?: string): Promise<unknown>;
+  evalPage(js: string): Promise<unknown>;
   /** A real key press in the focused page (trusted input), e.g. "Enter". */
   pressKey(key: string): Promise<void>;
 }
@@ -85,6 +88,7 @@ export async function runDevScript(
       wc?.sendInputEvent({ type: 'keyUp', keyCode: key, modifiers });
     }
     if ('pageText' in step) console.log('[devscript] page ->', JSON.stringify(await hooks.pageText(step.pageText.click)));
+    if ('evalPage' in step) console.log('[devscript] page eval ->', String(await hooks.evalPage(step.evalPage)).slice(0, 500));
     if ('mouseDrag' in step) {
       const wc = getWindows().find(([id]) => id === 'main')?.[1].webContents;
       const { selector, index = 0, dx, dy = 0, steps = 10 } = step.mouseDrag;

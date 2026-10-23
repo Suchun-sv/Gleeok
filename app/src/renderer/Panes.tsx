@@ -8,6 +8,7 @@ import {
   DEFAULT_SUGGESTIONS,
   LIBRARY_URL,
   isLibraryUrl,
+  isReaderUrl,
   isTerminalUrl,
   paneName,
   sameUrl,
@@ -509,7 +510,13 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
       onAuxClick={(e) => e.button === 1 && gleeok.dispatch({ type: 'closeTab', slot, tabId: tab.id })}
       title={`${tab.title}\n${tab.url}`}
     >
-      {tab.favicon ? <img src={tab.favicon} alt="" /> : isTerminalUrl(tab.url) ? <img src={faviconFor(tab.url)} alt="" /> : <span className="fav" />}
+      {tab.favicon ? (
+        <img src={tab.favicon} alt="" />
+      ) : isTerminalUrl(tab.url) || isReaderUrl(tab.url) || isLibraryUrl(tab.url) ? (
+        <img src={faviconFor(tab.url)} alt="" />
+      ) : (
+        <span className="fav" />
+      )}
       <span className="title">{tab.title || tab.url}</span>
       <button
         className="close"
@@ -605,6 +612,12 @@ function NewTab({
   );
 }
 
+const glyph = (paths: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8a909c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`)}`;
+/** lucide "file-text" and "library", for reader and library tabs. */
+const PDF_ICON = glyph('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>');
+const LIBRARY_ICON = glyph('<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>');
+
 /** lucide "square-terminal", for terminal tabs and links. */
 const TERMINAL_ICON = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8a909c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>',
@@ -612,6 +625,8 @@ const TERMINAL_ICON = `data:image/svg+xml,${encodeURIComponent(
 
 export function faviconFor(url: string) {
   if (isTerminalUrl(url)) return TERMINAL_ICON;
+  if (isReaderUrl(url)) return PDF_ICON;
+  if (isLibraryUrl(url)) return LIBRARY_ICON;
   try {
     return `https://www.google.com/s2/favicons?sz=32&domain=${new URL(url).hostname}`;
   } catch {

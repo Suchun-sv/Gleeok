@@ -15,4 +15,15 @@ await build({
   sourcemap: true,
   logLevel: 'info',
 });
+// Runs in the 文献库 reader page, next to Zotero's reader (app/vendor/zotero-reader).
+await build({
+  entryPoints: { 'reader-glue': 'src/reader/glue.ts' },
+  bundle: true,
+  platform: 'browser',
+  format: 'iife',
+  target: 'chrome120',
+  outdir: 'dist',
+  sourcemap: true,
+  logLevel: 'info',
+});
 await viteBuild({ configFile: 'vite.config.mts', logLevel: 'warn' });
