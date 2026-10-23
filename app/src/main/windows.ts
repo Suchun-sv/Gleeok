@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { BrowserWindow, app, screen, type Input, type Rectangle } from 'electron';
 import type { AppWindowState } from '../../../shared/src/model.ts';
-import { niriEnabled, niriMoveToOutput, niriOutputNames, niriOutputOf } from './niri.ts';
+import { niriEnabled, niriFloat, niriMoveToOutput, niriOutputNames, niriOutputOf } from './niri.ts';
 
 export interface ShellHooks {
   onInput(input: Input, from?: Electron.WebContents): boolean;
@@ -41,10 +41,11 @@ export class Shells {
     return [...this.#wins];
   }
 
-  open(ws: AppWindowState, opts: { awayFrom?: BrowserWindow | null } = {}) {
+  /** `over`: a new satellite opens floating in front of this window, on its screen. */
+  open(ws: AppWindowState, opts: { over?: BrowserWindow | null } = {}) {
     const existing = this.#wins.get(ws.id);
     if (existing) return existing;
-    const bounds = initialBounds(ws, opts.awayFrom ?? null);
+    const bounds = initialBounds(ws, opts.over ?? null);
     const win = new BrowserWindow({
       ...bounds,
       title: windowTitle(ws, this.#hooks.paneName),
@@ -84,7 +85,8 @@ export class Shells {
 
     win.once('ready-to-show', () => {
       win.show();
-      if (niriEnabled()) void this.#placeOnNiri(ws, opts.awayFrom ?? null);
+      win.focus();
+      if (niriEnabled()) void this.#placeOnNiri(ws, opts.over ?? null);
     });
     void win.loadFile(join(__dirname, 'renderer/index.html'), { query: { win: ws.id } });
     return win;
@@ -124,33 +126,31 @@ export class Shells {
     }
   }
 
-  /** Restore the remembered output; a brand-new satellite goes to an output other than the main window's. */
-  async #placeOnNiri(ws: AppWindowState, awayFrom: BrowserWindow | null) {
+  /** Restore the remembered output; a brand-new satellite floats over the main window instead. */
+  async #placeOnNiri(ws: AppWindowState, over: BrowserWindow | null) {
     try {
-      const outputs = await niriOutputNames();
-      let target = ws.placement?.displayKey.startsWith('niri:') ? ws.placement.displayKey.slice(5) : null;
-      if (!target && awayFrom) {
-        const mainOutput = await niriOutputOf(awayFrom.getTitle());
-        target = outputs.find((o) => o !== mainOutput) ?? null;
-      }
-      if (target && outputs.includes(target)) await niriMoveToOutput(windowTitle(ws, this.#hooks.paneName), target);
+      const title = windowTitle(ws, this.#hooks.paneName);
+      const target = ws.placement?.displayKey.startsWith('niri:') ? ws.placement.displayKey.slice(5) : null;
+      if (target && (await niriOutputNames()).includes(target)) await niriMoveToOutput(title, target);
+      else if (over) await niriFloat(title);
     } catch {
       // niri unavailable or the window vanished; leaving it where it opened is fine.
     }
   }
 }
 
-function initialBounds(ws: AppWindowState, awayFrom: BrowserWindow | null): Partial<Rectangle> {
+function initialBounds(ws: AppWindowState, over: BrowserWindow | null): Partial<Rectangle> {
   const fallback = ws.role === 'main' ? { width: 1600, height: 1000 } : { width: 1000, height: 900 };
   if (niriEnabled()) return fallback;
   const displays = screen.getAllDisplays();
   const p = ws.placement;
   if (p && displays.some((d) => String(d.id) === p.displayKey)) return p.bounds;
-  if (awayFrom) {
-    // A detached pane most likely wants the other monitor: fill it.
-    const here = screen.getDisplayMatching(awayFrom.getBounds());
-    const other = displays.find((d) => d.id !== here.id);
-    if (other) return other.workArea;
+  if (over) {
+    // In front of the main window, a little smaller, centred on it; the user drags it wherever it should live.
+    const b = over.getBounds();
+    const width = Math.min(1100, Math.round(b.width * 0.7));
+    const height = Math.round(b.height * 0.85);
+    return { width, height, x: Math.round(b.x + (b.width - width) / 2), y: Math.round(b.y + (b.height - height) / 2) };
   }
   return fallback;
 }

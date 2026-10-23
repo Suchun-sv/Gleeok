@@ -163,7 +163,8 @@ Prefix = Ctrl+Alt on Linux/Windows, Cmd+Opt on macOS.
 
 ## Multiple monitors
 
-⧉ on a pane (or Prefix+D) moves it into its own window; ⇱ or closing that window puts it back.
+⧉ on a pane (or Prefix+D) moves it into its own window, which opens in front of the main window
+(floating, on niri) for you to drag to another monitor; ⇱ or closing that window puts it back.
 Placement is remembered (macOS: display and bounds; niri: output, via `niri msg`). Satellite
 windows have stable titles such as `Gleeok · 产出区`, so a niri window rule can pin them.
 

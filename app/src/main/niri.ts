@@ -58,6 +58,13 @@ export async function niriOutputOf(title: string): Promise<string | null> {
   return workspaces.find((ws) => ws.id === w.workspace_id)?.output ?? null;
 }
 
+/** Take a window out of the tiling layout: niri centres a floating window above the others. */
+export async function niriFloat(title: string) {
+  const w = await findWindow(title);
+  if (!w) return;
+  await msg('action', 'move-window-to-floating', '--id', String(w.id));
+}
+
 export async function niriMoveToOutput(title: string, output: string) {
   const w = await findWindow(title);
   if (!w) return;

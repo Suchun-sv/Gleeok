@@ -750,7 +750,7 @@ function detachPane(slot: number) {
     layout: { visible: 1, focusExpand: false, focusRatio: 2 },
   };
   state.windows.push(ws);
-  shells.open(ws, { awayFrom: shells.get('main') });
+  shells.open(ws, { over: shells.get('main') });
   changed();
 }
 
