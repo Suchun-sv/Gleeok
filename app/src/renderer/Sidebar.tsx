@@ -200,7 +200,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
             onClick={() => gleeok.dispatch({ type: 'setView', view: state.view === 'settings' ? 'panes' : 'settings' })}
           />
           <span className="build" title={memoryTitle(snap)}>
-            {snap.memoryTotal.gleeok > 0 && <span className="mem">{gb(snap.memoryTotal.gleeok)} · </span>}
+            {snap.memoryTotal.gleeok > 0 && <span className="mem">内存占用 {gb(snap.memoryTotal.gleeok)} · </span>}
             {new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
           </span>
           {snap.canSelfUpdate ? (
