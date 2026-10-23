@@ -1,0 +1,117 @@
+[
+ {
+  "evalMain": "gleeok.createProject('文献测试').then(()=>'project')"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "action": {
+   "type": "toggleEntry"
+  }
+ },
+ {
+  "wait": 500
+ },
+ {
+  "evalMain": "(async()=>{const L=(op)=>gleeok.library(op).then(r=>{if(r.error)throw new Error(r.error);return r.result});const [a]=await L({op:'create',kind:'collections',objects:[{name:'KV Cache 论文'}]});const [b]=await L({op:'create',kind:'collections',objects:[{name:'相关工作',parentCollection:a.key}]});await L({op:'create',kind:'collections',objects:[{name:'课程 DS4D'}]});const types=['journalArticle','conferencePaper','preprint','book'];const objs=[];for(let i=0;i<50;i++)objs.push({itemType:types[i%4],title:(i===0?'Attention Is All You Need':'论文 '+i+' on efficient transformers'),creators:[{creatorType:'author',firstName:'A'+i,lastName:['Vaswani','Hu','Dao','Liu','王'][i%5]},{creatorType:'author',firstName:'B',lastName:'Shazeer'}],date:String(2015+i%10),publicationTitle:i%4===0?'JMLR':undefined,conferenceName:i%4===1?'NeurIPS':undefined,repository:i%4===2?'arXiv':undefined,collections:i<8?[b.key]:i<12?[a.key]:[],tags:i%3===0?[{tag:'LLM'}]:i%3===1?[{tag:'KV'}]:[],readStatus:i%5===0?'reading':i%7===0?'done':undefined});await L({op:'create',kind:'items',objects:objs});await L({op:'addFiles',paths:['../dev/fixtures/sample.pdf'],collection:a.key});return 'seeded'})()"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "action": {
+   "type": "toggleLibrary"
+  }
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "capture": "1-full-all"
+ },
+ {
+  "evalMain": "(()=>{const rows=[...document.querySelectorAll('.lib-tr')];const r=rows.find(x=>x.textContent.includes('Attention'));r.click();return 'rows '+rows.length})()"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "2-detail"
+ },
+ {
+  "evalMain": "(()=>{[...document.querySelectorAll('.lib-source')].find(x=>x.textContent.includes('KV Cache')).click();return 'kv'})()"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "evalMain": "(()=>{const r=[...document.querySelectorAll('.lib-tr')];r.find(x=>x.querySelector('.attach').textContent.includes('📄'))?.click();return 'in collection: '+r.length+' | pdf item: '+r.find(x=>x.querySelector('.attach').textContent.includes('📄'))?.querySelector('.title').textContent})()"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "evalMain": "(()=>{[...document.querySelectorAll('.lib-tabs button')].find(b=>b.textContent.startsWith('附件')).click();return 'attach tab'})()"
+ },
+ {
+  "wait": 400
+ },
+ {
+  "capture": "3-collection-attachments"
+ },
+ {
+  "evalMain": "(()=>{[...document.querySelectorAll('.lib-tabs button')].find(b=>b.textContent.startsWith('笔记')).click();setTimeout(()=>[...document.querySelectorAll('.lib-link')].find(b=>b.textContent.includes('新笔记')).click(),100);return 'notes'})()"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "evalMain": "(()=>{const ed=document.querySelector('.lib-note-body');ed.focus();document.execCommand('insertHTML',false,'<h2>读后感</h2><p>trace tree 的想法很好</p>');ed.blur();return 'typed'})()"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "capture": "4-note"
+ },
+ {
+  "evalMain": "gleeok.getLibrary().then(s=>'notes saved: '+s.items.filter(i=>i.itemType==='note').map(n=>n.note).join(' | '))"
+ },
+ {
+  "evalMain": "(()=>{document.querySelector('.lib-search').focus();const i=document.querySelector('.lib-search');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(i,'vaswani 2015');i.dispatchEvent(new Event('input',{bubbles:true}));return 'search'})()"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "evalMain": "(()=>{[...document.querySelectorAll('.lib-source')].find(x=>x.textContent.includes('我的文献库')).click();return 'rows after search: '+document.querySelectorAll('.lib-tr').length})()"
+ },
+ {
+  "wait": 400
+ },
+ {
+  "evalMain": "'rows after search: '+document.querySelectorAll('.lib-tr').length"
+ },
+ {
+  "action": {
+   "type": "toggleLibrary"
+  }
+ },
+ {
+  "wait": 400
+ },
+ {
+  "action": {
+   "type": "navigate",
+   "slot": 2,
+   "url": "gleeok://library"
+  }
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "capture": "5-pane"
+ }
+]

@@ -1,4 +1,5 @@
 import type { GlobalState, Link, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
+import type { LibraryCollection, LibraryItem, LibraryKind } from './library.ts';
 
 export interface VaultLoginSummary {
   id: string;
@@ -11,6 +12,25 @@ export type VaultDialog =
   | { mode: 'unlock'; email: string; then?: 'fill' | 'save' }
   | { mode: 'pick'; host: string; logins: VaultLoginSummary[] }
   | { mode: 'save'; name: string; url: string; username: string; password: string };
+
+/** The 文献库 as the renderer sees it (sent on its own channel: it can be large). */
+export interface LibrarySnapshot {
+  /** offline: the cached copy, changes cannot be saved; unavailable: no library on the server. */
+  status: 'loading' | 'ok' | 'offline' | 'unavailable';
+  error?: string;
+  version: number;
+  items: LibraryItem[];
+  collections: LibraryCollection[];
+}
+
+export type LibraryOp =
+  | { op: 'create'; kind: LibraryKind; objects: Record<string, unknown>[] }
+  | { op: 'patch'; kind: LibraryKind; key: string; fields: Record<string, unknown> }
+  | { op: 'remove'; kind: LibraryKind; key: string }
+  | { op: 'addFiles'; paths: string[]; collection?: string }
+  /** Ask for PDFs with the system file picker, then add them. */
+  | { op: 'pickFiles'; collection?: string; parentItem?: string }
+  | { op: 'sync' };
 
 export type ServerStatus = 'ok' | 'offline' | 'unconfigured' | 'local';
 
@@ -85,6 +105,10 @@ export type Action =
   | { type: 'setView'; view: View }
   /** The project's entry drawer (links and settings), over the current window's pages. */
   | { type: 'toggleEntry' }
+  /** The 文献库 in place of the panes, and back. */
+  | { type: 'toggleLibrary' }
+  /** Read a 文献库 PDF in a pane (the given one, else the default reading pane). */
+  | { type: 'openReader'; attachment: string; slot?: number }
   | { type: 'vaultUnlock' }
   | { type: 'focusAddress' }
   | { type: 'moveTab'; tabId: string; toSlot: number }
@@ -164,6 +188,11 @@ export interface GleeokApi {
   deleteProject(id: string): Promise<void>;
   refreshProjects(): Promise<void>;
   importPaseo(serverId: string, projectIds: string[]): Promise<Project[]>;
+  getLibrary(): Promise<LibrarySnapshot>;
+  onLibrary(cb: (lib: LibrarySnapshot) => void): () => void;
+  library(op: LibraryOp): Promise<{ result?: unknown; error?: string }>;
+  /** A dropped file's path on disk. */
+  pathForFile(file: File): string;
   /** Remember a daemon's pairing link on this machine and read its projects through the relay. */
   pairPaseo(url: string): Promise<{ error?: string }>;
   unpairPaseo(serverId: string): Promise<void>;

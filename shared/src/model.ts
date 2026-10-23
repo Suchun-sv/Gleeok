@@ -142,7 +142,10 @@ export interface TerminalTarget {
 }
 export const isTerminalUrl = (url: string) => url === TERMINAL_URL || url.startsWith(`${TERMINAL_URL}?`);
 /** Pages Gleeok draws itself instead of loading in a web view. */
-export const isInternalUrl = (url: string) => url === NEW_TAB_URL || isTerminalUrl(url);
+/** The 文献库 as a tab: drawn by Gleeok itself inside the pane, like a terminal. */
+export const LIBRARY_URL = 'gleeok://library';
+export const isLibraryUrl = (url: string) => url === LIBRARY_URL || url.startsWith(`${LIBRARY_URL}?`);
+export const isInternalUrl = (url: string) => url === NEW_TAB_URL || isTerminalUrl(url) || isLibraryUrl(url);
 export function terminalUrl(t: TerminalTarget): string {
   const q = new URLSearchParams();
   if (t.host?.trim()) q.set('host', t.host.trim());
@@ -251,7 +254,7 @@ export interface AppWindowState {
   placement?: { displayKey: string; bounds: Rect };
 }
 
-export type View = 'panes' | 'settings';
+export type View = 'panes' | 'settings' | 'library';
 
 export interface GlobalState {
   currentProjectId: string | null;

@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { Command, GleeokApi, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
+import type { Command, GleeokApi, LibrarySnapshot, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 
 function subscribe<T>(channel: string, cb: (v: T) => void) {
   const handler = (_e: IpcRendererEvent, v: T) => cb(v);
@@ -33,6 +33,10 @@ const api: GleeokApi = {
   deleteProject: (id) => ipcRenderer.invoke('project:delete', id),
   refreshProjects: () => ipcRenderer.invoke('project:refresh'),
   importPaseo: (serverId, projectIds) => ipcRenderer.invoke('paseo:import', serverId, projectIds),
+  getLibrary: () => ipcRenderer.invoke('library:get'),
+  onLibrary: (cb) => subscribe<LibrarySnapshot>('library', cb),
+  library: (op) => ipcRenderer.invoke('library:call', op),
+  pathForFile: (file) => webUtils.getPathForFile(file),
   pairPaseo: (url) => ipcRenderer.invoke('paseo:pair', url),
   unpairPaseo: (serverId) => ipcRenderer.invoke('paseo:unpair', serverId),
   setCodeServer: (serverId, url) => ipcRenderer.invoke('paseo:code-server', serverId, url),

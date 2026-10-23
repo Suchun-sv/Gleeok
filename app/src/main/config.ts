@@ -188,6 +188,18 @@ export class ConfigClient {
     await this.refresh();
   }
 
+  /** A request to the sync server (or the in-process app in local mode), for callers that read the response themselves. */
+  async fetchRaw(method: string, path: string, init: { body?: BodyInit; headers?: Record<string, string>; timeoutMs?: number } = {}): Promise<Response> {
+    const req = {
+      method,
+      headers: { authorization: `Bearer ${this.#conf?.token ?? ''}`, ...init.headers },
+      body: init.body,
+    };
+    if (this.#local) return this.#local.fetch(new Request(new URL(path, 'http://local'), req));
+    if (this.#conf) return fetch(new URL(path, this.#conf.serverUrl), { ...req, signal: AbortSignal.timeout(init.timeoutMs ?? 15_000) });
+    throw new Error('server not configured');
+  }
+
   async #request(method: string, path: string, body?: unknown): Promise<unknown> {
     const init = {
       method,

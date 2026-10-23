@@ -1,9 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Command, PaneRects, Snapshot } from '../../../shared/src/ipc.ts';
 import { TerminalView } from './Terminal.tsx';
+import { LibraryView } from './library/LibraryView.tsx';
+import { useLibrary } from './library/data.ts';
 import {
   NEW_TAB_URL,
   DEFAULT_SUGGESTIONS,
+  LIBRARY_URL,
+  isLibraryUrl,
   isTerminalUrl,
   paneName,
   sameUrl,
@@ -194,6 +198,7 @@ function PaneView(props: PaneProps) {
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
   const isTerm = isTerminalUrl(tab.url);
+  const isLib = isLibraryUrl(tab.url);
   // Bumped whenever main focuses this pane while it shows a terminal.
   const [termFocus, setTermFocus] = useState(0);
   const address = useRef<HTMLInputElement>(null);
@@ -279,13 +284,13 @@ function PaneView(props: PaneProps) {
         {trailing && <div className="tabs-trailing">{trailing}</div>}
       </div>
       <div className="toolbar">
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew || isTerm}>
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew || isTerm || isLib}>
           ‹
         </button>
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'forward' })} disabled={isNew || isTerm}>
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'forward' })} disabled={isNew || isTerm || isLib}>
           ›
         </button>
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'reload' })} disabled={isNew || isTerm}>
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'reload' })} disabled={isNew || isTerm || isLib}>
           ⟳
         </button>
         <input
@@ -376,7 +381,8 @@ function PaneView(props: PaneProps) {
       <div className="content" ref={boxRef}>
         {isNew && <NewTab slot={slot} project={project} suggestions={suggestions} inputRef={search} />}
         {isTerm && <TerminalView key={tab.id} tab={tab} focusSeq={termFocus} platform={platform} />}
-        {asleep && !isNew && !isTerm && !dragging && (
+        {isLib && <LibraryView mode="pane" slot={slot} platform={platform} />}
+        {asleep && !isNew && !isTerm && !isLib && !dragging && (
           <div className="asleep">
             {tab.favicon ? <img src={tab.favicon} alt="" onError={(e) => (e.currentTarget.style.display = 'none')} /> : null}
             <p className="title">{tab.title || tab.url}</p>
@@ -387,7 +393,7 @@ function PaneView(props: PaneProps) {
           </div>
         )}
         {/* Painted beneath the page just before main hides it (see App), so covering never flashes. */}
-        {!isNew && !isTerm && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
+        {!isNew && !isTerm && !isLib && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
         {dragging && (
           <div className="drop-zone">
             <span>移到{name}</span>
@@ -518,6 +524,36 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
   );
 }
 
+/** The new-tab page's way into the 文献库: open it here, or jump back into a recent read. */
+function LibraryTile({ slot }: { slot: number }) {
+  const lib = useLibrary();
+  const recent = (lib?.items ?? [])
+    .filter((i) => typeof i.lastReadAt === 'string' && !i.deleted)
+    .sort((a, b) => String(b.lastReadAt).localeCompare(String(a.lastReadAt)))
+    .slice(0, 6);
+  return (
+    <>
+      <h3>文献库</h3>
+      <div className="links">
+        <button onClick={() => gleeok.dispatch({ type: 'navigate', slot, url: LIBRARY_URL })} title="在这一栏打开文献库">
+          <span className="tile-glyph">📚</span>
+          <span>文献库</span>
+          <span className="sub">{lib ? `${lib.items.filter((i) => i.itemType !== 'note' && i.itemType !== 'attachment' && !i.deleted).length} 篇` : ''}</span>
+        </button>
+        {recent.map((i) => {
+          const pdf = lib!.items.find((a) => a.parentItem === i.key && a.itemType === 'attachment' && a.fileHash && !a.deleted);
+          return (
+            <button key={i.key} disabled={!pdf} onClick={() => pdf && gleeok.dispatch({ type: 'openReader', attachment: pdf.key, slot })} title={String(i.title ?? '')}>
+              <span className="tile-glyph">📄</span>
+              <span>{String(i.title ?? '未命名')}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 function NewTab({
   slot,
   project,
@@ -554,6 +590,7 @@ function NewTab({
           </button>
         ))}
       </div>
+      <LibraryTile slot={slot} />
       <h3>常用</h3>
       <div className="links">
         {suggestions.map((t, i) => (

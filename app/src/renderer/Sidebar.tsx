@@ -3,6 +3,7 @@ import type { Snapshot } from '../../../shared/src/ipc.ts';
 import { primaryCodeLink } from '../../../shared/src/model.ts';
 import icon from '../../assets/icon-64.png';
 import { IconButton } from './Icons.tsx';
+import { useLibrary } from './library/data.ts';
 
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
 export function SidebarToggle({ platform }: { platform: string }) {
@@ -182,6 +183,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         </div>
       )}
 
+      <LibraryEntry active={state.view === 'library'} platform={snap.platform} />
       <footer>
         {(snap.update.commits.length > 0 || snap.update.step || snap.update.error) && (
           <button className="update-available" onClick={() => gleeok.dispatch({ type: 'openUpdate' })}>
@@ -232,4 +234,21 @@ function memoryTitle(snap: Snapshot) {
     '休眠不用的项目（项目右键 → 休眠）可以释放它的网页内存。',
     `build ${__GLEEOK_BUILD__}`,
   ].join('\n');
+}
+
+/** The 文献库 entry, pinned just above the footer: a top-level place, not a project. */
+function LibraryEntry({ active, platform }: { active: boolean; platform: string }) {
+  const lib = useLibrary();
+  const count = lib?.items.filter((i) => i.itemType !== 'note' && i.itemType !== 'attachment' && i.itemType !== 'annotation' && !i.deleted).length;
+  return (
+    <button
+      className={`library-entry ${active ? 'on' : ''}`}
+      onClick={() => gleeok.dispatch({ type: 'toggleLibrary' })}
+      title={`文献库（${platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+'}P）`}
+    >
+      <span className="library-entry-icon">📚</span>
+      <span>文献库</span>
+      {count ? <span className="library-entry-count">{count}</span> : null}
+    </button>
+  );
 }

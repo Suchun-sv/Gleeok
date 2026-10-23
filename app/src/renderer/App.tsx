@@ -6,6 +6,7 @@ import { Palette } from './Palette.tsx';
 import { UpdateDialog } from './UpdateDialog.tsx';
 import { VaultDialog } from './VaultDialog.tsx';
 import { Panes } from './Panes.tsx';
+import { LibraryView } from './library/LibraryView.tsx';
 import { LayoutControls } from './Icons.tsx';
 import { Sidebar, SidebarToggle } from './Sidebar.tsx';
 
@@ -147,6 +148,8 @@ export function App() {
       <main>
         {snap.state.view === 'settings' ? (
           <SettingsPage snap={snap} toggle={toggle} />
+        ) : snap.state.view === 'library' ? (
+          <LibraryView mode="full" platform={snap.platform} />
         ) : !project ? (
           <Empty snap={snap} toggle={toggle} />
         ) : session ? (

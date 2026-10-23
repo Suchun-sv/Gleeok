@@ -2,13 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { freemem, hostname, totalmem } from 'node:os';
 import { join } from 'node:path';
 import { BrowserWindow, Menu, app, clipboard, components, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
-import type { Action, Command, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
+import type { Action, Command, LibraryOp, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
+import { LibraryClient } from './library.ts';
 import {
   CODE_PANE,
   NEW_TAB_URL,
   MAX_PANES,
   codeLinks,
   isInternalUrl,
+  isLibraryUrl,
   isTerminalUrl,
   primaryCodeLink,
   terminalTitle,
@@ -666,6 +668,38 @@ async function runSelfUpdate() {
 // ---- password vault ----
 
 let vault: Vault | null = null;
+
+// ---- 文献库 ----
+
+const library = new LibraryClient(config);
+let libraryTimer: NodeJS.Timeout | undefined;
+// The library goes out on its own channel, coalesced: it can be large and change in bursts.
+library.onChange = () => {
+  clearTimeout(libraryTimer);
+  libraryTimer = setTimeout(() => shells.broadcast('library', library.snapshot()), 80);
+};
+
+async function libraryCall(op: LibraryOp): Promise<unknown> {
+  switch (op.op) {
+    case 'sync':
+      return library.sync();
+    case 'create':
+      return library.create(op.kind, op.objects);
+    case 'patch':
+      return library.patch(op.kind, op.key, op.fields);
+    case 'remove':
+      return library.remove(op.kind, op.key);
+    case 'addFiles':
+      return library.addFiles(op.paths, op.collection);
+    case 'pickFiles': {
+      const bw = focusedWindow();
+      const opts = { title: '添加 PDF', properties: ['openFile', 'multiSelections'] as ('openFile' | 'multiSelections')[], filters: [{ name: 'PDF', extensions: ['pdf'] }] };
+      const picked = bw ? await dialog.showOpenDialog(bw, opts) : await dialog.showOpenDialog(opts);
+      if (picked.canceled || picked.filePaths.length === 0) return [];
+      return library.addFiles(picked.filePaths, op.collection, op.parentItem);
+    }
+  }
+}
 /** Logins offered in the last pick dialog, with passwords; kept in main only. */
 let pickedLogins = new Map<string, { username: string; password: string; name: string }>();
 
@@ -1170,6 +1204,11 @@ function dispatch(action: Action) {
       state.view = action.view;
       changed();
       return;
+    case 'toggleLibrary':
+      state.view = state.view === 'library' ? 'panes' : 'library';
+      if (state.view === 'library') void library.sync();
+      changed();
+      return;
     case 'toggleEntry':
       if (!state.currentProjectId) return;
       if (state.view !== 'panes') {
@@ -1191,7 +1230,11 @@ function dispatch(action: Action) {
   }
   switch (action.type) {
     case 'newTab':
+      state.view = 'panes';
       openTab(session, slotOf(action.slot), action.url ? normalizeUrl(action.url) : NEW_TAB_URL);
+      return;
+    case 'openReader':
+      send({ type: 'toast', slot: state.focusedPane, text: '阅读器正在开发中（下一步）' });
       return;
     case 'closeTab': {
       const slot = slotOf(action.slot);
@@ -1233,12 +1276,12 @@ function dispatch(action: Action) {
       const slot = slotOf(action.slot);
       const url = normalizeUrl(action.url);
       const tab = activeTab(session.panes[slot]);
-      // A terminal takes a blank tab, or opens beside the current page.
-      if (isTerminalUrl(url)) {
+      // A terminal or the 文献库 takes a blank tab, or opens beside the current page.
+      if (isTerminalUrl(url) || isLibraryUrl(url)) {
         state.view = 'panes';
         if (tab.url !== NEW_TAB_URL) return openTab(session, slot, url);
         tab.url = url;
-        tab.title = terminalTitle(url);
+        tab.title = isLibraryUrl(url) ? '文献库' : terminalTitle(url);
         tabsChanged(session);
         changed();
         focusSlot(slot);
@@ -1441,6 +1484,14 @@ ipcMain.handle('paseo:unpair', (_e, serverId: string) => {
   pairingStatus.delete(serverId);
   changed();
 });
+ipcMain.handle('library:get', () => library.snapshot());
+ipcMain.handle('library:call', async (_e, op: LibraryOp) => {
+  try {
+    return { result: await libraryCall(op) };
+  } catch (e) {
+    return { error: String((e as Error).message ?? e).slice(0, 300) };
+  }
+});
 ipcMain.handle('project:refresh', async () => {
   await config.refresh();
   changed();
@@ -1466,6 +1517,7 @@ app.whenReady().then(async () => {
   // for an explicit start.
   for (const s of Object.values(state.sessions)) if (s.projectId !== state.currentProjectId) s.lifecycle = 'hibernated';
   config.load();
+  library.load();
   vault = new Vault(config.vaultUrl);
   vault.onChange = changed;
   vault.prewarm();
@@ -1475,6 +1527,9 @@ app.whenReady().then(async () => {
   vault.serverUrl = config.vaultUrl ?? VAULT_URL_DEFAULT;
   void syncPaseo();
   setInterval(() => void syncPaseo(), 2 * 60_000);
+  // Other machines' library edits arrive within a minute (and right away when the library opens).
+  void library.sync();
+  setInterval(() => void library.sync(), 60_000);
   publishAllTabs();
   if (state.currentProjectId) void checkRemoteTabs(state.currentProjectId);
   hibernateStale();
