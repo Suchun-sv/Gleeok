@@ -6,6 +6,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "node build.mjs",
+    "postinstall": "node node_modules/electron/install.js",
     "start": "electron .",
     "typecheck": "tsc --noEmit -p .",
     "dist:mac": "npm run build && electron-builder --mac dir"
@@ -15,7 +16,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "electron": "^45.0.0",
+    "electron": "https://github.com/castlabs/electron-releases/archive/refs/tags/v44.9.3%2Bwvcus.tar.gz",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "react": "^19.3.1",
@@ -26,6 +27,9 @@
   "build": {
     "appId": "dev.gleeok.app",
     "productName": "Gleeok",
+    "electronDownload": {
+      "mirror": "https://github.com/castlabs/electron-releases/releases/download/v"
+    },
     "files": [
       "dist/**",
       "assets/**",

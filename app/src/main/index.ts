@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { freemem, hostname, totalmem } from 'node:os';
 import { join } from 'node:path';
-import { BrowserWindow, Menu, app, clipboard, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
+import { BrowserWindow, Menu, app, clipboard, components, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
 import type { Action, Command, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 import {
   CODE_PANE,
@@ -1447,6 +1447,12 @@ ipcMain.handle('project:refresh', async () => {
 });
 
 app.whenReady().then(async () => {
+  // castLabs' Electron fetches the Widevine CDM (DRM for Apple Music, Netflix…) on first run and
+  // keeps it updated. Pages wait briefly for it; offline, they open without DRM.
+  await Promise.race([
+    components.whenReady().catch((e: unknown) => console.warn('[gleeok] Widevine unavailable:', e)),
+    new Promise((r) => setTimeout(r, 8000)),
+  ]);
   // Run from a checkout, the Dock would show Electron's icon; packaged builds carry their own.
   if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'assets', 'icon.png'));
   // Present as plain Chrome: some sites refuse or degrade for UAs that mention Electron.

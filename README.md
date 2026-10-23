@@ -51,6 +51,16 @@ It pulls, runs `npm install` and `npm run build`, and restarts. By hand: `git pu
 
 Running from the checkout avoids code-signing prompts: npm's Electron binary is already signed.
 
+Gleeok runs on [castLabs' Electron build](https://github.com/castlabs/electron-releases), which
+adds the Widevine CDM, so DRM-protected media (Apple Music, Spotify, Netflix…) can play in a pane
+instead of stopping at previews. The first launch downloads the CDM (a few MB). Its builds carry a
+development VMP signature: on Linux that is all there is, while on macOS and Windows some services
+only accept a production signature, which castLabs' free
+[EVS service](https://github.com/castlabs/electron-releases/wiki/EVS) provides (on macOS it has to
+come before code signing).
+`app/.npmrc` lets npm 12 install this Electron, which comes from a GitHub release rather than the
+npm registry.
+
 ## Terminal tabs
 
 A tab can hold a real shell (xterm.js + node-pty, like VS Code's terminal): "终端 · 本机" on the
