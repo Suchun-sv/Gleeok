@@ -1507,38 +1507,6 @@ input.managed {
 
 /* ---- 文献库 ---- */
 
-.library-entry {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 4px 8px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  text-align: left;
-  font-weight: 600;
-}
-
-.library-entry:hover {
-  background: var(--panel-2);
-}
-
-.library-entry.on {
-  background: var(--panel-2);
-  color: var(--accent);
-}
-
-.library-entry-count {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.newtab .tile-glyph {
-  font-size: 24px;
-  line-height: 28px;
-}
-
 .library {
   position: relative;
   display: flex;
@@ -1587,9 +1555,9 @@ input.managed {
 .lib-source {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  padding: 5px 10px;
+  padding: 6px 8px;
   border-radius: 6px;
   text-align: left;
   cursor: pointer;
@@ -1600,9 +1568,10 @@ input.managed {
   background: var(--panel-2);
 }
 
+/* Like a selected project in the sidebar. */
 .lib-source.on {
   background: var(--panel-2);
-  color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .lib-source.drop,
@@ -1611,9 +1580,15 @@ input.managed {
 }
 
 .lib-source-icon {
-  width: 16px;
+  display: grid;
+  place-items: center;
+  width: 14px;
   flex: none;
-  text-align: center;
+  color: var(--muted);
+}
+
+.lib-source.on .lib-source-icon {
+  color: var(--accent);
 }
 
 .lib-source-name {
@@ -1622,11 +1597,6 @@ input.managed {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.lib-count {
-  font-size: 11px;
-  color: var(--muted);
 }
 
 .lib-rename {
@@ -1736,8 +1706,12 @@ input.managed {
 
 .lib-th.attach,
 .lib-td.attach {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   width: 48px;
   flex: none;
+  color: var(--muted);
 }
 
 .lib-sort {
@@ -2083,7 +2057,9 @@ input.managed {
 }
 
 .lib-file-icon {
-  font-size: 20px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
 }
 
 .lib-menu {
@@ -2130,6 +2106,9 @@ input.managed {
 
 /* Narrow (in a pane): collections and details slide over the list. */
 .lib-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2278,4 +2257,23 @@ input.managed {
 
 .lib-status .ok {
   color: #5fbf8a;
+}
+
+/* The 文献库 entry above the footer: a sidebar row like the projects above it. */
+.library-entry {
+  width: auto;
+  margin: 0 8px 6px;
+}
+
+.library-entry .status {
+  overflow: visible;
+  color: var(--muted);
+}
+
+.library-entry.active .status {
+  color: var(--accent);
+}
+
+.library-entry:hover kbd {
+  display: inline;
 }

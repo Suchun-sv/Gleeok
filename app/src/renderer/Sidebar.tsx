@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
 import { primaryCodeLink } from '../../../shared/src/model.ts';
 import icon from '../../assets/icon-64.png';
-import { IconButton } from './Icons.tsx';
+import { Icon, IconButton } from './Icons.tsx';
 import { useLibrary } from './library/data.ts';
 
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
@@ -241,14 +241,17 @@ function LibraryEntry({ active, platform }: { active: boolean; platform: string 
   const lib = useLibrary();
   const count = lib?.items.filter((i) => i.itemType !== 'note' && i.itemType !== 'attachment' && i.itemType !== 'annotation' && !i.deleted).length;
   return (
-    <button
-      className={`library-entry ${active ? 'on' : ''}`}
+    <div
+      role="button"
+      className={`project library-entry ${active ? 'active' : ''}`}
       onClick={() => gleeok.dispatch({ type: 'toggleLibrary' })}
       title={`文献库（${platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+'}P）`}
     >
-      <span className="library-entry-icon">📚</span>
-      <span>文献库</span>
-      {count ? <span className="library-entry-count">{count}</span> : null}
-    </button>
+      <span className="status">
+        <Icon name="libraryBig" size={13} />
+      </span>
+      <span className="name">文献库</span>
+      {count ? <kbd>{count}</kbd> : null}
+    </div>
   );
 }

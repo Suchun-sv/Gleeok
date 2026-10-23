@@ -4,6 +4,7 @@ import type { LibraryCollection, LibraryItem } from '../../../../shared/src/libr
 import { ITEM_TYPES, READ_STATUS_LABELS } from '../../../../shared/src/library-schema.ts';
 import { LIBRARY_URL } from '../../../../shared/src/model.ts';
 import { ItemPane } from './ItemPane.tsx';
+import { Icon, type IconName } from '../Icons.tsx';
 import {
   collectionAndBelow,
   collectionTree,
@@ -323,7 +324,7 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
     },
   });
 
-  const sourceButton = (s: Source, icon: string, label: string, count?: number) => (
+  const sourceButton = (s: Source, icon: IconName, label: string, count?: number) => (
     <button
       className={`lib-source ${sameSource(source, s) ? 'on' : ''}`}
       onClick={() => {
@@ -332,9 +333,11 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
         setShowCollections(false);
       }}
     >
-      <span className="lib-source-icon">{icon}</span>
+      <span className="lib-source-icon">
+        <Icon name={icon} size={13} />
+      </span>
       <span className="lib-source-name">{label}</span>
-      {count !== undefined && <span className="lib-count">{count}</span>}
+      {count !== undefined && <kbd>{count}</kbd>}
     </button>
   );
 
@@ -357,7 +360,9 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
           onDoubleClick={() => setRenaming(c.key)}
           {...dropProps(c.key)}
         >
-          <span className="lib-source-icon">📁</span>
+          <span className="lib-source-icon">
+            <Icon name={on ? 'folderOpen' : 'folder'} size={13} />
+          </span>
           {renaming === c.key ? (
             <input
               className="lib-rename"
@@ -388,12 +393,12 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
   const sidebar = (
     <aside className="lib-sources">
       <div {...dropProps(false)} className={dropTarget === 'root' ? 'drop' : ''}>
-        {sourceButton({ kind: 'all' }, '📚', '我的文献库', live.length)}
+        {sourceButton({ kind: 'all' }, 'libraryBig', '我的文献库', live.length)}
       </div>
-      {sourceButton({ kind: 'recent' }, '🕘', '最近添加')}
-      {sourceButton({ kind: 'read' }, '📖', '最近阅读')}
-      {sourceButton({ kind: 'unfiled' }, '📄', '未分类')}
-      {sourceButton({ kind: 'trash' }, '🗑', '回收站', regular.length - live.length || undefined)}
+      {sourceButton({ kind: 'recent' }, 'clock', '最近添加')}
+      {sourceButton({ kind: 'read' }, 'bookOpen', '最近阅读')}
+      {sourceButton({ kind: 'unfiled' }, 'file', '未分类')}
+      {sourceButton({ kind: 'trash' }, 'trash', '回收站', regular.length - live.length || undefined)}
       <div className="lib-sep">
         分类
         <button className="icon-btn" title="新建分类" onClick={() => newCollection(false)}>
@@ -468,7 +473,8 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
       <div className="lib-toolbar">
         {compact && (
           <button className="lib-toggle" onClick={() => setShowCollections(!showCollections)} title="分类">
-            ☰ {sourceTitle}
+            <Icon name="menu" size={13} />
+            {sourceTitle}
           </button>
         )}
         <input ref={search} className="lib-search" placeholder="搜索标题、作者、年份、标签、笔记" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && setQuery('')} />
@@ -566,8 +572,8 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
                 </div>
               )}
               <div className="lib-td attach" title={[pdf && 'PDF', notes && `${notes} 条笔记`].filter(Boolean).join('，')}>
-                {pdf ? '📄' : ''}
-                {notes ? '📝' : ''}
+                {pdf ? <Icon name="fileText" size={13} /> : null}
+                {notes ? <Icon name="notebookPen" size={13} /> : null}
               </div>
             </div>
           );

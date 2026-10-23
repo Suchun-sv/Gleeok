@@ -543,7 +543,7 @@ function LibraryTile({ slot }: { slot: number }) {
       <h3>文献库</h3>
       <div className="links">
         <button onClick={() => gleeok.dispatch({ type: 'navigate', slot, url: LIBRARY_URL })} title="在这一栏打开文献库">
-          <span className="tile-glyph">📚</span>
+          <img src={faviconFor(LIBRARY_URL)} alt="" />
           <span>文献库</span>
           <span className="sub">{lib ? `${lib.items.filter((i) => i.itemType !== 'note' && i.itemType !== 'attachment' && !i.deleted).length} 篇` : ''}</span>
         </button>
@@ -551,7 +551,7 @@ function LibraryTile({ slot }: { slot: number }) {
           const pdf = lib!.items.find((a) => a.parentItem === i.key && a.itemType === 'attachment' && a.fileHash && !a.deleted);
           return (
             <button key={i.key} disabled={!pdf} onClick={() => pdf && gleeok.dispatch({ type: 'openReader', attachment: pdf.key, slot })} title={String(i.title ?? '')}>
-              <span className="tile-glyph">📄</span>
+              <img src={PDF_ICON} alt="" />
               <span>{String(i.title ?? '未命名')}</span>
             </button>
           );
@@ -616,7 +616,9 @@ const glyph = (paths: string) =>
   `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8a909c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`)}`;
 /** lucide "file-text" and "library", for reader and library tabs. */
 const PDF_ICON = glyph('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>');
-const LIBRARY_ICON = glyph('<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>');
+const LIBRARY_ICON = glyph(
+  '<rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/>',
+);
 
 /** lucide "square-terminal", for terminal tabs and links. */
 const TERMINAL_ICON = `data:image/svg+xml,${encodeURIComponent(

@@ -5,6 +5,7 @@ import { CREATOR_LABELS, FIELD_LABELS, ITEM_TYPES, READ_STATUS_LABELS, itemTypeD
 import type { DblpCandidate } from '../../../../shared/src/dblp.ts';
 import { toBibtex } from '../../../../shared/src/bibtex.ts';
 import { childrenOf, copyCitations, formatSize, lib } from './data.ts';
+import { Icon } from '../Icons.tsx';
 
 type Tab = 'info' | 'notes' | 'attachments';
 
@@ -399,7 +400,9 @@ function Attachments({ item, attachments, onOpen, onError }: { item: LibraryItem
       {attachments.length === 0 && <p className="hint">还没有附件</p>}
       {attachments.map((a) => (
         <div className="lib-attachment" key={a.key}>
-          <span className="lib-file-icon">📄</span>
+          <span className="lib-file-icon">
+            <Icon name="fileText" size={18} />
+          </span>
           <div className="lib-attachment-name">
             <Field value={String(a.filename ?? a.title ?? 'PDF')} onSave={(v) => void lib({ op: 'patch', kind: 'items', key: a.key, fields: { filename: v } }).catch(onError)} />
             <span className="meta">{a.fileHash ? formatSize(a.fileSize) : '文件还没上传'}</span>
@@ -408,7 +411,7 @@ function Attachments({ item, attachments, onOpen, onError }: { item: LibraryItem
             打开
           </button>
           <button className="icon-btn" disabled={!a.fileHash} title="在文件夹中显示（本机副本）" onClick={() => void lib({ op: 'revealFile', key: a.key }).catch(onError)}>
-            📂
+            <Icon name="folderSearch" size={14} />
           </button>
           <button
             className="icon-btn"
