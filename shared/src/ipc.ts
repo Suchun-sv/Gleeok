@@ -35,7 +35,15 @@ export type LibraryOp =
   | { op: 'cacheInfo' }
   | { op: 'clearCache' }
   /** Show an attachment's local copy in the file manager (fetching it first). */
-  | { op: 'revealFile'; key: string };
+  | { op: 'revealFile'; key: string }
+  /** DBLP: candidates for a title; fill an item from a record; fill items whose titles match exactly. */
+  | { op: 'dblpSearch'; title: string }
+  | { op: 'dblpApply'; key: string; dblpKey: string }
+  | { op: 'dblpAuto'; keys: string[] }
+  /** Save BibTeX through the system's save dialog. */
+  | { op: 'saveBib'; text: string; name: string }
+  /** Through main's clipboard, which works whether or not the window has focus. */
+  | { op: 'copyText'; text: string };
 
 export type ServerStatus = 'ok' | 'offline' | 'unconfigured' | 'local';
 

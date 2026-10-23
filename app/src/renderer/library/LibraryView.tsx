@@ -10,7 +10,9 @@ import {
   creatorsShort,
   isRegular,
   lib,
+  bibtexOf,
   buildIndex,
+  copyCitations,
   matches,
   publicationOf,
   useLibrary,
@@ -62,6 +64,12 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
   const [widths, setWidths] = useState(() => ({ ...DEFAULT_WIDTHS, ...loadPref('widths', {}) }));
   const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(''), 5000);
+    return () => clearTimeout(t);
+  }, [notice]);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [showCollections, setShowCollections] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -162,6 +170,19 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
     if (!pdf) return setError('这一项没有 PDF 附件');
     gleeok.dispatch({ type: 'openReader', attachment: pdf, slot });
   };
+  const copy = (keys: string[], as: 'bibtex' | 'cite') => void copyCitations(snap, keys, as).then(setNotice, onError);
+  const fillFromDblp = (keys: string[]) => {
+    setNotice(`正在用 DBLP 补全 ${keys.length} 项…`);
+    void lib<{ filled: string[]; unsure: string[] }>({ op: 'dblpAuto', keys }).then(
+      (r) => setNotice(`DBLP：补全了 ${r.filled.length} 项${r.unsure.length ? `，${r.unsure.length} 项没有标题完全一致的记录，可以选中后在右边手动挑` : ''}`),
+      onError,
+    );
+  };
+  /** Everything in a collection (and below it), as one .bib. */
+  const collectionBib = (c: LibraryCollection) => {
+    const below = collectionAndBelow(collections, c.key);
+    return snap.items.filter((i) => isRegular(i) && !i.deleted && (i.collections ?? []).some((k) => below.has(k))).map((i) => i.key);
+  };
   const addPdfs = (files: FileList) => {
     const paths = [...files].filter((f) => /\.pdf$/i.test(f.name)).map((f) => gleeok.pathForFile(f));
     if (paths.length === 0) return setError('只能拖入 PDF 文件');
@@ -199,6 +220,10 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
     }
     if (e.key === 'Enter' && detail) open(detail);
     if ((e.key === 'Delete' || e.key === 'Backspace') && selected.length) (inTrash ? destroy(selected) : trash(selected));
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'c' && selected.length) {
+      e.preventDefault();
+      copy(selected, 'bibtex');
+    }
     if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
       e.preventDefault();
       setSelected(keys);
@@ -230,8 +255,12 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
             .map((c) => ({ label: `加入分类：${c.name}`, run: () => addToCollection(keys, c.key) })),
           ...(currentCollection ? [{ label: '移出当前分类', run: () => removeFromCollection(keys, currentCollection) }] : []),
           'sep',
-          { label: '复制标题', run: () => void navigator.clipboard.writeText(keys.map((k) => String(snap.items.find((i) => i.key === k)?.title ?? '')).join('\n')) },
-          ...(item.DOI ? [{ label: '复制 DOI', run: () => void navigator.clipboard.writeText(String(item.DOI)) }] : []),
+          { label: keys.length > 1 ? `复制 BibTeX（${keys.length} 条）` : '复制 BibTeX', run: () => copy(keys, 'bibtex') },
+          { label: '复制 \\cite{…}', run: () => copy(keys, 'cite') },
+          { label: keys.length > 1 ? `从 DBLP 补全（${keys.length} 项）` : '从 DBLP 补全', run: () => fillFromDblp(keys) },
+          'sep',
+          { label: '复制标题', run: () => void lib({ op: 'copyText', text: keys.map((k) => String(snap.items.find((i) => i.key === k)?.title ?? '')).join('\n') }) },
+          ...(item.DOI ? [{ label: '复制 DOI', run: () => void lib({ op: 'copyText', text: String(item.DOI) }) }] : []),
           'sep',
           { label: keys.length > 1 ? `移到回收站（${keys.length} 项）` : '移到回收站', run: () => trash(keys), danger: true },
         ];
@@ -246,6 +275,15 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
       items: [
         { label: '新建子分类', run: () => newCollection(c.key) },
         { label: '重命名', run: () => setRenaming(c.key) },
+        'sep',
+        { label: '复制这个分类的 BibTeX', run: () => copy(collectionBib(c), 'bibtex') },
+        {
+          label: '导出 .bib 文件…',
+          run: () =>
+            void bibtexOf(snap, collectionBib(c))
+              .then((text) => lib<string | null>({ op: 'saveBib', text, name: `${c.name}.bib` }))
+              .then((path) => path && setNotice(`已导出到 ${path}`), onError),
+        },
         'sep',
         {
           label: '删除分类（条目保留）',
@@ -540,6 +578,7 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
         {rows.length} 项{selected.length > 1 ? ` · 已选 ${selected.length} 项` : ''}
         {snap.status === 'offline' && <span className="warn"> · 离线：显示的是本机缓存，修改暂时无法保存</span>}
         {snap.status === 'unavailable' && <span className="warn"> · {snap.error ?? '文献库不可用'}</span>}
+        {notice && <span className="ok"> · {notice}</span>}
         {error && (
           <span className="warn">
             {' '}
@@ -559,7 +598,7 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
   );
 
   const details = detail ? (
-    <ItemPane snap={snap} item={detail} onOpen={(a) => open(a)} onError={onError} />
+    <ItemPane snap={snap} item={detail} onOpen={(a) => open(a)} onError={onError} onNotice={setNotice} />
   ) : selected.length > 1 ? (
     <div className="lib-multi">
       <p>已选 {selected.length} 项</p>
@@ -571,9 +610,14 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
           </button>
         </>
       ) : (
-        <button className="danger" onClick={() => trash(selected)}>
-          移到回收站
-        </button>
+        <>
+          <button onClick={() => copy(selected, 'bibtex')}>复制 BibTeX</button>
+          <button onClick={() => copy(selected, 'cite')}>{'复制 \\cite{…}'}</button>
+          <button onClick={() => fillFromDblp(selected)}>从 DBLP 补全</button>
+          <button className="danger" onClick={() => trash(selected)}>
+            移到回收站
+          </button>
+        </>
       )}
       <p className="hint">把它们拖到左边的分类或标签上，就能一次加入分类或打上标签。</p>
     </div>

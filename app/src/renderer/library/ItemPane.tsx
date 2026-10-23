@@ -2,19 +2,47 @@ import { useEffect, useRef, useState } from 'react';
 import type { LibrarySnapshot } from '../../../../shared/src/ipc.ts';
 import type { Creator, LibraryItem } from '../../../../shared/src/library.ts';
 import { CREATOR_LABELS, FIELD_LABELS, ITEM_TYPES, READ_STATUS_LABELS, itemTypeDef } from '../../../../shared/src/library-schema.ts';
-import { childrenOf, formatSize, lib } from './data.ts';
+import type { DblpCandidate } from '../../../../shared/src/dblp.ts';
+import { toBibtex } from '../../../../shared/src/bibtex.ts';
+import { childrenOf, copyCitations, formatSize, lib } from './data.ts';
 
 type Tab = 'info' | 'notes' | 'attachments';
 
 /** The right-hand column: an item's fields, notes and attachments, all saved as you edit. */
-export function ItemPane({ snap, item, onOpen, onError }: { snap: LibrarySnapshot; item: LibraryItem; onOpen: (attachment: LibraryItem) => void; onError: (e: unknown) => void }) {
+export function ItemPane({
+  snap,
+  item,
+  onOpen,
+  onError,
+  onNotice,
+}: {
+  snap: LibrarySnapshot;
+  item: LibraryItem;
+  onOpen: (attachment: LibraryItem) => void;
+  onError: (e: unknown) => void;
+  onNotice: (message: string) => void;
+}) {
   const [tab, setTab] = useState<Tab>('info');
+  const [dblp, setDblp] = useState(false);
+  useEffect(() => setDblp(false), [item.key]);
   const notes = childrenOf(snap, item.key, 'note');
   const attachments = childrenOf(snap, item.key, 'attachment');
   const save = (fields: Record<string, unknown>) => void lib({ op: 'patch', kind: 'items', key: item.key, fields }).catch(onError);
 
   return (
     <div className="lib-item-pane">
+      <div className="lib-item-actions">
+        <button onClick={() => setDblp(!dblp)} className={dblp ? 'on' : ''} title="在 DBLP 里查这篇论文，用它的记录补全作者、会议、年份、页码、DOI">
+          从 DBLP 补全
+        </button>
+        <button onClick={() => void copyCitations(snap, [item.key], 'bibtex').then(onNotice, onError)} title="复制 BibTeX，粘贴进 Overleaf 的 .bib 文件">
+          复制 BibTeX
+        </button>
+        <button onClick={() => void copyCitations(snap, [item.key], 'cite').then(onNotice, onError)} title="复制 \cite{引用键}，粘贴进正文">
+          复制 \cite
+        </button>
+      </div>
+      {dblp && <DblpPanel item={item} onDone={(m) => (setDblp(false), m && onNotice(m))} onError={onError} />}
       <div className="lib-tabs">
         <button className={tab === 'info' ? 'on' : ''} onClick={() => setTab('info')}>
           信息
@@ -119,6 +147,10 @@ function Info({ item, save }: { item: LibraryItem; save: (fields: Record<string,
         </select>
       </label>
       <Tags item={item} save={save} />
+      <details className="lib-bib">
+        <summary>BibTeX 预览</summary>
+        <pre>{toBibtex(item, typeof item.citationKey === 'string' && item.citationKey ? item.citationKey : '复制时生成引用键')}</pre>
+      </details>
       <p className="lib-dates">
         添加于 {new Date(item.dateAdded).toLocaleString('zh-CN')} · 修改于 {new Date(item.dateModified).toLocaleString('zh-CN')}
       </p>
@@ -390,6 +422,61 @@ function Attachments({ item, attachments, onOpen, onError }: { item: LibraryItem
       <button className="lib-link" onClick={() => void lib({ op: 'pickFiles', parentItem: item.key }).catch(onError)}>
         + 添加 PDF
       </button>
+    </div>
+  );
+}
+
+/** DBLP candidates for the item's title (editable); picking one fills the item from that record. */
+function DblpPanel({ item, onDone, onError }: { item: LibraryItem; onDone: (message?: string) => void; onError: (e: unknown) => void }) {
+  const [query, setQuery] = useState(String(item.title ?? ''));
+  const [results, setResults] = useState<DblpCandidate[] | null>(null);
+  const [busy, setBusy] = useState('');
+  const search = async (q: string) => {
+    if (!q.trim()) return;
+    setBusy('正在查询 DBLP…');
+    setResults(null);
+    try {
+      setResults(await lib<DblpCandidate[]>({ op: 'dblpSearch', title: q }));
+    } catch (e) {
+      onError(e);
+    } finally {
+      setBusy('');
+    }
+  };
+  useEffect(() => {
+    void search(query);
+  }, []);
+  const apply = async (c: DblpCandidate) => {
+    setBusy('正在读取 DBLP 记录…');
+    try {
+      await lib({ op: 'dblpApply', key: item.key, dblpKey: c.key });
+      onDone(`已用 DBLP 记录 ${c.key} 补全`);
+    } catch (e) {
+      onError(e);
+      setBusy('');
+    }
+  };
+  return (
+    <div className="lib-dblp">
+      <div className="lib-dblp-search">
+        <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void search(query)} placeholder="论文标题" />
+        <button onClick={() => void search(query)}>查找</button>
+        <button className="icon-btn" onClick={() => onDone()} title="关闭">
+          ×
+        </button>
+      </div>
+      {busy && <p className="hint">{busy}</p>}
+      {results && results.length === 0 && <p className="hint">DBLP 里没找到。可以改改上面的标题再查（DBLP 主要收录计算机领域）。</p>}
+      {results?.map((c) => (
+        <button key={c.key} className="lib-dblp-hit" disabled={!!busy} onClick={() => void apply(c)} title={`https://dblp.org/rec/${c.key}`}>
+          <span className="lib-dblp-title">{c.title}</span>
+          <span className="meta">
+            {[c.venue, c.year].filter(Boolean).join(' · ')}
+            {c.preprint && <span className="lib-badge">预印本</span>}
+            {c.score === 1 && <span className="lib-badge ok">标题一致</span>}
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

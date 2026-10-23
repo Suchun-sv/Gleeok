@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { app, type BrowserWindow } from 'electron';
+import { app, clipboard, type BrowserWindow } from 'electron';
 import type { Action, Snapshot } from '../../../shared/src/ipc.ts';
 import type { GlobalState } from '../../../shared/src/model.ts';
 import type { TabViews } from './views.ts';
@@ -17,6 +17,8 @@ type Step =
   | { pageText: { click?: string } }
   /** Run JS in the focused page (e.g. the 文献库 reader) and log what it returns. */
   | { evalPage: string }
+  /** Log what is on the clipboard. */
+  | { clipboard: true }
   | { pressKey: string }
   /** A real key press in the main window's shell (goes through before-input-event), e.g. into a terminal. */
   | { shellKey: { key: string; modifiers?: ('control' | 'shift' | 'alt' | 'meta')[] } }
@@ -73,7 +75,7 @@ export async function runDevScript(
       // Run JS in the main window's shell, e.g. to fire synthetic DOM events.
       const main = getWindows().find(([id]) => id === 'main')?.[1];
       const r = await main?.webContents.executeJavaScript(step.evalMain).catch((e) => `eval failed: ${e}`);
-      if (typeof r === 'string') console.log('[devscript] eval ->', r.slice(0, 400));
+      if (typeof r === 'string') console.log('[devscript] eval ->', r.slice(0, 1500));
     }
     if ('fillFocused' in step) {
       console.log('[devscript] fill ->', await hooks.fillFocused(step.fillFocused.username, step.fillFocused.password));
@@ -88,6 +90,7 @@ export async function runDevScript(
       wc?.sendInputEvent({ type: 'keyUp', keyCode: key, modifiers });
     }
     if ('pageText' in step) console.log('[devscript] page ->', JSON.stringify(await hooks.pageText(step.pageText.click)));
+    if ('clipboard' in step) console.log('[devscript] clipboard ->', (await clipboard.readText()).split('\n').join(' ¶ ').slice(0, 1500));
     if ('evalPage' in step) console.log('[devscript] page eval ->', String(await hooks.evalPage(step.evalPage)).slice(0, 500));
     if ('mouseDrag' in step) {
       const wc = getWindows().find(([id]) => id === 'main')?.[1].webContents;

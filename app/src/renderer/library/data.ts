@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { LibraryOp, LibrarySnapshot } from '../../../../shared/src/ipc.ts';
 import type { LibraryCollection, LibraryItem } from '../../../../shared/src/library.ts';
 import { PUBLICATION_FIELDS } from '../../../../shared/src/library-schema.ts';
+import { makeCitationKey, toBibtex } from '../../../../shared/src/bibtex.ts';
 export { creatorsShort, shortName, yearOf } from '../../../../shared/src/library-format.ts';
 
 // One subscription for every view of the library in this window.
@@ -126,4 +127,36 @@ export function formatSize(bytes?: number) {
   if (!bytes) return '';
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/**
+ * Citation keys for these items, giving the ones without a key a new one (saved, so it never
+ * changes under a paper that already cites it).
+ */
+export async function citationKeys(snap: LibrarySnapshot, keys: string[]): Promise<{ item: LibraryItem; key: string }[]> {
+  const taken = new Set(snap.items.map((i) => i.citationKey).filter((k): k is string => typeof k === 'string' && !!k));
+  const out: { item: LibraryItem; key: string }[] = [];
+  for (const k of keys) {
+    const item = snap.items.find((i) => i.key === k);
+    if (!item || !isRegular(item)) continue;
+    let key = typeof item.citationKey === 'string' && item.citationKey ? item.citationKey : '';
+    if (!key) {
+      key = makeCitationKey(item, taken);
+      await lib({ op: 'patch', kind: 'items', key: item.key, fields: { citationKey: key } });
+    }
+    taken.add(key);
+    out.push({ item, key });
+  }
+  return out;
+}
+
+export async function bibtexOf(snap: LibrarySnapshot, keys: string[]): Promise<string> {
+  return (await citationKeys(snap, keys)).map(({ item, key }) => toBibtex(item, key)).join('\n\n');
+}
+
+/** Copy for Overleaf: the BibTeX entries, or a \cite{} of their keys. Returns what was copied, for a message. */
+export async function copyCitations(snap: LibrarySnapshot, keys: string[], as: 'bibtex' | 'cite'): Promise<string> {
+  const text = as === 'cite' ? `\\cite{${(await citationKeys(snap, keys)).map((c) => c.key).join(',')}}` : await bibtexOf(snap, keys);
+  await lib({ op: 'copyText', text });
+  return as === 'cite' ? `已复制 ${text}` : `已复制 ${keys.length} 条 BibTeX`;
 }

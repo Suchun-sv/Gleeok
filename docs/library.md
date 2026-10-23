@@ -137,6 +137,16 @@
 
 PDF 默认在哪一栏打开；本地缓存上限与「清空缓存」；回收站自动清空天数；阅读器默认主题与缩放方式。
 
+## 7.5 第一期之后加的
+
+- **DBLP 补全**（2026-10-24）：dblp.org 的网页和搜索接口现在有 Anubis 反爬虫验证，程序访问会被拦，
+  所以改用 DBLP 的 SPARQL 接口（sparql.dblp.org，QLever）：标题按词走全文索引取候选、在本地按相似度排序
+  （标题一致、正式发表版本优先于 CoRR 预印本），选中后用 3 个小查询取作者顺序、论文集全称、页码、卷期、DOI。
+  新加的 PDF 若标题与 DBLP 记录完全一致就自动补全（设置可关）。代码在 `shared/src/dblp.ts`、`app/src/main/dblp.ts`。
+- **复制到 Overleaf**：`shared/src/bibtex.ts` 按条目字段生成 BibTeX（arXiv 按 DBLP 的写法记作 CoRR），
+  转义 LaTeX 特殊字符、用花括号保护标题里的大写；引用键是 Google Scholar 风格，第一次复制时生成并存进
+  `citationKey` 字段，之后不再变。可以复制 BibTeX、复制 `\cite{…}`，分类可以整体复制或导出 `.bib`。
+
 ## 8. 里程碑
 
 每步都在 mini-cachyos 上做无界面测试并截图确认。

@@ -285,9 +285,11 @@ export interface LibrarySettings {
   readerTheme: 'auto' | 'dark' | 'light';
   /** How a PDF opened for the first time is zoomed. */
   readerZoom: 'page-width' | 'page-fit' | 'auto';
+  /** Look new PDFs up in DBLP and fill them when the title matches exactly. */
+  autoDblp: boolean;
 }
 
-export const DEFAULT_LIBRARY_SETTINGS: LibrarySettings = { readerPane: 2, cacheGB: 5, trashDays: 30, readerTheme: 'auto', readerZoom: 'page-width' };
+export const DEFAULT_LIBRARY_SETTINGS: LibrarySettings = { readerPane: 2, cacheGB: 5, trashDays: 30, readerTheme: 'auto', readerZoom: 'page-width', autoDblp: true };
 export const librarySettings = (s: Pick<GlobalState, 'library'>): LibrarySettings => ({ ...DEFAULT_LIBRARY_SETTINGS, ...s.library });
 
 export function visibleSlots(win: AppWindowState): number[] {

@@ -70,6 +70,15 @@ It works like Zotero: nested collections, tags, a sortable and searchable item l
 fields (Zotero's item types and field names), creators, notes and PDF attachments, and a trash.
 Drop PDFs onto the list (or "添加 PDF") to add them.
 
+**DBLP and Overleaf.** "从 DBLP 补全" (item details, the context menu, or many items at once) looks
+the title up in [DBLP](https://dblp.org) and fills authors, venue, proceedings, year, pages, volume
+and DOI from the record; new PDFs whose titles match a DBLP record exactly are filled on their own
+(Settings → 文献库). Lookups use DBLP's SPARQL endpoint (sparql.dblp.org), as dblp.org's pages and
+search API sit behind a bot check. "复制 BibTeX" (Ctrl/Cmd+Shift+C in the list) copies entries ready
+for an Overleaf `.bib`, "复制 \cite{…}" the citation for the text, and a collection's menu copies or
+exports all of its entries. Citation keys look like Google Scholar's (`vaswani2017attention`); an
+item keeps its key once it has one, so citations in a paper never break.
+
 PDFs open in a pane (the third by default) in [Zotero's reader](https://github.com/zotero/reader):
 highlights, underlines, notes, text boxes, area and ink annotations, outline, search, and a
 reading position that follows you between machines. Settings → 文献库 picks the pane PDFs open in,

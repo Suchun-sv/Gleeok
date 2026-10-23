@@ -207,6 +207,13 @@ function LibrarySettingsCard({ snap }: { snap: Snapshot }) {
         <span className="hint">之后都回到上次看到的位置和大小</span>
       </div>
       <div className="row">
+        <span className="meta lib-setting-label">DBLP</span>
+        <label className="lib-check">
+          <input type="checkbox" checked={s.autoDblp} onChange={(e) => set({ autoDblp: e.target.checked })} />
+          添加 PDF 时自动从 DBLP 补全（标题完全一致时）
+        </label>
+      </div>
+      <div className="row">
         <span className="meta lib-setting-label">回收站</span>
         <select value={s.trashDays} onChange={(e) => set({ trashDays: Number(e.target.value) })}>
           {[7, 30, 90, 365, 0].map((d) => (

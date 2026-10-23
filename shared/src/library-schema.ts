@@ -40,6 +40,8 @@ export const FIELD_LABELS: Record<string, string> = {
   url: '网址',
   accessDate: '访问日期',
   extra: '其他',
+  citationKey: '引用键',
+  dblpKey: 'DBLP',
 };
 
 export interface ItemTypeDef {
@@ -50,7 +52,7 @@ export interface ItemTypeDef {
   creatorTypes: string[];
 }
 
-const tail = ['language', 'shortTitle', 'url', 'accessDate', 'abstractNote', 'extra'];
+const tail = ['citationKey', 'language', 'shortTitle', 'url', 'accessDate', 'abstractNote', 'extra'];
 
 export const ITEM_TYPES: ItemTypeDef[] = [
   {
@@ -129,9 +131,11 @@ export const itemTypeDef = (type: string): ItemTypeDef =>
 
 /** Where a regular item appeared, for the list's 期刊/会议 column. */
 export const PUBLICATION_FIELDS = [
+  // Short names first: "NeurIPS" reads better in a column than the proceedings' full title.
+  'conferenceName',
+  'journalAbbreviation',
   'publicationTitle',
   'proceedingsTitle',
-  'conferenceName',
   'repository',
   'bookTitle',
   'websiteTitle',

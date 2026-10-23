@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { freemem, hostname, totalmem, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { BrowserWindow, Menu, app, clipboard, components, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
 import { shortName } from '../../../shared/src/library-format.ts';
+import type { LibraryItem } from '../../../shared/src/library.ts';
 import type { Action, Command, LibraryOp, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 import { LibraryClient } from './library.ts';
+import { dblpApply, dblpAuto, dblpSearch } from './dblp.ts';
 import { ReaderBridge, registerReaderScheme, serveReader } from './reader.ts';
 import {
   CODE_PANE,
@@ -740,6 +743,12 @@ function openReader(attachment: string, slot?: number) {
 }
 
 
+/** New PDFs whose titles DBLP knows exactly get its metadata, in the background. */
+function autoFill(added: LibraryItem[]) {
+  if (librarySettings(state).autoDblp && added.length) void dblpAuto(library, added.map((i) => i.key)).catch(() => {});
+  return added;
+}
+
 async function libraryCall(op: LibraryOp): Promise<unknown> {
   switch (op.op) {
     case 'sync':
@@ -751,7 +760,23 @@ async function libraryCall(op: LibraryOp): Promise<unknown> {
     case 'remove':
       return library.remove(op.kind, op.key);
     case 'addFiles':
-      return library.addFiles(op.paths, op.collection);
+      return autoFill(await library.addFiles(op.paths, op.collection));
+    case 'dblpSearch':
+      return dblpSearch(op.title);
+    case 'dblpApply':
+      return dblpApply(library, op.key, op.dblpKey);
+    case 'dblpAuto':
+      return dblpAuto(library, op.keys);
+    case 'copyText':
+      return clipboard.writeText(op.text);
+    case 'saveBib': {
+      const bw = focusedWindow();
+      const opts = { title: '导出 BibTeX', defaultPath: op.name, filters: [{ name: 'BibTeX', extensions: ['bib'] }] };
+      const picked = bw ? await dialog.showSaveDialog(bw, opts) : await dialog.showSaveDialog(opts);
+      if (picked.canceled || !picked.filePath) return null;
+      writeFileSync(picked.filePath, op.text.endsWith('\n') ? op.text : `${op.text}\n`);
+      return picked.filePath;
+    }
     case 'cacheInfo':
       return library.cacheInfo();
     case 'clearCache':
@@ -763,7 +788,8 @@ async function libraryCall(op: LibraryOp): Promise<unknown> {
       const opts = { title: '添加 PDF', properties: ['openFile', 'multiSelections'] as ('openFile' | 'multiSelections')[], filters: [{ name: 'PDF', extensions: ['pdf'] }] };
       const picked = bw ? await dialog.showOpenDialog(bw, opts) : await dialog.showOpenDialog(opts);
       if (picked.canceled || picked.filePaths.length === 0) return [];
-      return library.addFiles(picked.filePaths, op.collection, op.parentItem);
+      const added = await library.addFiles(picked.filePaths, op.collection, op.parentItem);
+      return op.parentItem ? added : autoFill(added);
     }
   }
 }

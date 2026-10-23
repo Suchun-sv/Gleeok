@@ -2177,3 +2177,105 @@ input.managed {
 .card .row select {
   flex: none;
 }
+
+.lib-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lib-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px 0;
+}
+
+.lib-item-actions button {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.lib-item-actions button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.lib-dblp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 12px 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.lib-dblp-search {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.lib-dblp-search input {
+  flex: 1;
+  min-width: 0;
+}
+
+.lib-dblp-search button:not(.icon-btn) {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.lib-dblp-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.lib-dblp-hit:hover:not(:disabled) {
+  background: var(--panel-2);
+}
+
+.lib-badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 11px;
+}
+
+.lib-badge.ok {
+  color: #5fbf8a;
+}
+
+.lib-bib {
+  margin-top: 12px;
+}
+
+.lib-bib summary {
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.lib-bib pre {
+  margin: 6px 0 0;
+  padding: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 11px;
+  user-select: text;
+}
+
+.lib-status .ok {
+  color: #5fbf8a;
+}

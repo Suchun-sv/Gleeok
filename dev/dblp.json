@@ -1,0 +1,112 @@
+[
+ {
+  "evalMain": "gleeok.createProject('DBLP 测试').then(()=>'project')"
+ },
+ {
+  "wait": 800,
+  "evalMain": ""
+ },
+ {
+  "action": {
+   "type": "toggleEntry"
+  },
+  "evalMain": ""
+ },
+ {
+  "wait": 300,
+  "evalMain": ""
+ },
+ {
+  "evalMain": "(async()=>{const L=(op)=>gleeok.library(op).then(r=>{if(r.error)throw new Error(r.error);return r.result});const made=await L({op:'create',kind:'items',objects:[{itemType:'document',title:'Attention Is All You Need'},{itemType:'document',title:'LoRA: Low-Rank Adaptation of Large Language Models'},{itemType:'document',title:'End-to-End Object Detection with Transformers'},{itemType:'document',title:'Zzqx frobnicating the quuxly unexistent widgets'}]});window.__keys=made.map(m=>m.key);const t=performance.now();const r=await L({op:'dblpAuto',keys:window.__keys});return 'auto: filled '+r.filled.length+', unsure '+r.unsure.length+' in '+Math.round(performance.now()-t)+' ms'})()"
+ },
+ {
+  "evalMain": "gleeok.getLibrary().then(s=>s.items.filter(i=>window.__keys.includes(i.key)).map(i=>[i.itemType,i.title,i.conferenceName||i.publicationTitle||i.repository||'',i.date||'',(i.creators||[]).length+' authors',i.dblpKey||'',i.DOI||''].join(' | ')).join(' ¶ '))"
+ },
+ {
+  "evalMain": "gleeok.library({op:'dblpSearch',title:'Zzqx frobnicating the quuxly unexistent widgets'}).then(r=>r.error||'made-up title -> '+r.result.length+' candidates'+(r.result[0]?' top: '+r.result[0].title:''))"
+ },
+ {
+  "action": {
+   "type": "toggleLibrary"
+  },
+  "evalMain": ""
+ },
+ {
+  "wait": 1200,
+  "evalMain": ""
+ },
+ {
+  "evalMain": "(()=>{const r=[...document.querySelectorAll('.lib-tr')].find(x=>x.textContent.includes('Attention'));r.click();return 'selected'})()"
+ },
+ {
+  "wait": 600,
+  "evalMain": ""
+ },
+ {
+  "evalMain": "(()=>{const d=document.querySelector('.lib-bib');d.open=true;return d.querySelector('pre').textContent.split('\\n').join(' ¶ ')})()"
+ },
+ {
+  "evalMain": "(()=>{[...document.querySelectorAll('.lib-item-actions button')].find(b=>b.textContent==='复制 BibTeX').click();return 'copy bibtex'})()"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "clipboard": true
+ },
+ {
+  "evalMain": "(()=>{[...document.querySelectorAll('.lib-item-actions button')].find(b=>b.textContent.startsWith('复制 \\\\cite')).click();return 'copy cite'})()"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "clipboard": true
+ },
+ {
+  "evalMain": "(()=>{const all=[...document.querySelectorAll('.lib-tr')];all[0].click();all[all.length-1].dispatchEvent(new MouseEvent('click',{bubbles:true,shiftKey:true}));return 'selected '+document.querySelectorAll('.lib-tr.on').length})()"
+ },
+ {
+  "wait": 300
+ },
+ {
+  "evalMain": "(()=>{[...document.querySelectorAll('.lib-multi button')].find(b=>b.textContent==='复制 BibTeX').click();return 'copy 4'})()"
+ },
+ {
+  "wait": 1000
+ },
+ {
+  "clipboard": true
+ },
+ {
+  "evalMain": "gleeok.getLibrary().then(s=>s.items.filter(i=>i.citationKey).map(i=>i.citationKey).join(', '))"
+ },
+ {
+  "evalMain": "(()=>{const r=[...document.querySelectorAll('.lib-tr')].find(x=>x.textContent.includes('Zzqx'));r.click();return 'selected made-up'})()"
+ },
+ {
+  "wait": 400,
+  "evalMain": ""
+ },
+ {
+  "evalMain": "(()=>{[...document.querySelectorAll('.lib-item-actions button')].find(b=>b.textContent.includes('DBLP')).click();return 'dblp panel'})()"
+ },
+ {
+  "wait": 2500,
+  "evalMain": ""
+ },
+ {
+  "evalMain": "(()=>{const i=document.querySelector('.lib-dblp-search input');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(i,'retrieval augmented generation knowledge-intensive');i.dispatchEvent(new Event('input',{bubbles:true}));setTimeout(()=>document.querySelector('.lib-dblp-search button').click(),50);return 'search RAG'})()"
+ },
+ {
+  "wait": 3000,
+  "evalMain": ""
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.lib-dblp-hit')].slice(0,4).map(h=>h.textContent).join(' ¶ ')"
+ },
+ {
+  "capture": "dblp-panel",
+  "evalMain": ""
+ }
+]
