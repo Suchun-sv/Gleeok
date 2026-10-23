@@ -6,6 +6,7 @@ import { Palette } from './Palette.tsx';
 import { UpdateDialog } from './UpdateDialog.tsx';
 import { VaultDialog } from './VaultDialog.tsx';
 import { Panes } from './Panes.tsx';
+import { LayoutControls } from './Icons.tsx';
 import { Sidebar, SidebarToggle } from './Sidebar.tsx';
 
 /** Which window this renderer belongs to: 'main' or a satellite id (from ?win=). */
@@ -111,6 +112,7 @@ export function App() {
             win={win}
             dragImages={dragImages}
             leading={toggle}
+            trailing={<LayoutControls mode={win.layout.mode} focusExpand={win.layout.focusExpand} platform={snap.platform} />}
           />
         ) : null}
       </main>

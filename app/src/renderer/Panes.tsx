@@ -22,13 +22,15 @@ interface Props {
   win: AppWindowState;
   dragImages: Record<number, string>;
   leading?: React.ReactNode;
+  /** Shown at the right end of the last pane's tab strip. */
+  trailing?: React.ReactNode;
 }
 
 /**
  * The renderer only draws chrome (tab strips, address bars) and reserves an empty box per pane.
  * Main lays a native WebContentsView over each box, so the boxes' rects are reported up.
  */
-export function Panes({ snap, project, session, command, win, dragImages, leading }: Props) {
+export function Panes({ snap, project, session, command, win, dragImages, leading, trailing }: Props) {
   const main = snap.state.windows.find((w) => w.role === 'main')!;
   const slots = visibleSlots(win);
   const { focusRatio } = main.layout;
@@ -72,6 +74,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
       {slots.map((slot, i) => (
         <PaneView
           leading={i === 0 ? leading : null}
+          trailing={i === slots.length - 1 ? trailing : null}
           key={slot}
           slot={slot}
           pane={session.panes[slot]}
@@ -110,6 +113,7 @@ interface PaneProps {
   boxRef: (el: HTMLDivElement | null) => void;
   command: (Command & { seq: number }) | null;
   leading?: React.ReactNode;
+  trailing?: React.ReactNode;
   windowButton?: React.ReactNode;
   /** A tab drag is in progress: pages are hidden and this pane shows a screenshot instead. */
   dragging: boolean;
@@ -121,7 +125,7 @@ interface PaneProps {
 }
 
 function PaneView(props: PaneProps) {
-  const { slot, pane, project, focused, grow, boxRef, command, leading, windowButton, dragging, covered, dragImage, asleep } = props;
+  const { slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, covered, dragImage, asleep } = props;
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
   const address = useRef<HTMLInputElement>(null);
@@ -201,6 +205,7 @@ function PaneView(props: PaneProps) {
         <button className="tab-add" onClick={() => gleeok.dispatch({ type: 'newTab', slot })} title="新标签页">
           +
         </button>
+        {trailing && <div className="tabs-trailing">{trailing}</div>}
       </div>
       <div className="toolbar">
         <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew}>

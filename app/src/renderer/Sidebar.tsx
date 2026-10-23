@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
 import { primaryCodeLink } from '../../../shared/src/model.ts';
 import icon from '../../assets/icon-64.png';
+import { IconButton } from './Icons.tsx';
 
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
 export function SidebarToggle({ platform }: { platform: string }) {
@@ -21,7 +22,6 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
   const [showArchived, setShowArchived] = useState(false);
   const [name, setName] = useState('');
   const { state, server } = snap;
-  const layout = state.windows.find((w) => w.role === 'main')!.layout;
   const mod = snap.platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+';
 
   async function create() {
@@ -177,43 +177,6 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
       )}
 
       <footer>
-        <div className="seg">
-          <button
-            className={layout.mode === 'three' ? 'on' : ''}
-            onClick={() => gleeok.dispatch({ type: 'setLayoutMode', mode: 'three' })}
-            title={`${mod}Shift+3`}
-          >
-            三栏
-          </button>
-          <button
-            className={layout.mode === 'two' ? 'on' : ''}
-            onClick={() => gleeok.dispatch({ type: 'setLayoutMode', mode: 'two' })}
-            title={`${mod}Shift+2`}
-          >
-            二栏
-          </button>
-        </div>
-        <button
-          className={`toggle ${layout.focusExpand ? 'on' : ''}`}
-          onClick={() => gleeok.dispatch({ type: 'toggleFocusExpand' })}
-          title={`${mod}F`}
-        >
-          焦点放大
-        </button>
-        <button
-          className={`toggle ${state.view === 'import' ? 'on' : ''}`}
-          onClick={() => gleeok.dispatch({ type: 'setView', view: state.view === 'import' ? 'panes' : 'import' })}
-        >
-          从 Paseo 导入
-        </button>
-        <button
-          className={`toggle ${state.view === 'entry' ? 'on' : ''}`}
-          onClick={() => gleeok.dispatch({ type: 'toggleEntry' })}
-          disabled={!state.currentProjectId}
-          title={`${mod}E`}
-        >
-          入口页
-        </button>
         {(snap.update.commits.length > 0 || snap.update.step || snap.update.error) && (
           <button className="update-available" onClick={() => gleeok.dispatch({ type: 'openUpdate' })}>
             {snap.update.step
@@ -223,17 +186,27 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
                 : `⬆ 更新 Gleeok（${snap.update.commits.length} 个更新）`}
           </button>
         )}
-        <span className="build" title={__GLEEOK_BUILD__}>
-          build {new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+        <div className="footer-row">
+          <IconButton
+            icon="grid"
+            on={state.view === 'entry'}
+            title={state.currentProjectId ? `入口页：编辑项目的链接（${mod}E）` : '入口页（先选中一个项目）'}
+            onClick={() => state.currentProjectId && gleeok.dispatch({ type: 'toggleEntry' })}
+          />
+          <IconButton
+            icon="import"
+            on={state.view === 'import'}
+            title="从 Paseo 导入项目"
+            onClick={() => gleeok.dispatch({ type: 'setView', view: state.view === 'import' ? 'panes' : 'import' })}
+          />
+          <span className="spacer" />
+          <span className="build" title={__GLEEOK_BUILD__}>
+            {new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          </span>
           {snap.canSelfUpdate && (
-            <>
-              {' · '}
-              <button className="link" onClick={() => gleeok.dispatch({ type: 'checkUpdate' })}>
-                检查更新
-              </button>
-            </>
+            <IconButton icon="refresh" size={13} title="检查 Gleeok 有没有更新" onClick={() => gleeok.dispatch({ type: 'checkUpdate' })} />
           )}
-        </span>
+        </div>
       </footer>
     </aside>
   );

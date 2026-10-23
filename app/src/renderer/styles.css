@@ -286,32 +286,50 @@ main {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px;
+  padding: 6px 8px;
   border-top: 1px solid var(--line);
 }
 
-.seg {
+.footer-row {
   display: flex;
-  border: 1px solid var(--line);
+  align-items: center;
+  gap: 2px;
+}
+
+/* Paseo-style chrome: borderless muted glyphs, a soft background on hover, accent when on. */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
-  overflow: hidden;
+  color: var(--muted);
 }
 
-.seg button {
-  flex: 1;
-  padding: 4px;
-}
-
-.seg button.on,
-.toggle.on {
+.icon-btn:hover {
   background: var(--panel-2);
+  color: var(--text);
+}
+
+.icon-btn.on {
   color: var(--accent);
 }
 
-.toggle {
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+.tabs-trailing {
+  position: sticky;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: auto;
+  padding: 0 6px 0 8px;
+  background: var(--panel);
+}
+
+.tabs-trailing .icon-btn {
+  width: 24px;
+  height: 24px;
 }
 
 /* ---- panes ---- */
