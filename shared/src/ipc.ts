@@ -34,6 +34,8 @@ export interface Snapshot {
   live: string[];
   /** Approximate memory of each live project's page processes, in MB. */
   memory: Record<string, number>;
+  /** Memory in MB: all of Gleeok's processes (pages included), and the machine's used / total. */
+  memoryTotal: { gleeok: number; systemUsed: number; systemTotal: number };
   /** A tab is being dragged: pages are swapped for screenshots so whole panes can take the drop. */
   tabDragging: boolean;
   /** Running from a git checkout, so the palette can offer "update Gleeok". */

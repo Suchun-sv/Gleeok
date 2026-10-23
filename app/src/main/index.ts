@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { hostname } from 'node:os';
+import { freemem, hostname, totalmem } from 'node:os';
 import { join } from 'node:path';
 import { BrowserWindow, Menu, app, clipboard, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
 import type { Action, Command, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
@@ -431,9 +431,17 @@ function hibernateStale() {
 }
 
 const memory = new Map<string, number>();
+let memoryTotal: Snapshot['memoryTotal'] = { gleeok: 0, systemUsed: 0, systemTotal: 0 };
 
 function sampleMemory() {
-  const kbByPid = new Map(app.getAppMetrics().map((m) => [m.pid, m.memory.workingSetSize]));
+  const metrics = app.getAppMetrics();
+  const kbByPid = new Map(metrics.map((m) => [m.pid, m.memory.workingSetSize]));
+  const mb = 1024 * 1024;
+  memoryTotal = {
+    gleeok: Math.round(metrics.reduce((n, m) => n + m.memory.workingSetSize, 0) / 1024),
+    systemUsed: Math.round((totalmem() - freemem()) / mb),
+    systemTotal: Math.round(totalmem() / mb),
+  };
   memory.clear();
   for (const s of Object.values(state.sessions)) {
     const pids = new Set<number>();
@@ -507,6 +515,7 @@ function snapshot(): Snapshot {
     downloads: downloads?.list ?? [],
     live: Object.values(state.sessions).filter(isLive).map((s) => s.projectId),
     memory: Object.fromEntries(memory),
+    memoryTotal,
     tabDragging,
     canSelfUpdate: canSelfUpdate(),
     update,

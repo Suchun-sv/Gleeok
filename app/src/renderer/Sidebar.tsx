@@ -199,7 +199,8 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
             title="设置：Paseo 导入、同步、密码库"
             onClick={() => gleeok.dispatch({ type: 'setView', view: state.view === 'settings' ? 'panes' : 'settings' })}
           />
-          <span className="build" title={__GLEEOK_BUILD__}>
+          <span className="build" title={memoryTitle(snap)}>
+            {snap.memoryTotal.gleeok > 0 && <span className="mem">{gb(snap.memoryTotal.gleeok)} · </span>}
             {new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
           </span>
           {snap.canSelfUpdate ? (
@@ -211,4 +212,24 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
       </footer>
     </aside>
   );
+}
+
+const gb = (mb: number) => (mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`);
+
+/** Footer tooltip: where the memory goes (running projects' pages, the rest of Gleeok) and the build. */
+function memoryTitle(snap: Snapshot) {
+  const { gleeok, systemUsed, systemTotal } = snap.memoryTotal;
+  const byProject = snap.projects
+    .filter((p) => snap.memory[p.id])
+    .sort((a, b) => snap.memory[b.id] - snap.memory[a.id])
+    .map((p) => `  ${p.name}：${gb(snap.memory[p.id])}`);
+  const pages = Object.values(snap.memory).reduce((n, m) => n + m, 0);
+  return [
+    `Gleeok 占用内存约 ${gb(gleeok)}（每 10 秒更新）`,
+    ...(byProject.length ? ['运行中项目的网页：', ...byProject] : []),
+    `  其余（窗口、GPU 等）：${gb(Math.max(0, gleeok - pages))}`,
+    `这台电脑：已用 ${gb(systemUsed)} / 共 ${gb(systemTotal)}`,
+    '休眠不用的项目（项目右键 → 休眠）可以释放它的网页内存。',
+    `build ${__GLEEOK_BUILD__}`,
+  ].join('\n');
 }
