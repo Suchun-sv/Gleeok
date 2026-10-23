@@ -203,7 +203,8 @@ function commands(snap: Snapshot, current?: Project): Item[] {
     c('newtab', '在焦点栏新建标签', [{ type: 'newTab' }]),
     c('reopen', '恢复刚关闭的标签', [{ type: 'reopenTab' }]),
     c('save', '把当前页面存进项目链接', [{ type: 'openSaveLink' }]),
-    c('import', '从 Paseo 导入项目', [{ type: 'setView', view: 'import' }]),
+    c('settings', '设置（Paseo 导入、同步、密码库）', [{ type: 'setView', view: 'settings' }]),
+    c('import', '从 Paseo 导入项目', [{ type: 'setView', view: 'settings' }]),
     ...(snap.canSelfUpdate
       ? [
           c('update', '更新 Gleeok（拉取最新代码、构建并重启）', [{ type: 'selfUpdate' }]),
@@ -217,7 +218,7 @@ function commands(snap: Snapshot, current?: Project): Item[] {
   if (current) {
     const live = snap.live.includes(current.id);
     out.push(
-      c('entry', `打开「${current.name}」的入口页`, [{ type: 'setView', view: 'entry' }]),
+      c('entry', `打开「${current.name}」的入口页`, [{ type: 'toggleEntry' }]),
       live
         ? c('sleep', `休眠「${current.name}」`, [{ type: 'hibernate', id: current.id }])
         : c('start', `启动「${current.name}」`, [{ type: 'startProject', id: current.id }]),

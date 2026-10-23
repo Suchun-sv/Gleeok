@@ -195,7 +195,7 @@ export interface AppWindowState {
   placement?: { displayKey: string; bounds: Rect };
 }
 
-export type View = 'panes' | 'entry' | 'import';
+export type View = 'panes' | 'settings';
 
 export interface GlobalState {
   currentProjectId: string | null;

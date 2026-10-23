@@ -77,7 +77,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
               role="button"
               className={`project ${p.id === state.currentProjectId ? 'active' : ''}`}
               onClick={() => gleeok.dispatch({ type: 'selectProject', id: p.id })}
-              onDoubleClick={() => gleeok.dispatch({ type: 'setView', view: 'entry' })}
+              onDoubleClick={() => gleeok.dispatch({ type: 'toggleEntry' })}
               onContextMenu={menu}
               title={`${p.name}\n${live ? `运行中${mb ? ` · ${mb} MB` : ''}` : '已休眠'}\n双击打开入口页，右键更多操作`}
             >
@@ -189,15 +189,14 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         <div className="footer-row">
           <IconButton
             icon="grid"
-            on={state.view === 'entry'}
-            title={state.currentProjectId ? `入口页：编辑项目的链接（${mod}E）` : '入口页（先选中一个项目）'}
+            title={state.currentProjectId ? `入口页：项目的链接和设置（${mod}E）` : '入口页（先选中一个项目）'}
             onClick={() => state.currentProjectId && gleeok.dispatch({ type: 'toggleEntry' })}
           />
           <IconButton
-            icon="import"
-            on={state.view === 'import'}
-            title="从 Paseo 导入项目"
-            onClick={() => gleeok.dispatch({ type: 'setView', view: state.view === 'import' ? 'panes' : 'import' })}
+            icon="settings"
+            on={state.view === 'settings'}
+            title="设置：Paseo 导入、同步、密码库"
+            onClick={() => gleeok.dispatch({ type: 'setView', view: state.view === 'settings' ? 'panes' : 'settings' })}
           />
           <span className="spacer" />
           <span className="build" title={__GLEEOK_BUILD__}>

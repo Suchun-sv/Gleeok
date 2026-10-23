@@ -1,11 +1,11 @@
 [
-  { "action": { "type": "setView", "view": "import" } },
+  { "action": { "type": "setView", "view": "settings" } },
   { "wait": 1500 },
   { "capture": "m2-import" },
   { "action": { "type": "selectProjectIndex", "index": 0 } },
   { "wait": 9000 },
   { "capture": "m2-panes" },
-  { "action": { "type": "setView", "view": "entry" } },
+  { "action": { "type": "toggleEntry" } },
   { "wait": 1000 },
   { "capture": "m2-entry" }
 ]

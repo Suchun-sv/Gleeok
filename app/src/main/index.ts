@@ -962,7 +962,7 @@ function dispatch(action: Action) {
           label: '编辑代码链接…',
           click: () => {
             dispatch({ type: 'selectProject', id: project.id });
-            dispatch({ type: 'setView', view: 'entry' });
+            dispatch({ type: 'toggleEntry' });
           },
         },
       ]).popup({ window: focusedWindow() ?? undefined });
@@ -1018,7 +1018,7 @@ function dispatch(action: Action) {
           label: '入口页',
           click: () => {
             dispatch({ type: 'selectProject', id: action.id });
-            dispatch({ type: 'setView', view: 'entry' });
+            dispatch({ type: 'toggleEntry' });
           },
         },
         { type: 'separator' },
@@ -1060,8 +1060,16 @@ function dispatch(action: Action) {
       changed();
       return;
     case 'toggleEntry':
-      state.view = state.view === 'entry' ? 'panes' : 'entry';
-      changed();
+      if (!state.currentProjectId) return;
+      if (state.view !== 'panes') {
+        state.view = 'panes';
+        changed();
+      }
+      // The renderer toggles: a second press (or the shortcut inside the drawer) closes it.
+      void openOverlay('entry-drawer');
+      return;
+    case 'vaultUnlock':
+      if (vault && !vault.unlocked) void openOverlay('vault-dialog', { mode: 'unlock', email: vault.email } satisfies VaultDialog);
       return;
   }
 
@@ -1246,7 +1254,7 @@ ipcMain.on('pane-rects', (_e, winId: string, rects: PaneRects) => {
 ipcMain.handle('project:create', async (_e, name: string) => {
   const p = await config.create(name);
   dispatch({ type: 'selectProject', id: p.id });
-  dispatch({ type: 'setView', view: 'entry' });
+  dispatch({ type: 'toggleEntry' });
   return p;
 });
 ipcMain.handle('project:save', async (_e, project: Project) => {

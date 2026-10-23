@@ -9,7 +9,7 @@ daemon, with a pane that always opens the project's most recently used Paseo wor
 
 - Per-project panes and tabs; 2/3-pane layouts; focus-expand; drag tabs between panes
 - Projects keep running in the background; idle ones hibernate overnight; start/sleep/archive by hand
-- Project links (new-tab page, entry page); a pasted URL or ☆ saves the current page as a link
+- Project links (new-tab page, and the entry drawer where they are edited and saved as you type); a pasted URL or ☆ saves the current page as a link
 - Command palette for projects, links, open tabs and commands
 - Multiple windows/monitors: move a pane into its own window; every window follows the project
 - Optional: a sync server for several machines (projects, links, open tabs handed between devices)
@@ -53,7 +53,7 @@ Running from the checkout avoids code-signing prompts: npm's Electron binary is 
 ## Paseo
 
 Paste a daemon's pairing link (Paseo → Settings → your host → Pair a device, or
-`paseo daemon pair`) into the box at the top of the "从 Paseo 导入" (import from Paseo) page.
+`paseo daemon pair`) into the box at the top of Settings (the gear in the sidebar) → Paseo.
 Gleeok remembers it and reads that daemon's projects every 2 minutes through Paseo's
 end-to-end encrypted relay, so the daemon can be on any machine, with no open port; paste one
 link per daemon. The same link also pairs Gleeok's built-in browser, so Paseo pages open there.
@@ -69,11 +69,11 @@ pastes it once.
 A project can carry one or more code-editor links (code-server, vscode.dev, ...), one of them
 primary. Projects that have one show a `</>` button in the sidebar (and Prefix+C) that opens
 the primary link in 草稿区, or brings forward a tab already showing it; right-click it for the
-others. Add them on the project's entry page ("+ 添加代码链接"). Projects imported from Paseo
+others. Add them in the project's entry drawer ("+ 代码链接", ★ marks the primary). Projects imported from Paseo
 get one by themselves when the daemon's machine runs code-server: the server looks for it by
 the machine's tailnet name (tailscale serve on 8443 or 443, or port 8080; in local mode also
 the address in `~/.config/code-server/config.yaml`), checks `/healthz`, and links each project
-to its latest workspace's directory (`<address>/?folder=<dir>`). The import page shows what was
+to its latest workspace's directory (`<address>/?folder=<dir>`). Settings → Paseo shows what was
 found, re-checks on demand and lets you type an address instead. Without any of this, nothing
 code-related appears.
 
@@ -129,7 +129,7 @@ Prefix = Ctrl+Alt on Linux/Windows, Cmd+Opt on macOS.
 | Prefix+←/→ or H/L | focus previous/next pane |
 | Prefix+Shift+2 / 3 | two / three panes |
 | Prefix+F | toggle focus-expand |
-| Prefix+E | project entry page |
+| Prefix+E | project entry drawer (links, archive, delete) |
 | Prefix+C | open the project's primary code link |
 | Prefix+B | collapse / expand the sidebar |
 | Prefix+D | move the focused pane to its own window / back |

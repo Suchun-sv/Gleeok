@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
 import type { PaseoDaemon } from '../../../shared/src/model.ts';
 
-export function ImportPage({ snap, toggle }: { snap: Snapshot; toggle: React.ReactNode }) {
+/** Settings → Paseo: pair daemons, see what each one has, import its projects. */
+export function PaseoSettings({ snap }: { snap: Snapshot }) {
   const [offer, setOffer] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -23,11 +24,7 @@ export function ImportPage({ snap, toggle }: { snap: Snapshot; toggle: React.Rea
   const hostOf = (serverId: string) => snap.paseo.find((d) => d.serverId === serverId)?.hostname ?? serverId;
 
   return (
-    <div className="entry import">
-      <div className="entry-head">
-        {toggle}
-        <h2>从 Paseo 导入</h2>
-      </div>
+    <div className="import">
 
       <section className="card">
         <h3>配对</h3>

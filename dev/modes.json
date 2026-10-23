@@ -14,7 +14,7 @@
   {
     "action": {
       "type": "setView",
-      "view": "import"
+      "view": "settings"
     }
   },
   {

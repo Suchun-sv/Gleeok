@@ -29,7 +29,10 @@ export function defaultState(): GlobalState {
 
 export function loadState(path: string): GlobalState {
   try {
-    return { ...defaultState(), ...(JSON.parse(readFileSync(path, 'utf8')) as GlobalState) };
+    const s = { ...defaultState(), ...(JSON.parse(readFileSync(path, 'utf8')) as GlobalState) };
+    // Older builds also had full-page 'entry' and 'import' views.
+    if (s.view !== 'settings') s.view = 'panes';
+    return s;
   } catch {
     return defaultState();
   }

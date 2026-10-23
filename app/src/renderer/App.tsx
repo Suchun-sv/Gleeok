@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Command, Snapshot, VaultDialog as VaultDialogState } from '../../../shared/src/ipc.ts';
-import { EntryPage } from './EntryPage.tsx';
-import { ImportPage } from './ImportPage.tsx';
+import { EntryDrawer } from './EntryDrawer.tsx';
+import { SettingsPage } from './Settings.tsx';
 import { Palette } from './Palette.tsx';
 import { UpdateDialog } from './UpdateDialog.tsx';
 import { VaultDialog } from './VaultDialog.tsx';
@@ -19,6 +19,7 @@ export function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [vaultDialog, setVaultDialog] = useState<VaultDialogState | null>(null);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [entryOpen, setEntryOpen] = useState(false);
 
   useEffect(() => {
     void gleeok.getSnapshot().then(setSnap);
@@ -34,9 +35,19 @@ export function App() {
     const offUpdate = gleeok.onUpdateDialog(() => {
       setPaletteOpen(false);
       setVaultDialog(null);
+      setEntryOpen(false);
       setUpdateOpen(true);
     });
+    const offEntry = gleeok.onEntryDrawer(() => {
+      setPaletteOpen(false);
+      setEntryOpen((open) => {
+        // Pressed again while open: close, and give the pages back.
+        if (open) gleeok.dispatch({ type: 'closePalette', winId: WIN_ID });
+        return !open;
+      });
+    });
     return () => {
+      offEntry();
       offUpdate();
       offSnap();
       offCmd();
@@ -63,6 +74,16 @@ export function App() {
     <UpdateDialog update={snap.update} winId={WIN_ID} onClose={() => setUpdateOpen(false)} />
   ) : paletteOpen ? (
     <Palette snap={snap} winId={WIN_ID} onClose={() => setPaletteOpen(false)} />
+  ) : entryOpen && project ? (
+    <EntryDrawer
+      key={project.id}
+      project={project}
+      snap={snap}
+      onClose={() => {
+        setEntryOpen(false);
+        gleeok.dispatch({ type: 'closePalette', winId: WIN_ID });
+      }}
+    />
   ) : null;
 
   if (win.role === 'satellite') {
@@ -97,12 +118,10 @@ export function App() {
     <div className="app">
       {!collapsed && <Sidebar snap={snap} />}
       <main>
-        {snap.state.view === 'import' ? (
-          <ImportPage snap={snap} toggle={toggle} />
+        {snap.state.view === 'settings' ? (
+          <SettingsPage snap={snap} toggle={toggle} />
         ) : !project ? (
           <Empty snap={snap} toggle={toggle} />
-        ) : snap.state.view === 'entry' ? (
-          <EntryPage key={project.id} project={project} toggle={toggle} />
         ) : session ? (
           <Panes
             snap={snap}

@@ -71,7 +71,9 @@ export type Action =
   | { type: 'toggleFocusExpand' }
   | { type: 'toggleSidebar' }
   | { type: 'setView'; view: View }
+  /** The project's entry drawer (links and settings), over the current window's pages. */
   | { type: 'toggleEntry' }
+  | { type: 'vaultUnlock' }
   | { type: 'focusAddress' }
   | { type: 'moveTab'; tabId: string; toSlot: number }
   | { type: 'reopenTab' }
@@ -130,6 +132,8 @@ export interface GleeokApi {
   onVaultDialog(cb: (d: VaultDialog) => void): () => void;
   /** Main asks this window to show the update dialog. */
   onUpdateDialog(cb: () => void): () => void;
+  /** Main asks this window to open (or, if open, close) the current project's entry drawer. */
+  onEntryDrawer(cb: () => void): () => void;
   vaultUnlock(email: string, password: string, server?: string): Promise<{ error?: string }>;
   vaultSave(login: { name: string; url: string; username: string; password: string }): Promise<{ error?: string }>;
   dispatch(action: Action): void;
