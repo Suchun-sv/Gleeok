@@ -165,7 +165,41 @@ export function App() {
           />
         ) : null}
       </main>
+      {/* With no panes on screen their toasts would go unseen; they show here instead. */}
+      {(snap.state.view !== 'panes' || !project || !session) && <FloatingToast command={command} />}
       {palette}
+    </div>
+  );
+}
+
+/** A pane's toast (update checks, vault, saved links...) when no pane is showing it. */
+function FloatingToast({ command }: { command: (Command & { seq: number }) | null }) {
+  const [toast, setToast] = useState<Extract<Command, { type: 'toast' }> | null>(null);
+  useEffect(() => {
+    if (command?.type === 'toast') setToast(command);
+  }, [command?.seq]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), toast.ms ?? 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
+  if (!toast) return null;
+  return (
+    <div className="floating-toast" role="status">
+      <span>{toast.text}</span>
+      {toast.undo && (
+        <button
+          onClick={() => {
+            gleeok.dispatch(toast.undo!);
+            setToast(null);
+          }}
+        >
+          {toast.undoLabel ?? '撤销'}
+        </button>
+      )}
+      <button className="icon-btn" onClick={() => setToast(null)} title="关闭">
+        ×
+      </button>
     </div>
   );
 }

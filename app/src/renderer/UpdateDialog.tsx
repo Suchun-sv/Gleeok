@@ -19,7 +19,7 @@ export function UpdateDialog({ update, winId, onClose }: { update: Snapshot['upd
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') close();
-          if (e.key === 'Enter' && !step) gleeok.dispatch({ type: 'selfUpdate' });
+          if (e.key === 'Enter' && !step) (commits.length ? gleeok.dispatch({ type: 'selfUpdate' }) : close());
         }}
       >
         <div className="vault-form update-dialog">
@@ -35,8 +35,12 @@ export function UpdateDialog({ update, winId, onClose }: { update: Snapshot['upd
           {step && <p className="progress">正在更新：{step}</p>}
           {error && <p className="error">更新失败：{error}</p>}
           <div className="row">
-            <span className="hint">会拉取代码、安装依赖、重新构建，然后重启 Gleeok；打开的标签页会恢复。</span>
-            <button onClick={close}>{step ? '在后台继续' : '稍后'}</button>
+            <span className="hint">
+              {commits.length
+                ? '会拉取代码、安装依赖、重新构建，然后重启 Gleeok；打开的标签页会恢复。'
+                : `当前版本构建于 ${new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false })}。`}
+            </span>
+            <button onClick={close}>{step ? '在后台继续' : commits.length ? '稍后' : '好'}</button>
             {commits.length > 0 && (
               <button className="primary" disabled={!!step} onClick={() => gleeok.dispatch({ type: 'selfUpdate' })}>
                 {error ? '重试' : '更新并重启'}

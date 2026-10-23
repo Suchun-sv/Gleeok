@@ -641,7 +641,8 @@ async function checkUpdate(announceNone: boolean) {
       if (announceNone || (head !== updateAskedFor && !process.env.GLEEOK_DEV_SCRIPT)) void openOverlay('update-dialog');
       updateAskedFor = head;
     } else if (announceNone) {
-      send({ type: 'toast', slot: state.focusedPane, text: 'Gleeok 已经是最新版本' });
+      // Asked by hand: say so in a dialog, which shows whatever the window displays (pages, library, settings).
+      void openOverlay('update-dialog');
     }
   } catch (e) {
     if (announceNone) send({ type: 'toast', slot: state.focusedPane, text: `检查更新失败：${String(e).slice(0, 80)}` });
@@ -1314,6 +1315,14 @@ function dispatch(action: Action) {
     case 'vaultUnlock':
       if (vault && !vault.unlocked) void openOverlay('vault-dialog', { mode: 'unlock', email: vault.email } satisfies VaultDialog);
       return;
+    // Library actions work with no project open (openReader says so when it needs one).
+    case 'openReader':
+      openReader(action.attachment, action.slot);
+      return;
+    case 'setLibrarySettings':
+      state.library = { ...state.library, ...action.settings };
+      changed();
+      return;
   }
 
   if (!session) return;
@@ -1325,13 +1334,6 @@ function dispatch(action: Action) {
     case 'newTab':
       state.view = 'panes';
       openTab(session, slotOf(action.slot), action.url ? normalizeUrl(action.url) : NEW_TAB_URL);
-      return;
-    case 'openReader':
-      openReader(action.attachment, action.slot);
-      return;
-    case 'setLibrarySettings':
-      state.library = { ...state.library, ...action.settings };
-      changed();
       return;
     case 'closeTab': {
       const slot = slotOf(action.slot);
