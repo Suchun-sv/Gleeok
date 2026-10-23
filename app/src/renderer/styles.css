@@ -621,6 +621,34 @@ main {
   width: 56px;
 }
 
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.suggestion-row {
+  display: grid;
+  grid-template-columns: 20px 110px 140px 1fr repeat(3, 26px);
+  align-items: center;
+  gap: 6px;
+}
+
+.suggestion-row img {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+.suggestion-row input {
+  min-width: 0;
+}
+
+.card .row .spacer {
+  flex: 1;
+}
+
 .card .row button {
   padding: 5px 12px;
   border: 1px solid var(--line);

@@ -893,6 +893,20 @@ function dispatch(action: Action) {
     case 'setPanes':
       setPanes(action.names);
       return;
+    case 'setSuggestions':
+      if (action.suggestions === null) delete state.suggestions;
+      else
+        state.suggestions = action.suggestions
+          .filter((t) => typeof t?.url === 'string' && t.url.trim())
+          .slice(0, 48)
+          .map((t) => ({
+            label: String(t.label ?? '').trim().slice(0, 24),
+            name: String(t.name ?? '').trim().slice(0, 40),
+            // A bare host gets https://; gleeok:// (the terminal) and other schemes stay as given.
+            url: /^[a-z][a-z0-9+.-]*:/i.test(t.url.trim()) ? t.url.trim() : `https://${t.url.trim()}`,
+          }));
+      changed();
+      return;
     case 'setPaneWeights': {
       const ws = state.windows.find((w) => w.id === action.winId);
       if (!ws) return;

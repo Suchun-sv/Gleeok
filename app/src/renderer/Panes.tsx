@@ -3,7 +3,7 @@ import type { Command, PaneRects, Snapshot } from '../../../shared/src/ipc.ts';
 import { TerminalView } from './Terminal.tsx';
 import {
   NEW_TAB_URL,
-  TERMINAL_URL,
+  DEFAULT_SUGGESTIONS,
   isTerminalUrl,
   paneName,
   sameUrl,
@@ -14,6 +14,7 @@ import {
   type Pane,
   type Project,
   type ProjectSession,
+  type Suggestion,
   type Tab,
 } from '../../../shared/src/model.ts';
 
@@ -130,6 +131,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
         <PaneView
           platform={snap.platform}
           name={paneName(names, slot)}
+          suggestions={snap.state.suggestions ?? DEFAULT_SUGGESTIONS}
           leading={i === 0 ? leading : null}
           trailing={i === slots.length - 1 ? trailing : null}
           key={slot}
@@ -167,6 +169,7 @@ const MIN_PANE_WIDTH = 220;
 interface PaneProps {
   platform: string;
   name: string;
+  suggestions: Suggestion[];
   slot: number;
   pane: Pane;
   project: Project;
@@ -187,7 +190,7 @@ interface PaneProps {
 }
 
 function PaneView(props: PaneProps) {
-  const { platform, name, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep } = props;
+  const { platform, name, suggestions, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep } = props;
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
   const isTerm = isTerminalUrl(tab.url);
@@ -371,7 +374,7 @@ function PaneView(props: PaneProps) {
         </div>
       )}
       <div className="content" ref={boxRef}>
-        {isNew && <NewTab slot={slot} project={project} inputRef={search} />}
+        {isNew && <NewTab slot={slot} project={project} suggestions={suggestions} inputRef={search} />}
         {isTerm && <TerminalView key={tab.id} tab={tab} focusSeq={termFocus} platform={platform} />}
         {asleep && !isNew && !isTerm && !dragging && (
           <div className="asleep">
@@ -515,27 +518,15 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
   );
 }
 
-/** Tools offered on every new-tab page, after the project's own links. */
-const SUGGESTIONS = [
-  { label: '终端', name: '本机', url: TERMINAL_URL },
-  { label: 'AI 对话', name: 'ChatGPT', url: 'https://chatgpt.com/' },
-  { label: 'AI 对话', name: 'Claude', url: 'https://claude.ai/' },
-  { label: '读论文', name: 'alphaXiv', url: 'https://www.alphaxiv.org/' },
-  { label: '做 PPT', name: 'OneDrive', url: 'https://www.office.com/launch/onedrive' },
-  { label: '草稿', name: 'Notion', url: 'https://www.notion.so/' },
-  { label: '画布', name: 'Miro', url: 'https://miro.com/app/dashboard/' },
-  { label: '代码', name: 'code-server', url: 'https://coder.com/docs/code-server' },
-  { label: '邮件', name: 'Outlook', url: 'https://outlook.com/' },
-  { label: '娱乐', name: 'RedNote', url: 'https://www.rednote.com/' },
-];
-
 function NewTab({
   slot,
   project,
+  suggestions,
   inputRef,
 }: {
   slot: number;
   project: Project;
+  suggestions: Suggestion[];
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const [q, setQ] = useState('');
@@ -565,8 +556,8 @@ function NewTab({
       </div>
       <h3>常用</h3>
       <div className="links">
-        {SUGGESTIONS.map((t) => (
-          <button key={t.url} onClick={() => gleeok.dispatch({ type: 'navigate', slot, url: t.url })} title={t.url}>
+        {suggestions.map((t, i) => (
+          <button key={i} onClick={() => gleeok.dispatch({ type: 'navigate', slot, url: t.url })} title={t.url}>
             <img src={faviconFor(t.url)} alt="" />
             <span>{t.label}</span>
             <span className="sub">{t.name}</span>

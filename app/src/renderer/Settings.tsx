@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
-import { DEFAULT_PANE_NAMES, MAX_PANES, paneName } from '../../../shared/src/model.ts';
+import { DEFAULT_PANE_NAMES, DEFAULT_SUGGESTIONS, MAX_PANES, paneName, type Suggestion } from '../../../shared/src/model.ts';
+import { faviconFor } from './Panes.tsx';
 import { PaseoSettings } from './PaseoSettings.tsx';
 
 const TABS = [
   { id: 'panes', label: '栏' },
+  { id: 'suggestions', label: '常用' },
   { id: 'paseo', label: 'Paseo' },
   { id: 'sync', label: '同步' },
   { id: 'vault', label: '密码库' },
@@ -42,6 +44,7 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
           ×
         </button>
         {tab === 'panes' && <PaneSettings snap={snap} />}
+        {tab === 'suggestions' && <SuggestionSettings snap={snap} />}
         {tab === 'paseo' && <PaseoSettings snap={snap} />}
         {tab === 'sync' && <SyncSettings snap={snap} />}
         {tab === 'vault' && <VaultSettings snap={snap} />}
@@ -94,6 +97,62 @@ function PaneSettings({ snap }: { snap: Snapshot }) {
     </section>
   );
 }
+
+/** The 常用 tiles under every new-tab page: edited here, saved on leaving a field. */
+function SuggestionSettings({ snap }: { snap: Snapshot }) {
+  const saved = snap.state.suggestions ?? DEFAULT_SUGGESTIONS;
+  const [draft, setDraft] = useState(saved);
+  const savedJson = JSON.stringify(saved);
+  useEffect(() => setDraft(saved), [savedJson]);
+  const save = (list: Suggestion[]) => {
+    setDraft(list);
+    // A bare host gets https://; gleeok:// (the terminal) and other schemes stay as typed.
+    const clean = list
+      .map((t) => ({ ...t, url: t.url.trim() && !/^[a-z][a-z0-9+.-]*:/i.test(t.url.trim()) ? `https://${t.url.trim()}` : t.url.trim() }))
+      .filter((t) => t.url);
+    if (JSON.stringify(clean) !== savedJson) gleeok.dispatch({ type: 'setSuggestions', suggestions: clean });
+  };
+  const set = (i: number, patch: Partial<Suggestion>) => setDraft(draft.map((t, j) => (j === i ? { ...t, ...patch } : t)));
+  const move = (i: number, d: number) => {
+    const next = [...draft];
+    [next[i], next[i + d]] = [next[i + d], next[i]];
+    save(next);
+  };
+  return (
+    <section className="card">
+      <h3>常用</h3>
+      <p className="hint">每个新标签页里项目链接下面的那一组。按回车或离开输入框就保存，只存在这台电脑上。</p>
+      <div className="suggestion-list">
+        {draft.map((t, i) => (
+          <div className="suggestion-row" key={i}>
+            <img src={t.url ? faviconFor(t.url) : ''} alt="" />
+            <input value={t.label} placeholder="用途，如 读论文" maxLength={24} onChange={(e) => set(i, { label: e.target.value })} onBlur={() => save(draft)} onKeyDown={blurOnEnter} />
+            <input value={t.name} placeholder="名称，如 alphaXiv" maxLength={40} onChange={(e) => set(i, { name: e.target.value })} onBlur={() => save(draft)} onKeyDown={blurOnEnter} />
+            <input className="url" value={t.url} placeholder="网址" onChange={(e) => set(i, { url: e.target.value })} onBlur={() => save(draft)} onKeyDown={blurOnEnter} />
+            <button className="icon-btn" disabled={i === 0} onClick={() => move(i, -1)} title="上移">
+              ↑
+            </button>
+            <button className="icon-btn" disabled={i === draft.length - 1} onClick={() => move(i, 1)} title="下移">
+              ↓
+            </button>
+            <button className="icon-btn" onClick={() => save(draft.filter((_, j) => j !== i))} title="删除">
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="row">
+        <button onClick={() => setDraft([...draft, { label: '', name: '', url: '' }])}>+ 添加</button>
+        <span className="spacer" />
+        <button onClick={() => gleeok.dispatch({ type: 'setSuggestions', suggestions: null })} disabled={!snap.state.suggestions}>
+          恢复默认
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const blurOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && e.currentTarget.blur();
 
 function SyncSettings({ snap }: { snap: Snapshot }) {
   const { server } = snap;

@@ -164,6 +164,28 @@ export function terminalTitle(url: string): string {
 /** Every project keeps this many panes; GlobalState.paneNames says how many are in use. */
 export const MAX_PANES = 6;
 export const DEFAULT_PANE_NAMES = ['AI区', '草稿区', '产出区'];
+
+/** A tile in the new-tab page's 常用 row: what it is for, the site's name, where it goes. */
+export interface Suggestion {
+  label: string;
+  name: string;
+  url: string;
+}
+
+export const DEFAULT_SUGGESTIONS: Suggestion[] = [
+  { label: '终端', name: '本机', url: TERMINAL_URL },
+  { label: 'AI 对话', name: 'ChatGPT', url: 'https://chatgpt.com/' },
+  { label: 'AI 对话', name: 'Claude', url: 'https://claude.ai/' },
+  { label: '读论文', name: 'alphaXiv', url: 'https://www.alphaxiv.org/' },
+  { label: '做 PPT', name: 'OneDrive', url: 'https://www.office.com/launch/onedrive' },
+  { label: '草稿', name: 'Notion', url: 'https://www.notion.so/' },
+  { label: '画布', name: 'Miro', url: 'https://miro.com/app/dashboard/' },
+  { label: '代码', name: 'code-server', url: 'https://coder.com/docs/code-server' },
+  { label: '邮件', name: 'Outlook', url: 'https://outlook.com/' },
+  { label: '音乐', name: 'Apple Music', url: 'https://music.apple.com/' },
+  { label: '看书', name: '微信读书', url: 'https://weread.qq.com/' },
+  { label: '娱乐', name: 'RedNote', url: 'https://www.rednote.com/' },
+];
 /** What a pane is for, shown on its tab strip and wherever a pane is named; set in Settings. */
 export const paneName = (names: string[], slot: number) => names[slot]?.trim() || `第${slot + 1}栏`;
 
@@ -239,6 +261,8 @@ export interface GlobalState {
   sessions: Record<string, ProjectSession>;
   /** One name per pane in use (1..MAX_PANES). */
   paneNames: string[];
+  /** The new-tab page's 常用 tiles once edited in Settings; unset follows DEFAULT_SUGGESTIONS. */
+  suggestions?: Suggestion[];
 }
 
 export function visibleSlots(win: AppWindowState): number[] {

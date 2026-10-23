@@ -9,6 +9,7 @@ daemon, with a pane that always opens the project's most recently used Paseo wor
 
 - Per-project panes and tabs: up to six named panes (Settings → 栏), dividers dragged to resize, focus-expand, tabs dragged between panes
 - Projects keep running in the background; idle ones hibernate overnight; start/sleep/archive by hand
+- A 常用 row of everyday sites on every new-tab page, edited in Settings → 常用
 - Project links (new-tab page, and the project-settings drawer, top right, where they are edited and saved as you type); a pasted URL or ☆ saves the current page as a link
 - Command palette for projects, links, open tabs and commands
 - Multiple windows/monitors: move a pane into its own window; every window follows the project

@@ -1,4 +1,4 @@
-import type { GlobalState, Link, PaseoDaemon, Project, Rect, View } from './model.ts';
+import type { GlobalState, Link, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
 
 export interface VaultLoginSummary {
   id: string;
@@ -75,6 +75,8 @@ export type Action =
   | { type: 'setVisiblePanes'; count: number }
   /** How many panes projects have, and their names. */
   | { type: 'setPanes'; names: string[] }
+  /** The new-tab page's 常用 tiles; null goes back to the built-in list. */
+  | { type: 'setSuggestions'; suggestions: Suggestion[] | null }
   /** Relative widths after dragging a divider (slot → weight); `cover` hides the pages while dragging. */
   | { type: 'setPaneWeights'; winId: string; weights: Record<number, number> }
   | { type: 'coverPages'; winId: string; active: boolean }
