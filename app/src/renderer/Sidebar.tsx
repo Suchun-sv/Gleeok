@@ -122,7 +122,13 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
             onBlur={() => setAdding(false)}
           />
         ) : (
-          <button className="project add" onClick={() => setAdding(true)} disabled={server.status !== 'ok'}>
+          <button
+            className="project add"
+            onClick={() => setAdding(true)}
+            // Local mode stores projects on this machine; only an unreachable sync server blocks creating.
+            disabled={server.status !== 'ok' && server.status !== 'local'}
+            title={server.status === 'ok' || server.status === 'local' ? undefined : '连不上同步服务器，暂时不能新建项目（点顶部的圆点重试）'}
+          >
             + 新项目
           </button>
         )}
