@@ -1,7 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Command, PaneRects, Snapshot } from '../../../shared/src/ipc.ts';
+import { TerminalView } from './Terminal.tsx';
 import {
   NEW_TAB_URL,
+  TERMINAL_URL,
+  isTerminalUrl,
   paneName,
   sameUrl,
   shortTitle,
@@ -73,6 +76,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
     <div className="panes">
       {slots.map((slot, i) => (
         <PaneView
+          platform={snap.platform}
           leading={i === 0 ? leading : null}
           trailing={i === slots.length - 1 ? trailing : null}
           key={slot}
@@ -105,6 +109,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
 }
 
 interface PaneProps {
+  platform: string;
   slot: number;
   pane: Pane;
   project: Project;
@@ -125,9 +130,12 @@ interface PaneProps {
 }
 
 function PaneView(props: PaneProps) {
-  const { slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, covered, dragImage, asleep } = props;
+  const { platform, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep } = props;
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
+  const isTerm = isTerminalUrl(tab.url);
+  // Bumped whenever main focuses this pane while it shows a terminal.
+  const [termFocus, setTermFocus] = useState(0);
   const address = useRef<HTMLInputElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState(isNew ? '' : tab.url);
@@ -142,7 +150,10 @@ function PaneView(props: PaneProps) {
   useEffect(() => setDraft(isNew ? '' : tab.url), [tab.id, tab.url]);
   useEffect(() => {
     if (command?.type === 'focusAddress') address.current?.select();
-    if (command?.type === 'focusNewTab') search.current?.focus();
+    if (command?.type === 'focusNewTab') {
+      if (isTerm) setTermFocus(command.seq);
+      else search.current?.focus();
+    }
     if (command?.type === 'openFind') {
       setFind((f) => f ?? { text: '', result: '' });
       requestAnimationFrame(() => findInput.current?.select());
@@ -208,13 +219,13 @@ function PaneView(props: PaneProps) {
         {trailing && <div className="tabs-trailing">{trailing}</div>}
       </div>
       <div className="toolbar">
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew}>
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew || isTerm}>
           ‹
         </button>
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'forward' })} disabled={isNew}>
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'forward' })} disabled={isNew || isTerm}>
           ›
         </button>
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'reload' })} disabled={isNew}>
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'reload' })} disabled={isNew || isTerm}>
           ⟳
         </button>
         <input
@@ -304,7 +315,8 @@ function PaneView(props: PaneProps) {
       )}
       <div className="content" ref={boxRef}>
         {isNew && <NewTab slot={slot} project={project} inputRef={search} />}
-        {asleep && !isNew && !dragging && (
+        {isTerm && <TerminalView key={tab.id} tab={tab} focusSeq={termFocus} platform={platform} />}
+        {asleep && !isNew && !isTerm && !dragging && (
           <div className="asleep">
             {tab.favicon ? <img src={tab.favicon} alt="" onError={(e) => (e.currentTarget.style.display = 'none')} /> : null}
             <p className="title">{tab.title || tab.url}</p>
@@ -315,7 +327,7 @@ function PaneView(props: PaneProps) {
           </div>
         )}
         {/* Painted beneath the page just before main hides it (see App), so covering never flashes. */}
-        {!isNew && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
+        {!isNew && !isTerm && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
         {dragging && (
           <div className="drop-zone">
             <span>移到{paneName(slot)}</span>
@@ -431,7 +443,7 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
       onAuxClick={(e) => e.button === 1 && gleeok.dispatch({ type: 'closeTab', slot, tabId: tab.id })}
       title={`${tab.title}\n${tab.url}`}
     >
-      {tab.favicon ? <img src={tab.favicon} alt="" /> : <span className="fav" />}
+      {tab.favicon ? <img src={tab.favicon} alt="" /> : isTerminalUrl(tab.url) ? <img src={faviconFor(tab.url)} alt="" /> : <span className="fav" />}
       <span className="title">{tab.title || tab.url}</span>
       <button
         className="close"
@@ -448,6 +460,7 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
 
 /** Tools offered on every new-tab page, after the project's own links. */
 const SUGGESTIONS = [
+  { label: '终端', name: '本机', url: TERMINAL_URL },
   { label: '读论文', name: 'alphaXiv', url: 'https://www.alphaxiv.org/' },
   { label: '做 PPT', name: 'OneDrive', url: 'https://www.office.com/launch/onedrive' },
   { label: '草稿', name: 'Notion', url: 'https://www.notion.so/' },
@@ -505,7 +518,13 @@ function NewTab({
   );
 }
 
+/** lucide "square-terminal", for terminal tabs and links. */
+const TERMINAL_ICON = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8a909c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>',
+)}`;
+
 export function faviconFor(url: string) {
+  if (isTerminalUrl(url)) return TERMINAL_ICON;
   try {
     return `https://www.google.com/s2/favicons?sz=32&domain=${new URL(url).hostname}`;
   } catch {

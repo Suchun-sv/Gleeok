@@ -274,9 +274,10 @@ export function parseProjectInput(body: unknown): ProjectInput | string {
         return 'each link needs id, label, url';
       const link: Link = { id: l.id, label: l.label, url: l.url };
       if (typeof l.pinnedPane === 'number') link.pinnedPane = l.pinnedPane;
-      if (l.kind === 'paseo' || l.kind === 'paseo-terminal' || l.kind === 'paseo-code' || l.kind === 'code') link.kind = l.kind;
+      if (l.kind === 'paseo' || l.kind === 'paseo-terminal' || l.kind === 'paseo-code' || l.kind === 'code' || l.kind === 'terminal')
+        link.kind = l.kind;
       // One primary code link per project: the first one marked wins.
-      if (l.primary === true && link.kind && link.kind !== 'paseo' && link.kind !== 'paseo-terminal' && !links.some((x) => x.primary))
+      if (l.primary === true && (link.kind === 'code' || link.kind === 'paseo-code') && !links.some((x) => x.primary))
         link.primary = true;
       if (typeof l.icon === 'string' && l.icon.length <= 2048) link.icon = l.icon;
       links.push(link);

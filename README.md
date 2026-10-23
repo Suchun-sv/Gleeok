@@ -50,6 +50,22 @@ It pulls, runs `npm install` and `npm run build`, and restarts. By hand: `git pu
 
 Running from the checkout avoids code-signing prompts: npm's Electron binary is already signed.
 
+## Terminal tabs
+
+A tab can hold a real shell (xterm.js + node-pty, like VS Code's terminal): "终端 · 本机" on the
+new-tab page opens one on this machine. In a project's settings drawer, "+ 终端" adds terminals
+to keep with the project — on this machine or, by giving a host, over `ssh` (an ssh host name or
+`~/.ssh/config` alias; the machine needs key access), each starting in its own directory; for a
+Paseo project the first one defaults to the project's machine and latest workspace directory.
+Saved terminals show on the new-tab page and can open in a pane when the project is first
+opened. A terminal keeps running while its project hibernates and ends when its tab is closed or
+Gleeok quits; after the shell exits, Enter starts it again.
+
+Inside a terminal on Linux/Windows, Ctrl+<key> goes to the shell (Ctrl+C/D/L/R/W...), not to
+Gleeok; Prefix shortcuts and Ctrl+Tab still work. Copy/paste: Cmd+C/V on macOS, Ctrl+Shift+C/V
+on Linux, Ctrl+C (with a selection)/Ctrl+V on Windows. node-pty ships prebuilt binaries for macOS
+and Windows; on Linux `npm install` compiles it (needs gcc, make and python).
+
 ## Paseo
 
 Paste a daemon's pairing link (Paseo → Settings → your host → Pair a device, or

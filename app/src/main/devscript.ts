@@ -15,7 +15,9 @@ type Step =
   | { fillFocused: { username: string; password: string } }
   | { readFocused: true }
   | { pageText: { click?: string } }
-  | { pressKey: string };
+  | { pressKey: string }
+  /** A real key press in the main window's shell (goes through before-input-event), e.g. into a terminal. */
+  | { shellKey: { key: string; modifiers?: ('control' | 'shift' | 'alt' | 'meta')[] } };
 
 export interface DevHooks {
   fillFocused(username: string, password: string): Promise<boolean>;
@@ -73,6 +75,13 @@ export async function runDevScript(
     }
     if ('readFocused' in step) console.log('[devscript] read ->', JSON.stringify(await hooks.readFocused()));
     if ('pressKey' in step) await hooks.pressKey(step.pressKey);
+    if ('shellKey' in step) {
+      const wc = getWindows().find(([id]) => id === 'main')?.[1].webContents;
+      const { key, modifiers = [] } = step.shellKey;
+      wc?.sendInputEvent({ type: 'keyDown', keyCode: key, modifiers });
+      if (modifiers.length === 0 || (modifiers.length === 1 && modifiers[0] === 'shift')) wc?.sendInputEvent({ type: 'char', keyCode: key === 'Enter' ? '\r' : key, modifiers });
+      wc?.sendInputEvent({ type: 'keyUp', keyCode: key, modifiers });
+    }
     if ('pageText' in step) console.log('[devscript] page ->', JSON.stringify(await hooks.pageText(step.pageText.click)));
     if ('wait' in step) await new Promise((r) => setTimeout(r, step.wait));
     if ('capture' in step) {

@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
-import { PANE_COUNT, isCodeLink, isManagedLink, paneName, primaryCodeLink, type Link, type Project } from '../../../shared/src/model.ts';
+import {
+  PANE_COUNT,
+  isCodeLink,
+  isManagedLink,
+  paneName,
+  parseTerminalUrl,
+  primaryCodeLink,
+  terminalUrl,
+  type Link,
+  type Project,
+  type TerminalTarget,
+} from '../../../shared/src/model.ts';
 import { faviconFor } from './Panes.tsx';
 
 const newId = () => `l_${crypto.randomUUID().slice(0, 8)}`;
@@ -108,11 +119,69 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
   };
 
   const code = draft.links.filter(isCodeLink);
+  const terms = draft.links.filter((l) => l.kind === 'terminal');
   const own = draft.links.filter((l) => !l.kind);
   const auto = draft.links.filter((l) => isManagedLink(l) && !isCodeLink(l));
   const primary = primaryCodeLink(draft);
   const daemon = snap.paseo.find((d) => d.serverId === project.paseo?.daemonId);
   const live = snap.live.includes(project.id);
+
+  // A new terminal starts where the project's code is: over ssh on its Paseo machine (or here,
+  // if that is this machine), in the latest workspace's directory.
+  function addTerminal() {
+    const host = daemon && daemon.hostname.split('.')[0].toLowerCase() !== snap.hostname.split('.')[0].toLowerCase() ? daemon.hostname : '';
+    const source = daemon?.projects.find((p) => p.projectId === project.paseo?.projectId);
+    const cwd = project.paseo ? source?.latest?.dir || project.paseo.cwd : '';
+    const label = `终端 · ${host || '本机'}`;
+    add({ id: newId(), label, url: terminalUrl({ host, cwd, name: label }), kind: 'terminal' });
+  }
+  const setTerminal = (l: Link, patch: TerminalTarget & { label?: string }) => {
+    const t = { ...parseTerminalUrl(l.url), name: l.label, ...patch };
+    if (patch.label !== undefined) t.name = patch.label;
+    setLink(l.id, { label: patch.label ?? l.label, url: terminalUrl(t) });
+  };
+  const hosts = [...new Set(snap.paseo.map((d) => d.hostname))];
+
+  const termRow = (l: Link) => {
+    const t = parseTerminalUrl(l.url);
+    return (
+      <div key={l.id} className="link-row">
+        <button className="favicon" onClick={() => open(l.url)} title="打开终端">
+          <img src={faviconFor(l.url)} alt="" />
+        </button>
+        <div className="link-text">
+          <input className="link-label" value={l.label} placeholder="名称" onChange={(e) => setTerminal(l, { label: e.target.value })} />
+          <div className="term-target">
+            <input
+              list="gleeok-hosts"
+              value={t.host ?? ''}
+              placeholder="本机"
+              title="ssh 的目标（主机名或 ~/.ssh/config 里的别名）；留空就是这台电脑"
+              onChange={(e) => setTerminal(l, { host: e.target.value })}
+            />
+            <input value={t.cwd ?? ''} placeholder="~（目录）" title="打开时所在的目录" onChange={(e) => setTerminal(l, { cwd: e.target.value })} />
+          </div>
+        </div>
+        <span className="star" />
+        <select
+          className="chip"
+          value={l.pinnedPane ?? ''}
+          onChange={(e) => setLink(l.id, { pinnedPane: e.target.value === '' ? undefined : Number(e.target.value) })}
+          title="在一台电脑上第一次打开这个项目时，自动在哪一栏打开"
+        >
+          <option value="">不自动打开</option>
+          {Array.from({ length: PANE_COUNT }, (_, p) => (
+            <option key={p} value={p}>
+              {paneName(p)}
+            </option>
+          ))}
+        </select>
+        <button className="remove icon-btn" onClick={() => remove(l)} title="删除">
+          ×
+        </button>
+      </div>
+    );
+  };
 
   const row = (l: Link) => {
     const managed = isManagedLink(l);
@@ -186,6 +255,17 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
             {code.map(row)}
           </section>
         )}
+        {terms.length > 0 && (
+          <section>
+            <h4>终端</h4>
+            {terms.map(termRow)}
+            <datalist id="gleeok-hosts">
+              {hosts.map((h) => (
+                <option key={h} value={h} />
+              ))}
+            </datalist>
+          </section>
+        )}
         <section>
           <h4>链接</h4>
           {own.length === 0 && <p className="hint">还没有链接。粘贴网址添加，或者在网页上按 ☆ 存进来。</p>}
@@ -194,6 +274,9 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
             <button onClick={() => add({ id: newId(), label: '', url: '' })}>+ 链接</button>
             <button onClick={() => add({ id: newId(), label: '代码', url: '', kind: 'code' })} title="code-server、vscode.dev 等网页编辑器">
               + 代码链接
+            </button>
+            <button onClick={addTerminal} title="本机或其他机器（ssh）上的终端，在新标签页里打开">
+              + 终端
             </button>
           </div>
         </section>

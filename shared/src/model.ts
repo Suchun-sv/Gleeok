@@ -10,9 +10,9 @@ export interface Link {
    * Managed by the server from the Paseo sync: 'paseo' points at the project's most recently used
    * workspace, 'paseo-terminal' at a terminal in that workspace (and disappears when it is closed),
    * 'paseo-code' at the project's folder in the daemon's code-server (when one is set for it).
-   * 'code' is a code-editor link the user added by hand.
+   * 'code' is a code-editor link the user added by hand; 'terminal' a shell (see terminalUrl).
    */
-  kind?: 'paseo' | 'paseo-terminal' | 'paseo-code' | 'code';
+  kind?: 'paseo' | 'paseo-terminal' | 'paseo-code' | 'code' | 'terminal';
   /** Code links only: the one the 代码 button opens. At most one per project. */
   primary?: boolean;
   /** Favicon captured from the page itself when the link was saved. */
@@ -129,6 +129,38 @@ export type ProjectInput = Pick<Project, 'name'> &
 // State is local to one machine: screens, windows and open tabs differ per device.
 
 export const NEW_TAB_URL = 'gleeok://newtab';
+
+/**
+ * A terminal tab: a shell on this machine, or over ssh on `host`, starting in `cwd`. The URL
+ * carries the whole target, so a terminal tab survives restarts and moves between devices.
+ */
+export const TERMINAL_URL = 'gleeok://terminal';
+export interface TerminalTarget {
+  host?: string;
+  cwd?: string;
+  name?: string;
+}
+export const isTerminalUrl = (url: string) => url === TERMINAL_URL || url.startsWith(`${TERMINAL_URL}?`);
+/** Pages Gleeok draws itself instead of loading in a web view. */
+export const isInternalUrl = (url: string) => url === NEW_TAB_URL || isTerminalUrl(url);
+export function terminalUrl(t: TerminalTarget): string {
+  const q = new URLSearchParams();
+  if (t.host?.trim()) q.set('host', t.host.trim());
+  if (t.cwd?.trim()) q.set('cwd', t.cwd.trim());
+  if (t.name?.trim()) q.set('name', t.name.trim());
+  const s = q.toString();
+  return s ? `${TERMINAL_URL}?${s}` : TERMINAL_URL;
+}
+export function parseTerminalUrl(url: string): TerminalTarget {
+  const q = new URLSearchParams(url.slice(TERMINAL_URL.length).replace(/^\?/, ''));
+  return { host: q.get('host') ?? undefined, cwd: q.get('cwd') ?? undefined, name: q.get('name') ?? undefined };
+}
+export function terminalTitle(url: string): string {
+  const t = parseTerminalUrl(url);
+  if (t.name) return t.name;
+  const dir = t.cwd?.replace(/\/+$/, '').split('/').pop() || '~';
+  return t.host ? `${t.host}:${dir}` : `终端 ${dir}`;
+}
 export const PANE_COUNT = 3;
 /** What each pane is for, shown on its tab strip and wherever a pane is named. */
 export const PANE_NAMES = ['AI区', '草稿区', '产出区'];

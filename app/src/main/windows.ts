@@ -4,7 +4,7 @@ import { type AppWindowState, paneName } from '../../../shared/src/model.ts';
 import { niriEnabled, niriMoveToOutput, niriOutputNames, niriOutputOf } from './niri.ts';
 
 export interface ShellHooks {
-  onInput(input: Input): boolean;
+  onInput(input: Input, from?: Electron.WebContents): boolean;
   /** The user closed a window (not the app quitting, not a programmatic close). */
   onUserClosed(id: string): void;
   onPlacementChanged(): void;
@@ -57,7 +57,7 @@ export class Shells {
     this.#wins.set(ws.id, win);
     win.on('page-title-updated', (e) => e.preventDefault());
     win.webContents.on('before-input-event', (e, input) => {
-      if (this.#hooks.onInput(input)) e.preventDefault();
+      if (this.#hooks.onInput(input, win.webContents)) e.preventDefault();
     });
     win.on('focus', () => this.#hooks.onFocus(ws.id));
 

@@ -51,6 +51,8 @@ export interface Snapshot {
   paletteWindows: string[];
   state: GlobalState;
   platform: string;
+  /** This machine's hostname: a terminal on a project's own machine needs no ssh. */
+  hostname: string;
   server: { status: ServerStatus; url?: string; error?: string };
 }
 
@@ -129,6 +131,13 @@ export interface GleeokApi {
   onDragImages(cb: (images: Record<number, string>) => void): () => void;
   /** The screenshots are painted (under the pages), so main can take the pages away without a blank frame. */
   pageImagesShown(winId: string): void;
+  termAttach(tabId: string, url: string, cols: number, rows: number): Promise<{ buffer: string; end: number; error?: string }>;
+  termInput(tabId: string, data: string): void;
+  termResize(tabId: string, cols: number, rows: number): void;
+  termFocus(focused: boolean): void;
+  onTermEvent(cb: (e: { tabId: string; data?: string; end?: number; exit?: number }) => void): () => void;
+  clipboardRead(): Promise<string>;
+  clipboardWrite(text: string): void;
   /** Main asks this window to show the command palette. */
   onPalette(cb: () => void): () => void;
   onVaultDialog(cb: (d: VaultDialog) => void): () => void;

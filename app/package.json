@@ -53,12 +53,16 @@
   "allowScripts": {
     "esbuild": true,
     "electron-winstaller": false,
-    "core-js": false
+    "core-js": false,
+    "node-pty": true
   },
   "dependencies": {
     "@bitwarden/cli": "^2026.10.0",
     "@getpaseo/client": "^0.12.0",
-    "hono": "^4.13.13"
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "hono": "^4.13.13",
+    "node-pty": "^1.1.0"
   },
   "license": "Apache-2.0"
 }

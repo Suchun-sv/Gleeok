@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { BrowserWindow, Menu, app, clipboard, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
 import type { Action, Command, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
@@ -7,7 +8,10 @@ import {
   NEW_TAB_URL,
   PANE_COUNT,
   codeLinks,
+  isInternalUrl,
+  isTerminalUrl,
   primaryCodeLink,
+  terminalTitle,
   sameUrl,
   shortTitle,
   type DeviceSession,
@@ -27,6 +31,7 @@ import { Downloads } from './downloads.ts';
 import { setupPermissions } from './permissions.ts';
 import { matchShortcut } from './shortcuts.ts';
 import { activeTab, createSession, loadState, looksLikeUrl, newTab, normalizeUrl, saveState } from './state.ts';
+import { Terminals } from './terminal.ts';
 import { PARTITION, TabViews } from './views.ts';
 import { Shells } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate } from './updater.ts';
@@ -512,6 +517,7 @@ function snapshot(): Snapshot {
     paletteWindows: [...paletteWindows],
     state,
     platform: process.platform,
+    hostname: hostname(),
     server: { status: config.status, url: config.serverUrl, error: config.error },
   };
 }
@@ -529,12 +535,22 @@ function syncViews() {
       for (const slot of visibleSlots(ws)) {
         const tab = activeTab(session!.panes[slot]);
         const rect = rects[slot];
-        if (rect && tab.url !== NEW_TAB_URL) desired.set(tab.id, { url: tab.url, bounds: rect });
+        if (rect && !isInternalUrl(tab.url)) desired.set(tab.id, { url: tab.url, bounds: rect });
       }
     }
     views.sync(bw, desired);
   }
+  // A terminal lives as long as some tab shows it, hibernated or not.
+  const termTabs = new Set<string>();
+  for (const s of Object.values(state.sessions)) for (const p of s.panes) for (const t of p.tabs) if (isTerminalUrl(t.url)) termTabs.add(t.id);
+  terminals.retain(termTabs);
 }
+
+const terminals = new Terminals((e) => {
+  for (const ws of state.windows) shells.get(ws.id)?.webContents.send('term-event', e);
+});
+/** Shell windows whose focus is in a terminal: Ctrl+<key> belongs to the shell there, not to Gleeok. */
+const terminalFocus = new Set<number>();
 
 /** Commands go to the window that shows the slot they are about. */
 function send(command: Command) {
@@ -1002,7 +1018,7 @@ function dispatch(action: Action) {
     case 'openSaveLink': {
       const s = currentSession();
       const slot = slotOf(action.slot);
-      if (!s || activeTab(s.panes[slot]).url === NEW_TAB_URL) return;
+      if (!s || isInternalUrl(activeTab(s.panes[slot]).url)) return;
       shellOfSlot(slot)?.webContents.focus();
       send({ type: 'openSaveLink', slot });
       return;
@@ -1135,6 +1151,17 @@ function dispatch(action: Action) {
       const slot = slotOf(action.slot);
       const url = normalizeUrl(action.url);
       const tab = activeTab(session.panes[slot]);
+      // A terminal takes a blank tab, or opens beside the current page.
+      if (isTerminalUrl(url)) {
+        state.view = 'panes';
+        if (tab.url !== NEW_TAB_URL) return openTab(session, slot, url);
+        tab.url = url;
+        tab.title = terminalTitle(url);
+        tabsChanged(session);
+        changed();
+        focusSlot(slot);
+        return;
+      }
       // From the entry/import pages, links open as new tabs; elsewhere they replace a blank tab.
       if (action.type === 'openLink' && (state.view !== 'panes' || action.newTab)) {
         state.view = 'panes';
@@ -1196,7 +1223,7 @@ function dispatch(action: Action) {
     }
     case 'openFind': {
       const slot = slotOf(action.slot);
-      if (activeTab(session.panes[slot]).url === NEW_TAB_URL) return;
+      if (isInternalUrl(activeTab(session.panes[slot]).url)) return;
       shellOfSlot(slot)?.webContents.focus();
       send({ type: 'openFind', slot });
       return;
@@ -1212,7 +1239,10 @@ function dispatch(action: Action) {
   }
 }
 
-function handleInput(input: Input): boolean {
+function handleInput(input: Input, from?: Electron.WebContents): boolean {
+  // In a terminal on Linux/Windows, Ctrl+C/D/L/R/W/... are the shell's keys (macOS uses Cmd for ours).
+  if (from && terminalFocus.has(from.id) && process.platform !== 'darwin' && input.control && !input.alt && !input.meta && !input.shift && input.code !== 'Tab')
+    return false;
   const action = matchShortcut(input, process.platform);
   if (!action) return false;
   dispatch(action);
@@ -1260,6 +1290,12 @@ ipcMain.handle('vault:save', async (_e, login: { name: string; url: string; user
   }
 });
 ipcMain.on('action', (_e, action: Action) => dispatch(action));
+ipcMain.handle('term:attach', (_e, tabId: string, url: string, cols: number, rows: number) => terminals.attach(tabId, url, cols, rows));
+ipcMain.on('term:input', (_e, tabId: string, data: string) => terminals.input(tabId, data));
+ipcMain.on('term:resize', (_e, tabId: string, cols: number, rows: number) => terminals.resize(tabId, cols, rows));
+ipcMain.on('term:focus', (e, focused: boolean) => (focused ? terminalFocus.add(e.sender.id) : terminalFocus.delete(e.sender.id)));
+ipcMain.handle('clipboard:read', () => clipboard.readText());
+ipcMain.on('clipboard:write', (_e, text: string) => clipboard.writeText(text));
 ipcMain.on('pane-rects', (_e, winId: string, rects: PaneRects) => {
   paneRects.set(winId, rects);
   syncViews();
@@ -1413,7 +1449,10 @@ app.on('before-quit', () => {
   saveState(statePath(), state);
 });
 // Windows record their placement as they close, which happens after before-quit.
-app.on('will-quit', () => saveState(statePath(), state));
+app.on('will-quit', () => {
+  saveState(statePath(), state);
+  terminals.killAll();
+});
 app.on('window-all-closed', () => app.quit());
 
 /** Same editor page: same origin and the same folder/workspace (code-server keeps `?folder=` in its URL). */
