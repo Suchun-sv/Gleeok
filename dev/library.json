@@ -46,7 +46,7 @@
   "wait": 500
  },
  {
-  "evalMain": "(()=>{const r=[...document.querySelectorAll('.lib-tr')];r.find(x=>x.querySelector('.attach').textContent.includes('📄'))?.click();return 'in collection: '+r.length+' | pdf item: '+r.find(x=>x.querySelector('.attach').textContent.includes('📄'))?.querySelector('.title').textContent})()"
+  "evalMain": "(()=>{const r=[...document.querySelectorAll('.lib-tr')];r.find(x=>x.querySelector('.attach svg'))?.click();return 'in collection: '+r.length+' | pdf item: '+r.find(x=>x.querySelector('.attach svg'))?.querySelector('.title').textContent})()"
  },
  {
   "wait": 500
