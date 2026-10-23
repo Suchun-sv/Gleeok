@@ -9,7 +9,7 @@ daemon, with a pane that always opens the project's most recently used Paseo wor
 
 - Per-project panes and tabs; 2/3-pane layouts; focus-expand; drag tabs between panes
 - Projects keep running in the background; idle ones hibernate overnight; start/sleep/archive by hand
-- Project links (new-tab page, and the entry drawer where they are edited and saved as you type); a pasted URL or ☆ saves the current page as a link
+- Project links (new-tab page, and the project-settings drawer, top right, where they are edited and saved as you type); a pasted URL or ☆ saves the current page as a link
 - Command palette for projects, links, open tabs and commands
 - Multiple windows/monitors: move a pane into its own window; every window follows the project
 - Optional: a sync server for several machines (projects, links, open tabs handed between devices)
@@ -69,7 +69,7 @@ pastes it once.
 A project can carry one or more code-editor links (code-server, vscode.dev, ...), one of them
 primary. Projects that have one show a `</>` button in the sidebar (and Prefix+C) that opens
 the primary link in 草稿区, or brings forward a tab already showing it; right-click it for the
-others. Add them in the project's entry drawer ("+ 代码链接", ★ marks the primary). Projects imported from Paseo
+others. Add them in the project-settings drawer ("+ 代码链接", ★ marks the primary). Projects imported from Paseo
 get one by themselves when the daemon's machine runs code-server: the server looks for it by
 the machine's tailnet name (tailscale serve on 8443 or 443, or port 8080; in local mode also
 the address in `~/.config/code-server/config.yaml`), checks `/healthz`, and links each project
@@ -129,7 +129,7 @@ Prefix = Ctrl+Alt on Linux/Windows, Cmd+Opt on macOS.
 | Prefix+←/→ or H/L | focus previous/next pane |
 | Prefix+Shift+2 / 3 | two / three panes |
 | Prefix+F | toggle focus-expand |
-| Prefix+E | project entry drawer (links, archive, delete) |
+| Prefix+E | project settings drawer (links, archive, delete) |
 | Prefix+C | open the project's primary code link |
 | Prefix+B | collapse / expand the sidebar |
 | Prefix+D | move the focused pane to its own window / back |

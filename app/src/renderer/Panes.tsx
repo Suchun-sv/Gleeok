@@ -482,7 +482,7 @@ function NewTab({
       />
       <h3>{project.name}</h3>
       <div className="links">
-        {project.links.length === 0 && <p className="hint">这个项目还没有链接，去入口页添加</p>}
+        {project.links.length === 0 && <p className="hint">这个项目还没有链接，在右上角的项目设置里添加</p>}
         {project.links.map((l) => (
           <button key={l.id} onClick={() => gleeok.dispatch({ type: 'navigate', slot, url: l.url })} title={l.url}>
             <img src={l.icon ?? faviconFor(l.url)} alt="" />

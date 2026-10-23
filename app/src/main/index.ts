@@ -913,7 +913,7 @@ function dispatch(action: Action) {
       if (!project) return;
       const link = action.linkId ? project.links.find((l) => l.id === action.linkId) : primaryCodeLink(project);
       if (!link) {
-        send({ type: 'toast', slot: state.focusedPane, text: `「${project.name}」还没有代码链接：可以在入口页添加` });
+        send({ type: 'toast', slot: state.focusedPane, text: `「${project.name}」还没有代码链接：可以在项目设置里添加` });
         return;
       }
       if (state.currentProjectId !== project.id) dispatch({ type: 'selectProject', id: project.id });
@@ -1015,7 +1015,7 @@ function dispatch(action: Action) {
       Menu.buildFromTemplate([
         { label: '打开', click: () => dispatch({ type: 'selectProject', id: action.id }) },
         {
-          label: '入口页',
+          label: '项目设置',
           click: () => {
             dispatch({ type: 'selectProject', id: action.id });
             dispatch({ type: 'toggleEntry' });

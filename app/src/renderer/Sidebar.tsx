@@ -79,7 +79,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
               onClick={() => gleeok.dispatch({ type: 'selectProject', id: p.id })}
               onDoubleClick={() => gleeok.dispatch({ type: 'toggleEntry' })}
               onContextMenu={menu}
-              title={`${p.name}\n${live ? `运行中${mb ? ` · ${mb} MB` : ''}` : '已休眠'}\n双击打开入口页，右键更多操作`}
+              title={`${p.name}\n${live ? `运行中${mb ? ` · ${mb} MB` : ''}` : '已休眠'}\n双击打开项目设置，右键更多操作`}
             >
               <span className="status">{live && <span className="dot-live" />}</span>
               <span className="name">{p.name}</span>
@@ -187,11 +187,6 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
           </button>
         )}
         <div className="footer-row">
-          <IconButton
-            icon="grid"
-            title={state.currentProjectId ? `入口页：项目的链接和设置（${mod}E）` : '入口页（先选中一个项目）'}
-            onClick={() => state.currentProjectId && gleeok.dispatch({ type: 'toggleEntry' })}
-          />
           <IconButton
             icon="settings"
             on={state.view === 'settings'}

@@ -218,7 +218,7 @@ function commands(snap: Snapshot, current?: Project): Item[] {
   if (current) {
     const live = snap.live.includes(current.id);
     out.push(
-      c('entry', `打开「${current.name}」的入口页`, [{ type: 'toggleEntry' }]),
+      c('entry', `打开「${current.name}」的项目设置`, [{ type: 'toggleEntry' }]),
       live
         ? c('sleep', `休眠「${current.name}」`, [{ type: 'hibernate', id: current.id }])
         : c('start', `启动「${current.name}」`, [{ type: 'startProject', id: current.id }]),

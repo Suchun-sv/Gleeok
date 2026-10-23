@@ -22,12 +22,10 @@ const paths = {
       <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
     </>
   ),
-  grid: (
+  panelRight: (
     <>
-      <rect width="7" height="7" x="3" y="3" rx="1" />
-      <rect width="7" height="7" x="14" y="3" rx="1" />
-      <rect width="7" height="7" x="14" y="14" rx="1" />
-      <rect width="7" height="7" x="3" y="14" rx="1" />
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M15 3v18" />
     </>
   ),
   settings: (
@@ -58,7 +56,7 @@ export function IconButton({ icon, title, on, onClick, size = 15 }: { icon: Icon
   );
 }
 
-/** Layout switches, at the right end of the main window's last tab strip. */
+/** Layout switches and the project-settings drawer, at the right end of the main window's last tab strip. */
 export function LayoutControls({ mode, focusExpand, platform }: { mode: 'two' | 'three'; focusExpand: boolean; platform: string }) {
   const mod = platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+';
   return (
@@ -71,6 +69,8 @@ export function LayoutControls({ mode, focusExpand, platform }: { mode: 'two' | 
         title={`焦点放大：焦点所在的一栏更宽（${mod}F）`}
         onClick={() => gleeok.dispatch({ type: 'toggleFocusExpand' })}
       />
+      <span className="trailing-sep" />
+      <IconButton icon="panelRight" title={`项目设置：链接、代码、存档（${mod}E）`} onClick={() => gleeok.dispatch({ type: 'toggleEntry' })} />
     </>
   );
 }

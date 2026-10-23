@@ -327,6 +327,13 @@ main {
   background: var(--panel);
 }
 
+.trailing-sep {
+  width: 1px;
+  height: 14px;
+  margin: 0 3px;
+  background: var(--line);
+}
+
 .tabs-trailing .icon-btn {
   width: 24px;
   height: 24px;
