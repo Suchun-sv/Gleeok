@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Action, Snapshot } from '../../../shared/src/ipc.ts';
+import type { Action, LibrarySnapshot, Snapshot } from '../../../shared/src/ipc.ts';
 import { LIBRARY_URL, NEW_TAB_URL, codeLinks, isCodeLink, paneName, primaryCodeLink, type Project } from '../../../shared/src/model.ts';
 import { faviconFor } from './Panes.tsx';
+import { creatorsShort, isRegular, publicationOf, useLibrary, yearOf } from './library/data.ts';
 
 interface Item {
   id: string;
@@ -24,7 +25,8 @@ export function Palette({ snap, winId, onClose }: { snap: Snapshot; winId: strin
   const list = useRef<HTMLDivElement>(null);
   useEffect(() => input.current?.focus(), []);
 
-  const items = useMemo(() => buildItems(snap), [snap]);
+  const library = useLibrary();
+  const items = useMemo(() => [...buildItems(snap), ...libraryItems(library)], [snap, library]);
   const results = useMemo(() => search(items, query), [items, query]);
   useEffect(() => setIndex(0), [query]);
   useEffect(() => {
@@ -77,6 +79,25 @@ export function Palette({ snap, winId, onClose }: { snap: Snapshot; winId: strin
       </div>
     </div>
   );
+}
+
+/** 文献库 papers: Enter reads the PDF (or opens the library when there is none). */
+function libraryItems(lib: LibrarySnapshot | null): Item[] {
+  if (!lib) return [];
+  const pdfOf = new Map<string, string>();
+  for (const a of lib.items) if (a.itemType === 'attachment' && a.parentItem && a.fileHash && !pdfOf.has(a.parentItem)) pdfOf.set(a.parentItem, a.key);
+  return lib.items
+    .filter((i) => isRegular(i) && !i.deleted)
+    .map((i) => {
+      const pdf = pdfOf.get(i.key);
+      return {
+        id: `lib:${i.key}`,
+        group: '文献库',
+        title: String(i.title || '（无标题）'),
+        detail: [creatorsShort(i), yearOf(i), publicationOf(i), pdf ? '' : '没有 PDF'].filter(Boolean).join(' · '),
+        run: pdf ? [{ type: 'openReader', attachment: pdf }] : [{ type: 'setView', view: 'library' }],
+      };
+    });
 }
 
 function buildItems(snap: Snapshot): Item[] {

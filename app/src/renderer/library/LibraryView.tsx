@@ -5,17 +5,18 @@ import { ITEM_TYPES, READ_STATUS_LABELS } from '../../../../shared/src/library-s
 import { LIBRARY_URL } from '../../../../shared/src/model.ts';
 import { ItemPane } from './ItemPane.tsx';
 import {
-  childrenOf,
   collectionAndBelow,
   collectionTree,
   creatorsShort,
   isRegular,
   lib,
+  buildIndex,
   matches,
   publicationOf,
   useLibrary,
   yearOf,
   type CollectionNode,
+  type ItemInfo,
 } from './data.ts';
 
 type Source = { kind: 'all' | 'recent' | 'read' | 'unfiled' | 'trash' } | { kind: 'collection'; key: string };
@@ -25,6 +26,10 @@ type MenuItem = { label: string; run: () => void; danger?: boolean; disabled?: b
 const ITEMS_MIME = 'application/x-gleeok-items';
 const COLLECTION_MIME = 'application/x-gleeok-collection';
 const RECENT_DAYS = 30;
+
+/** Rows are drawn only near the visible part of the list; they must all be this tall (see .lib-tr). */
+const ROW_HEIGHT = 28;
+const OVERSCAN = 15;
 
 /** Below this width the collections and details columns fold away. */
 const COMPACT_WIDTH = 900;
@@ -63,12 +68,26 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  // Only the rows in view are drawn (and a few around them), so a big library scrolls smoothly.
+  const [view, setView] = useState({ top: 0, height: 800 });
 
   useEffect(() => {
     const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
     if (root.current) ro.observe(root.current);
     return () => ro.disconnect();
   }, []);
+  useEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setView({ top: el.scrollTop, height: el.clientHeight }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [!!list.current]);
+  // A different list starts at its top.
+  useEffect(() => {
+    if (list.current) list.current.scrollTop = 0;
+    setView((v) => ({ ...v, top: 0 }));
+  }, [JSON.stringify(source), query, tagFilter.join('\n')]);
   useEffect(() => savePref('source', source), [source]);
   useEffect(() => savePref('sort', sort), [sort]);
   useEffect(() => savePref('widths', widths), [widths]);
@@ -86,7 +105,8 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
   const onError = (e: unknown) => setError(String((e as Error).message ?? e));
   const compact = width < COMPACT_WIDTH;
 
-  const rows = useMemo(() => (snap ? listItems(snap, source, query, tagFilter, sort) : []), [snap, source, query, tagFilter, sort]);
+  const index = useMemo(() => (snap ? buildIndex(snap) : new Map()), [snap]);
+  const rows = useMemo(() => (snap ? listItems(snap, index, source, query, tagFilter, sort) : []), [snap, index, source, query, tagFilter, sort]);
   const selectedItems = rows.filter((i) => selected.includes(i.key));
   const detail = selectedItems.length === 1 ? selectedItems[0] : null;
   const allTags = useMemo(() => {
@@ -138,9 +158,9 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
       }),
     );
   const open = (item: LibraryItem) => {
-    const pdf = item.itemType === 'attachment' ? item : childrenOf(snap, item.key, 'attachment').find((a) => a.fileHash);
+    const pdf = item.itemType === 'attachment' ? item.key : index.get(item.key)?.pdf;
     if (!pdf) return setError('这一项没有 PDF 附件');
-    gleeok.dispatch({ type: 'openReader', attachment: pdf.key, slot });
+    gleeok.dispatch({ type: 'openReader', attachment: pdf, slot });
   };
   const addPdfs = (files: FileList) => {
     const paths = [...files].filter((f) => /\.pdf$/i.test(f.name)).map((f) => gleeok.pathForFile(f));
@@ -171,7 +191,11 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
       if (!next) return;
       setSelected(e.shiftKey ? [...new Set([...selected, next])] : [next]);
       setAnchor(next);
-      list.current?.querySelector(`[data-key="${next}"]`)?.scrollIntoView({ block: 'nearest' });
+      // The row may not be drawn yet: scroll by position.
+      const el = list.current;
+      const y = keys.indexOf(next) * ROW_HEIGHT;
+      if (el && y < el.scrollTop) el.scrollTop = y;
+      else if (el && y + ROW_HEIGHT > el.scrollTop + el.clientHeight) el.scrollTop = y + ROW_HEIGHT - el.clientHeight;
     }
     if (e.key === 'Enter' && detail) open(detail);
     if ((e.key === 'Delete' || e.key === 'Backspace') && selected.length) (inTrash ? destroy(selected) : trash(selected));
@@ -197,7 +221,7 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
           { label: '彻底删除', run: () => destroy(keys), danger: true },
         ]
       : [
-          { label: '打开 PDF', run: () => open(item), disabled: keys.length > 1 || !childrenOf(snap, item.key, 'attachment').some((a) => a.fileHash) },
+          { label: '打开 PDF', run: () => open(item), disabled: keys.length > 1 || !index.get(item.key)?.pdf },
           { label: '添加 PDF 附件…', run: () => run(lib({ op: 'pickFiles', parentItem: item.key })), disabled: keys.length > 1 },
           'sep',
           ...collections
@@ -399,6 +423,8 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
   );
 
   const showPub = !compact || width > 640;
+  const first = Math.max(0, Math.floor(view.top / ROW_HEIGHT) - OVERSCAN);
+  const last = Math.min(rows.length, Math.ceil((view.top + view.height) / ROW_HEIGHT) + OVERSCAN);
   const itemsColumn = (
     <section className="lib-items" onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()} onDrop={(e) => e.dataTransfer.files.length && (e.preventDefault(), addPdfs(e.dataTransfer.files))}>
       <div className="lib-toolbar">
@@ -448,15 +474,22 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
         {!compact && header('status', '状态')}
         <div className="lib-th attach" />
       </div>
-      <div ref={list} className="lib-table" tabIndex={0} onKeyDown={onListKey}>
+      <div
+        ref={list}
+        className="lib-table"
+        tabIndex={0}
+        onKeyDown={onListKey}
+        onScroll={(e) => setView({ top: e.currentTarget.scrollTop, height: e.currentTarget.clientHeight })}
+      >
         {rows.length === 0 && (
           <p className="lib-empty">
             {inTrash ? '回收站是空的' : query || tagFilter.length ? '没有匹配的条目' : '这里还没有文献：点「+ 新建」，或者把 PDF 拖进来'}
           </p>
         )}
-        {rows.map((i) => {
-          const pdf = childrenOf(snap, i.key, 'attachment').some((a) => a.fileHash);
-          const notes = childrenOf(snap, i.key, 'note').length;
+        {first > 0 && <div style={{ height: first * ROW_HEIGHT }} />}
+        {rows.slice(first, last).map((i) => {
+          const pdf = !!index.get(i.key)?.pdf;
+          const notes = index.get(i.key)?.notes ?? 0;
           return (
             <div
               key={i.key}
@@ -501,6 +534,7 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
             </div>
           );
         })}
+        {last < rows.length && <div style={{ height: (rows.length - last) * ROW_HEIGHT }} />}
       </div>
       <div className="lib-status">
         {rows.length} 项{selected.length > 1 ? ` · 已选 ${selected.length} 项` : ''}
@@ -599,7 +633,7 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
 
 const sameSource = (a: Source, b: Source) => a.kind === b.kind && (a.kind !== 'collection' || (b.kind === 'collection' && a.key === b.key));
 
-function listItems(snap: LibrarySnapshot, source: Source, query: string, tags: string[], sort: { col: SortCol; desc: boolean }): LibraryItem[] {
+function listItems(snap: LibrarySnapshot, index: Map<string, ItemInfo>, source: Source, query: string, tags: string[], sort: { col: SortCol; desc: boolean }): LibraryItem[] {
   const now = Date.now();
   let items = snap.items.filter((i) => isRegular(i) && (source.kind === 'trash' ? i.deleted : !i.deleted));
   if (source.kind === 'collection') {
@@ -610,7 +644,7 @@ function listItems(snap: LibrarySnapshot, source: Source, query: string, tags: s
   if (source.kind === 'recent') items = items.filter((i) => now - Date.parse(i.dateAdded) < RECENT_DAYS * 86_400_000);
   if (source.kind === 'read') items = items.filter((i) => typeof i.lastReadAt === 'string');
   if (tags.length) items = items.filter((i) => tags.every((t) => (i.tags ?? []).some((x) => x.tag === t)));
-  if (query.trim()) items = items.filter((i) => matches(snap, i, query));
+  if (query.trim()) items = items.filter((i) => matches(index.get(i.key), query));
 
   const key: Record<SortCol, (i: LibraryItem) => string> = {
     title: (i) => String(i.title ?? ''),

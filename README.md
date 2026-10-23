@@ -72,7 +72,9 @@ Drop PDFs onto the list (or "添加 PDF") to add them.
 
 PDFs open in a pane (the third by default) in [Zotero's reader](https://github.com/zotero/reader):
 highlights, underlines, notes, text boxes, area and ink annotations, outline, search, and a
-reading position that follows you between machines. Items, annotations and files live in
+reading position that follows you between machines. Settings → 文献库 picks the pane PDFs open in,
+the reader's theme and first zoom, how long the trash keeps items, and how much disk the local
+copies of PDFs may use (the least recently opened go first). The palette finds papers too. Items, annotations and files live in
 `library.db` and `library/` next to the server's database (or in Gleeok's user data in local
 mode); other machines pick up changes within a minute. The design is in [docs/library.md](docs/library.md);
 the reader is built by `dev/build-reader.sh` into `app/vendor/zotero-reader/`.

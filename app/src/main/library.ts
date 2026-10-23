@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { app } from 'electron';
 import {
@@ -29,6 +29,8 @@ export class LibraryClient {
   status: LibrarySnapshot['status'] = 'loading';
   error: string | undefined;
   onChange: () => void = () => {};
+  /** Most bytes the local copies of PDFs may take; the least recently opened go first. */
+  cacheLimit: () => number = () => 5 * 1024 ** 3;
 
   constructor(private config: ConfigClient) {}
 
@@ -174,15 +176,23 @@ export class LibraryClient {
     return added;
   }
 
+  get #fileDir() {
+    return join(app.getPath('userData'), 'library-files');
+  }
+
   /** An attachment's file, from this machine's cache when it matches the library's hash. */
   async file(key: string): Promise<Buffer> {
     const item = this.item(key);
-    const dir = join(app.getPath('userData'), 'library-files');
-    const path = join(dir, key);
+    const path = join(this.#fileDir, key);
     if (item?.fileHash) {
       try {
         const cached = readFileSync(path);
-        if (createHash('sha256').update(cached).digest('hex') === item.fileHash) return cached;
+        if (createHash('sha256').update(cached).digest('hex') === item.fileHash) {
+          // Opened again: last to be evicted.
+          const now = new Date();
+          utimesSync(path, now, now);
+          return cached;
+        }
       } catch {
         // Not cached yet.
       }
@@ -190,9 +200,58 @@ export class LibraryClient {
     const res = await this.config.fetchRaw('GET', `/api/library/items/${key}/file`, { timeoutMs: 120_000 });
     if (!res.ok) throw new Error(await errorText(res));
     const bytes = Buffer.from(await res.arrayBuffer());
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(this.#fileDir, { recursive: true });
     writeFileSync(path, bytes);
+    this.#evict(key);
     return bytes;
+  }
+
+  /** Where an attachment's local copy is, fetching it first. */
+  async filePath(key: string): Promise<string> {
+    await this.file(key);
+    return join(this.#fileDir, key);
+  }
+
+  cacheInfo(): { bytes: number; files: number } {
+    const files = this.#cached();
+    return { bytes: files.reduce((n, f) => n + f.size, 0), files: files.length };
+  }
+
+  clearCache() {
+    rmSync(this.#fileDir, { recursive: true, force: true });
+  }
+
+  #cached() {
+    try {
+      return readdirSync(this.#fileDir).map((name) => {
+        const st = statSync(join(this.#fileDir, name));
+        return { name, size: st.size, used: st.mtimeMs };
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /** Drop the least recently opened copies until the cache fits its limit (never the one just fetched). */
+  #evict(keep: string) {
+    const files = this.#cached().sort((a, b) => a.used - b.used);
+    let total = files.reduce((n, f) => n + f.size, 0);
+    for (const f of files) {
+      if (total <= this.cacheLimit()) break;
+      if (f.name === keep) continue;
+      rmSync(join(this.#fileDir, f.name), { force: true });
+      total -= f.size;
+    }
+  }
+
+  /** Items that sat in the trash longer than `days` are deleted for good (with their attachments). */
+  async emptyTrash(days: number) {
+    if (days <= 0 || this.status !== 'ok') return;
+    const cutoff = Date.now() - days * 86_400_000;
+    const old = ([...this.#objects.items.values()] as LibraryItem[]).filter(
+      (i) => i.deleted && !i.parentItem && Date.parse(i.dateModified) < cutoff,
+    );
+    for (const i of old) await this.remove('items', i.key).catch(() => {});
   }
 
   #apply(c: LibraryChanges) {

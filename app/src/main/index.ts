@@ -13,6 +13,7 @@ import {
   codeLinks,
   isInternalUrl,
   isLibraryUrl,
+  librarySettings,
   isTerminalUrl,
   readerUrl,
   primaryCodeLink,
@@ -676,6 +677,7 @@ let vault: Vault | null = null;
 // ---- 文献库 ----
 
 const library = new LibraryClient(config);
+library.cacheLimit = () => librarySettings(state).cacheGB * 1024 ** 3;
 let libraryTimer: NodeJS.Timeout | undefined;
 // The library goes out on its own channel, coalesced: it can be large and change in bursts.
 library.onChange = () => {
@@ -688,6 +690,10 @@ library.onChange = () => {
 
 const readerBridge = new ReaderBridge(library, {
   authorName: () => userInfo().username,
+  view: () => {
+    const s = librarySettings(state);
+    return { theme: s.readerTheme, zoom: s.readerZoom };
+  },
   // A link in a PDF opens beside it, in the reader's own pane.
   openLink(url, from) {
     for (const s of Object.values(state.sessions)) {
@@ -715,7 +721,8 @@ function openReader(attachment: string, slot?: number) {
     }
   }
   const visible = allVisibleSlots();
-  const target = slot !== undefined && visible.includes(slot) ? slot : visible.includes(READER_PANE) ? READER_PANE : visible[visible.length - 1];
+  const pane = librarySettings(state).readerPane;
+  const target = slot !== undefined && visible.includes(slot) ? slot : visible.includes(pane) ? pane : visible[visible.length - 1];
   const parent = item.parentItem ? library.item(item.parentItem) : undefined;
   const title = parent ? shortName(parent) : String(item.filename ?? 'PDF');
   const tab = activeTab(session.panes[target]);
@@ -732,8 +739,6 @@ function openReader(attachment: string, slot?: number) {
   if (!isLive(session)) startProject(session.projectId);
 }
 
-/** PDFs open in the third pane (产出区 by default) unless told otherwise. */
-const READER_PANE = 2;
 
 async function libraryCall(op: LibraryOp): Promise<unknown> {
   switch (op.op) {
@@ -747,6 +752,12 @@ async function libraryCall(op: LibraryOp): Promise<unknown> {
       return library.remove(op.kind, op.key);
     case 'addFiles':
       return library.addFiles(op.paths, op.collection);
+    case 'cacheInfo':
+      return library.cacheInfo();
+    case 'clearCache':
+      return library.clearCache();
+    case 'revealFile':
+      return shell.showItemInFolder(await library.filePath(op.key));
     case 'pickFiles': {
       const bw = focusedWindow();
       const opts = { title: '添加 PDF', properties: ['openFile', 'multiSelections'] as ('openFile' | 'multiSelections')[], filters: [{ name: 'PDF', extensions: ['pdf'] }] };
@@ -1292,6 +1303,10 @@ function dispatch(action: Action) {
     case 'openReader':
       openReader(action.attachment, action.slot);
       return;
+    case 'setLibrarySettings':
+      state.library = { ...state.library, ...action.settings };
+      changed();
+      return;
     case 'closeTab': {
       const slot = slotOf(action.slot);
       const pane = session.panes[slot];
@@ -1584,9 +1599,12 @@ app.whenReady().then(async () => {
   vault.serverUrl = config.vaultUrl ?? VAULT_URL_DEFAULT;
   void syncPaseo();
   setInterval(() => void syncPaseo(), 2 * 60_000);
-  // Other machines' library edits arrive within a minute (and right away when the library opens).
-  void library.sync();
+  // Other machines' library edits arrive within a minute (and right away when the library opens);
+  // the trash empties itself of old items a few times a day.
+  const expireTrash = () => void library.emptyTrash(librarySettings(state).trashDays);
+  void library.sync().then(expireTrash);
   setInterval(() => void library.sync(), 60_000);
+  setInterval(expireTrash, 6 * 3600_000);
   publishAllTabs();
   if (state.currentProjectId) void checkRemoteTabs(state.currentProjectId);
   hibernateStale();

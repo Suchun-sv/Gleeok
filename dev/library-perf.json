@@ -1,0 +1,69 @@
+[
+ {
+  "evalMain": "gleeok.createProject('性能测试').then(()=>'project')"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "action": {
+   "type": "toggleEntry"
+  }
+ },
+ {
+  "wait": 300
+ },
+ {
+  "evalMain": "(async()=>{const L=(op)=>gleeok.library(op).then(r=>{if(r.error)throw new Error(r.error);return r.result});const t=performance.now();for(let b=0;b<10;b++){const objs=[];for(let i=0;i<100;i++){const n=b*100+i;objs.push({itemType:['journalArticle','conferencePaper','preprint'][n%3],title:'Paper '+n+' about '+['attention','kv cache','retrieval','diffusion'][n%4],creators:[{creatorType:'author',lastName:'Author'+(n%37),firstName:'X'}],date:String(2000+n%25),tags:n%5?[]:[{tag:'t'+(n%7)}]})}const made=await L({op:'create',kind:'items',objects:objs});await L({op:'create',kind:'items',objects:made.filter((_,i)=>i%10===0).map(m=>({itemType:'note',parentItem:m.key,note:'<p>note mentions zebra'+m.title+'</p>'}))})}await L({op:'addFiles',paths:['../dev/fixtures/sample.pdf']});return 'seeded 1000 in '+Math.round(performance.now()-t)+' ms'})()"
+ },
+ {
+  "wait": 1000
+ },
+ {
+  "action": {
+   "type": "toggleLibrary"
+  }
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "evalMain": "'rows in DOM: '+document.querySelectorAll('.lib-tr').length+' of '+document.querySelector('.lib-status').textContent"
+ },
+ {
+  "evalMain": "(async()=>{const i=document.querySelector('.lib-search');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;const t=performance.now();set.call(i,'zebra');i.dispatchEvent(new Event('input',{bubbles:true}));await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));return 'search \"zebra\" (note text): '+document.querySelector('.lib-status').textContent.trim()+' in '+Math.round(performance.now()-t)+' ms'})()"
+ },
+ {
+  "evalMain": "(async()=>{const i=document.querySelector('.lib-search');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(i,'');i.dispatchEvent(new Event('input',{bubbles:true}));await new Promise(r=>setTimeout(r,200));const el=document.querySelector('.lib-table');const t=performance.now();el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event('scroll'));await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));const rows=[...document.querySelectorAll('.lib-tr')];return 'scrolled to bottom in '+Math.round(performance.now()-t)+' ms, rows in DOM '+rows.length+', last: '+rows[rows.length-1].querySelector('.title').textContent})()"
+ },
+ {
+  "evalMain": "(async()=>{const t=performance.now();for(let k=0;k<5;k++){[...document.querySelectorAll('.lib-th')][k%3].click();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))}return 'five re-sorts in '+Math.round(performance.now()-t)+' ms'})()"
+ },
+ {
+  "evalMain": "(async()=>{const s=await gleeok.getLibrary();const a=s.items.find(i=>i.itemType==='attachment');gleeok.dispatch({type:'openReader',attachment:a.key});return 'opening pdf'})()"
+ },
+ {
+  "wait": 400
+ },
+ {
+  "evalPage": "(async()=>{for(let k=0;k<100;k++){const app=window._reader&&window._reader._primaryView&&window._reader._primaryView._iframeWindow&&window._reader._primaryView._iframeWindow.PDFViewerApplication;if(app&&app.pdfDocument&&app.pdfViewer&&app.pdfViewer.pagesCount)return 'pdf ready, '+app.pdfViewer.pagesCount+' page(s); page load start → ready ≈ '+Math.round(performance.now())+' ms';await new Promise(r=>setTimeout(r,100))}return 'pdf not ready'})()"
+ },
+ {
+  "action": {
+   "type": "setView",
+   "view": "settings"
+  }
+ },
+ {
+  "wait": 500
+ },
+ {
+  "evalMain": "(()=>{[...document.querySelectorAll('.settings-nav button')].find(b=>b.textContent==='文献库').click();return 'tab'})()"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "capture": "settings-library"
+ }
+]

@@ -2168,3 +2168,12 @@ input.managed {
   z-index: 10;
   background: rgb(0 0 0 / 30%);
 }
+
+.lib-setting-label {
+  width: 110px;
+  flex: none;
+}
+
+.card .row select {
+  flex: none;
+}

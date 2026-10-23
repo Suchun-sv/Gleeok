@@ -49,22 +49,51 @@ export function publicationOf(item: LibraryItem): string {
 
 const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
 
+/** What hangs off each item, gathered in one pass so lists never scan the library per row. */
+export interface ItemInfo {
+  /** The first attachment with a stored file. */
+  pdf?: string;
+  notes: number;
+  /** Lower-cased search text: the item's own fields plus its notes. */
+  haystack: string;
+}
+
+export function buildIndex(snap: LibrarySnapshot): Map<string, ItemInfo> {
+  const index = new Map<string, ItemInfo>();
+  const noteText = new Map<string, string[]>();
+  for (const c of snap.items) {
+    if (!c.parentItem || c.deleted) continue;
+    const info = index.get(c.parentItem) ?? { notes: 0, haystack: '' };
+    if (c.itemType === 'attachment' && c.fileHash) info.pdf ??= c.key;
+    if (c.itemType === 'note') {
+      info.notes++;
+      noteText.set(c.parentItem, [...(noteText.get(c.parentItem) ?? []), stripHtml(String(c.note ?? ''))]);
+    }
+    index.set(c.parentItem, info);
+  }
+  for (const item of snap.items) {
+    if (!isRegular(item)) continue;
+    const info = index.get(item.key) ?? { notes: 0, haystack: '' };
+    info.haystack = [
+      item.title,
+      ...(item.creators ?? []).map((c) => `${c.firstName ?? ''} ${c.lastName ?? ''} ${c.name ?? ''}`),
+      item.date,
+      publicationOf(item),
+      item.DOI,
+      ...(item.tags ?? []).map((t) => t.tag),
+      ...(noteText.get(item.key) ?? []),
+    ]
+      .join(' ')
+      .toLowerCase();
+    index.set(item.key, info);
+  }
+  return index;
+}
+
 /** Quick search: every word must appear in the title, creators, year, publication, DOI, tags or notes. */
-export function matches(snap: LibrarySnapshot, item: LibraryItem, query: string): boolean {
+export function matches(info: ItemInfo | undefined, query: string): boolean {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return true;
-  const hay = [
-    item.title,
-    ...(item.creators ?? []).map((c) => `${c.firstName ?? ''} ${c.lastName ?? ''} ${c.name ?? ''}`),
-    item.date,
-    publicationOf(item),
-    item.DOI,
-    ...(item.tags ?? []).map((t) => t.tag),
-    ...childrenOf(snap, item.key, 'note').map((n) => stripHtml(String(n.note ?? ''))),
-  ]
-    .join(' ')
-    .toLowerCase();
-  return words.every((w) => hay.includes(w));
+  return words.every((w) => info?.haystack.includes(w));
 }
 
 export interface CollectionNode {

@@ -1,4 +1,4 @@
-import type { GlobalState, Link, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
+import type { GlobalState, LibrarySettings, Link, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
 import type { LibraryCollection, LibraryItem, LibraryKind } from './library.ts';
 
 export interface VaultLoginSummary {
@@ -30,7 +30,12 @@ export type LibraryOp =
   | { op: 'addFiles'; paths: string[]; collection?: string }
   /** Ask for PDFs with the system file picker, then add them. */
   | { op: 'pickFiles'; collection?: string; parentItem?: string }
-  | { op: 'sync' };
+  | { op: 'sync' }
+  /** Local copies of PDFs: how much space they take, or drop them all. */
+  | { op: 'cacheInfo' }
+  | { op: 'clearCache' }
+  /** Show an attachment's local copy in the file manager (fetching it first). */
+  | { op: 'revealFile'; key: string };
 
 export type ServerStatus = 'ok' | 'offline' | 'unconfigured' | 'local';
 
@@ -107,6 +112,7 @@ export type Action =
   | { type: 'toggleEntry' }
   /** The 文献库 in place of the panes, and back. */
   | { type: 'toggleLibrary' }
+  | { type: 'setLibrarySettings'; settings: Partial<LibrarySettings> }
   /** Read a 文献库 PDF in a pane (the given one, else the default reading pane). */
   | { type: 'openReader'; attachment: string; slot?: number }
   | { type: 'vaultUnlock' }

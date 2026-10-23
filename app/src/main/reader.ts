@@ -58,7 +58,12 @@ export class ReaderBridge {
 
   constructor(
     private library: LibraryClient,
-    private hooks: { authorName: () => string; openLink: (url: string, from: WebContents) => void },
+    private hooks: {
+      authorName: () => string;
+      /** Reader theme and the zoom for a PDF opened for the first time (Settings → 文献库). */
+      view: () => { theme: 'auto' | 'dark' | 'light'; zoom: 'page-width' | 'page-fit' | 'auto' };
+      openLink: (url: string, from: WebContents) => void;
+    },
   ) {
     const fromReaderPage = (e: IpcMainInvokeEvent) => {
       if (!e.senderFrame?.url.startsWith(`${READER_ORIGIN}/`)) throw new Error('not the reader page');
@@ -99,10 +104,12 @@ export class ReaderBridge {
     if (parent) void this.#markRead(parent);
     const locales = join(vendorDir(), 'locales');
     const ftl = ['en-US/zotero.ftl', 'en-US/reader.ftl', 'en-US/brand.ftl', 'zh-CN/zotero.ftl', 'zh-CN/reader.ftl'].map((f) => readFileSync(join(locales, f), 'utf8'));
+    const { theme, zoom } = this.hooks.view();
     return {
       buf: new Uint8Array(buf),
       annotations: annotations.map(toReader),
-      state: this.library.stateOf(attachment)?.state ?? null,
+      state: this.library.stateOf(attachment)?.state ?? (zoom === 'auto' ? null : { pageIndex: 0, scale: zoom, scrollMode: 0, spreadMode: 0 }),
+      colorScheme: theme === 'auto' ? null : theme,
       title: parent ? shortName(parent) : String(item.filename ?? 'PDF'),
       authorName: this.hooks.authorName(),
       ftl,

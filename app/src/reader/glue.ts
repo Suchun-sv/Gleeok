@@ -13,6 +13,7 @@ interface Opened {
   buf: Uint8Array;
   annotations: unknown[];
   state: unknown;
+  colorScheme: 'dark' | 'light' | null;
   title: string;
   authorName: string;
   ftl: string[];
@@ -63,6 +64,7 @@ async function start() {
     sidebarOpen: window.innerWidth > 800,
     sidebarView: 'annotations',
     showAnnotations: true,
+    colorScheme: data.colorScheme ?? undefined,
     readOnly: false,
     title: data.title,
     authorName: data.authorName,

@@ -375,6 +375,9 @@ function Attachments({ item, attachments, onOpen, onError }: { item: LibraryItem
           <button disabled={!a.fileHash} onClick={() => onOpen(a)}>
             打开
           </button>
+          <button className="icon-btn" disabled={!a.fileHash} title="在文件夹中显示（本机副本）" onClick={() => void lib({ op: 'revealFile', key: a.key }).catch(onError)}>
+            📂
+          </button>
           <button
             className="icon-btn"
             title="删除附件（连同它的批注）"

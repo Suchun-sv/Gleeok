@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
-import { DEFAULT_PANE_NAMES, DEFAULT_SUGGESTIONS, MAX_PANES, paneName, type Suggestion } from '../../../shared/src/model.ts';
+import { DEFAULT_PANE_NAMES, DEFAULT_SUGGESTIONS, MAX_PANES, librarySettings, paneName, type LibrarySettings, type Suggestion } from '../../../shared/src/model.ts';
+import { lib, useLibrary } from './library/data.ts';
 import { faviconFor } from './Panes.tsx';
 import { PaseoSettings } from './PaseoSettings.tsx';
 
 const TABS = [
   { id: 'panes', label: '栏' },
   { id: 'suggestions', label: '常用' },
+  { id: 'library', label: '文献库' },
   { id: 'paseo', label: 'Paseo' },
   { id: 'sync', label: '同步' },
   { id: 'vault', label: '密码库' },
@@ -45,6 +47,7 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
         </button>
         {tab === 'panes' && <PaneSettings snap={snap} />}
         {tab === 'suggestions' && <SuggestionSettings snap={snap} />}
+        {tab === 'library' && <LibrarySettingsCard snap={snap} />}
         {tab === 'paseo' && <PaseoSettings snap={snap} />}
         {tab === 'sync' && <SyncSettings snap={snap} />}
         {tab === 'vault' && <VaultSettings snap={snap} />}
@@ -148,6 +151,88 @@ function SuggestionSettings({ snap }: { snap: Snapshot }) {
           恢复默认
         </button>
       </div>
+    </section>
+  );
+}
+
+/** 文献库 preferences (this machine) and the local copies of PDFs. */
+function LibrarySettingsCard({ snap }: { snap: Snapshot }) {
+  const s = librarySettings(snap.state);
+  const library = useLibrary();
+  const [cache, setCache] = useState<{ bytes: number; files: number } | null>(null);
+  const refresh = () => void lib<{ bytes: number; files: number }>({ op: 'cacheInfo' }).then(setCache, () => setCache(null));
+  useEffect(refresh, []);
+  const set = (settings: Partial<LibrarySettings>) => gleeok.dispatch({ type: 'setLibrarySettings', settings });
+  const gb = (bytes: number) =>
+    bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : bytes >= 1024 ** 2 ? `${Math.round(bytes / 1024 ** 2)} MB` : `${Math.ceil(bytes / 1024)} KB`;
+  const status = { loading: '正在连接', ok: '已同步', offline: '离线（显示本机缓存）', unavailable: '不可用' }[library?.status ?? 'loading'];
+  return (
+    <section className="card">
+      <h3>文献库</h3>
+      <dl className="facts">
+        <dt>状态</dt>
+        <dd>
+          {status}
+          {library?.error && library.status !== 'ok' ? ` · ${library.error}` : ''}
+        </dd>
+        <dt>条目</dt>
+        <dd>{library ? library.items.filter((i) => i.itemType !== 'note' && i.itemType !== 'attachment' && !i.deleted).length : '—'} 篇</dd>
+      </dl>
+      <div className="row">
+        <span className="meta lib-setting-label">PDF 在哪一栏打开</span>
+        <select value={s.readerPane} onChange={(e) => set({ readerPane: Number(e.target.value) })}>
+          {snap.state.paneNames.map((_, i) => (
+            <option key={i} value={i}>
+              {paneName(snap.state.paneNames, i)}
+            </option>
+          ))}
+        </select>
+        <span className="hint">这一栏没有显示时，用最右边那一栏</span>
+      </div>
+      <div className="row">
+        <span className="meta lib-setting-label">阅读器主题</span>
+        <select value={s.readerTheme} onChange={(e) => set({ readerTheme: e.target.value as LibrarySettings['readerTheme'] })}>
+          <option value="auto">跟随系统</option>
+          <option value="dark">深色</option>
+          <option value="light">浅色</option>
+        </select>
+      </div>
+      <div className="row">
+        <span className="meta lib-setting-label">第一次打开时</span>
+        <select value={s.readerZoom} onChange={(e) => set({ readerZoom: e.target.value as LibrarySettings['readerZoom'] })}>
+          <option value="page-width">适合宽度</option>
+          <option value="page-fit">适合整页</option>
+          <option value="auto">自动</option>
+        </select>
+        <span className="hint">之后都回到上次看到的位置和大小</span>
+      </div>
+      <div className="row">
+        <span className="meta lib-setting-label">回收站</span>
+        <select value={s.trashDays} onChange={(e) => set({ trashDays: Number(e.target.value) })}>
+          {[7, 30, 90, 365, 0].map((d) => (
+            <option key={d} value={d}>
+              {d ? `${d} 天后彻底删除` : '不自动删除'}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="row">
+        <span className="meta lib-setting-label">本机 PDF 缓存</span>
+        <select value={s.cacheGB} onChange={(e) => set({ cacheGB: Number(e.target.value) })}>
+          {[1, 2, 5, 10, 20, 50].map((g) => (
+            <option key={g} value={g}>
+              最多 {g} GB
+            </option>
+          ))}
+        </select>
+        <span className="hint">{cache ? `已用 ${gb(cache.bytes)}（${cache.files} 个文件）` : ''}</span>
+        <button disabled={!cache?.files} onClick={() => void lib({ op: 'clearCache' }).then(refresh)}>
+          清空缓存
+        </button>
+      </div>
+      <p className="hint">
+        PDF 存在同步服务器上，打开过的会在这台电脑上留一份副本，下次秒开、离线也能读；超过上限时先删最久没打开的。这些设置只对这台电脑生效。
+      </p>
     </section>
   );
 }

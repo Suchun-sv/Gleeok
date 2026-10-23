@@ -271,7 +271,24 @@ export interface GlobalState {
   paneNames: string[];
   /** The new-tab page's 常用 tiles once edited in Settings; unset follows DEFAULT_SUGGESTIONS. */
   suggestions?: Suggestion[];
+  /** 文献库 preferences changed in Settings (this machine only); see librarySettings(). */
+  library?: Partial<LibrarySettings>;
 }
+
+export interface LibrarySettings {
+  /** The pane PDFs open in (index; the last visible one when it is not shown). */
+  readerPane: number;
+  /** Most disk space the local copies of PDFs may take, in GB. */
+  cacheGB: number;
+  /** Items in the trash longer than this are deleted for good (0: never). */
+  trashDays: number;
+  readerTheme: 'auto' | 'dark' | 'light';
+  /** How a PDF opened for the first time is zoomed. */
+  readerZoom: 'page-width' | 'page-fit' | 'auto';
+}
+
+export const DEFAULT_LIBRARY_SETTINGS: LibrarySettings = { readerPane: 2, cacheGB: 5, trashDays: 30, readerTheme: 'auto', readerZoom: 'page-width' };
+export const librarySettings = (s: Pick<GlobalState, 'library'>): LibrarySettings => ({ ...DEFAULT_LIBRARY_SETTINGS, ...s.library });
 
 export function visibleSlots(win: AppWindowState): number[] {
   return win.role === 'main' ? win.slots.slice(0, Math.max(1, win.layout.visible)) : win.slots;
