@@ -1,5 +1,37 @@
 /** Lucide glyphs (the icon set Paseo uses), drawn as muted icon buttons like Paseo's chrome. */
 const paths = {
+  calendarCheck: (
+    <>
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+      <path d="m9 16 2 2 4-4" />
+    </>
+  ),
+  timer: (
+    <>
+      <path d="M10 2h4" />
+      <path d="M12 14l3-3" />
+      <circle cx="12" cy="14" r="8" />
+    </>
+  ),
+  play: <path d="M6 3 20 12 6 21Z" />,
+  pause: (
+    <>
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+    </>
+  ),
+  stop: <rect width="14" height="14" x="5" y="5" rx="2" />,
+  skip: (
+    <>
+      <path d="M5 4 15 12 5 20Z" />
+      <path d="M19 5v14" />
+    </>
+  ),
+  chevronLeft: <path d="m15 18-6-6 6-6" />,
+  chevronRight: <path d="m9 18 6-6-6-6" />,
   libraryBig: (
     <>
       <rect width="8" height="18" x="3" y="3" rx="1" />

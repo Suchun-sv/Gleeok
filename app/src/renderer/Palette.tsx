@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Action, LibrarySnapshot, Snapshot } from '../../../shared/src/ipc.ts';
-import { LIBRARY_URL, NEW_TAB_URL, codeLinks, isCodeLink, paneName, primaryCodeLink, type Project } from '../../../shared/src/model.ts';
+import { LIBRARY_URL, NEW_TAB_URL, PLANNER_URL, codeLinks, isCodeLink, paneName, primaryCodeLink, type Project } from '../../../shared/src/model.ts';
 import { faviconFor } from './Panes.tsx';
 import { creatorsShort, isRegular, publicationOf, useLibrary, yearOf } from './library/data.ts';
 
@@ -222,6 +222,8 @@ function commands(snap: Snapshot, current?: Project): Item[] {
     ),
     c('panes', '设置栏数和栏名', [{ type: 'setView', view: 'settings' }]),
     c('library', snap.state.view === 'library' ? '关闭文献库' : '打开文献库', [{ type: 'toggleLibrary' }]),
+    c('planner', snap.state.view === 'planner' ? '关闭日程' : '打开日程', [{ type: 'togglePlanner' }]),
+    c('plannerPane', '在焦点栏打开日程', [{ type: 'newTab', url: PLANNER_URL }]),
     c('libraryPane', '在焦点栏打开文献库', [{ type: 'newTab', url: LIBRARY_URL }]),
     c('focus', main.layout.focusExpand ? '关闭焦点放大' : '打开焦点放大', [{ type: 'toggleFocusExpand' }]),
     c('sidebar', main.sidebarCollapsed ? '展开侧边栏' : '收起侧边栏', [{ type: 'toggleSidebar' }]),

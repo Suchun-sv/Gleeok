@@ -4,6 +4,7 @@ import { primaryCodeLink } from '../../../shared/src/model.ts';
 import icon from '../../assets/icon-64.png';
 import { Icon, IconButton } from './Icons.tsx';
 import { useLibrary } from './library/data.ts';
+import { dayKey, usePlanner } from './planner/data.ts';
 
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
 export function SidebarToggle({ platform }: { platform: string }) {
@@ -183,6 +184,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         </div>
       )}
 
+      <PlannerEntry active={state.view === 'planner'} platform={snap.platform} />
       <LibraryEntry active={state.view === 'library'} platform={snap.platform} />
       <footer>
         {(snap.update.commits.length > 0 || snap.update.step || snap.update.error) && (
@@ -251,6 +253,27 @@ function LibraryEntry({ active, platform }: { active: boolean; platform: string 
         <Icon name="libraryBig" size={13} />
       </span>
       <span className="name">文献库</span>
+      {count ? <kbd>{count}</kbd> : null}
+    </div>
+  );
+}
+
+/** The 日程 entry, with how many tasks are open for today (overdue included). */
+function PlannerEntry({ active, platform }: { active: boolean; platform: string }) {
+  const planner = usePlanner();
+  const today = dayKey(new Date());
+  const count = planner?.tasks.filter((t) => !t.done && !t.deleted && t.due && t.due.slice(0, 10) <= today).length;
+  return (
+    <div
+      role="button"
+      className={`project library-entry ${active ? 'active' : ''}`}
+      onClick={() => gleeok.dispatch({ type: 'togglePlanner' })}
+      title={`日程（${platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+'}A）${count ? `\n今天还有 ${count} 个任务` : ''}`}
+    >
+      <span className="status">
+        <Icon name="calendarCheck" size={13} />
+      </span>
+      <span className="name">日程</span>
       {count ? <kbd>{count}</kbd> : null}
     </div>
   );

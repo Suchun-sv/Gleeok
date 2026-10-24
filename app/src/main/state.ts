@@ -5,6 +5,7 @@ import {
   MAX_PANES,
   NEW_TAB_URL,
   isLibraryUrl,
+  isPlannerUrl,
   isTerminalUrl,
   terminalTitle,
   type GlobalState,
@@ -55,7 +56,7 @@ export function saveState(path: string, state: GlobalState) {
 }
 
 export function newTab(url = NEW_TAB_URL): Tab {
-  return { id: `t_${randomUUID().slice(0, 8)}`, url, title: url === NEW_TAB_URL ? '新标签页' : isTerminalUrl(url) ? terminalTitle(url) : isLibraryUrl(url) ? '文献库' : url };
+  return { id: `t_${randomUUID().slice(0, 8)}`, url, title: url === NEW_TAB_URL ? '新标签页' : isTerminalUrl(url) ? terminalTitle(url) : isLibraryUrl(url) ? '文献库' : isPlannerUrl(url) ? '日程' : url };
 }
 
 /** First time a project is opened on this machine: pinned links fill their panes, the rest start blank. */

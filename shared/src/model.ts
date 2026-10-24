@@ -145,7 +145,10 @@ export const isTerminalUrl = (url: string) => url === TERMINAL_URL || url.starts
 /** The 文献库 as a tab: drawn by Gleeok itself inside the pane, like a terminal. */
 export const LIBRARY_URL = 'gleeok://library';
 export const isLibraryUrl = (url: string) => url === LIBRARY_URL || url.startsWith(`${LIBRARY_URL}?`);
-export const isInternalUrl = (url: string) => url === NEW_TAB_URL || isTerminalUrl(url) || isLibraryUrl(url);
+/** The 日程 as a tab, drawn by Gleeok inside the pane. */
+export const PLANNER_URL = 'gleeok://planner';
+export const isPlannerUrl = (url: string) => url === PLANNER_URL || url.startsWith(`${PLANNER_URL}?`);
+export const isInternalUrl = (url: string) => url === NEW_TAB_URL || isTerminalUrl(url) || isLibraryUrl(url) || isPlannerUrl(url);
 /** A 文献库 PDF in Zotero's reader: a real page (served by Gleeok), so it lives in a pane like any site. */
 export const READER_ORIGIN = 'gleeok://reader';
 export const readerUrl = (attachment: string) => `${READER_ORIGIN}/?attachment=${attachment}`;
@@ -259,7 +262,7 @@ export interface AppWindowState {
   placement?: { displayKey: string; bounds: Rect };
 }
 
-export type View = 'panes' | 'settings' | 'library';
+export type View = 'panes' | 'settings' | 'library' | 'planner';
 
 export interface GlobalState {
   currentProjectId: string | null;

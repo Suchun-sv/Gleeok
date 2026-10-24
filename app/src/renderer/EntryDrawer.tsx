@@ -12,6 +12,7 @@ import {
   type TerminalTarget,
 } from '../../../shared/src/model.ts';
 import { faviconFor } from './Panes.tsx';
+import { ProjectTasks } from './planner/ProjectTasks.tsx';
 
 const newId = () => `l_${crypto.randomUUID().slice(0, 8)}`;
 const hostOf = (url: string) => {
@@ -279,6 +280,13 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
             </button>
           </div>
         </section>
+        <ProjectTasks
+          projectId={project.id}
+          onOpenPlanner={() => {
+            onClose();
+            gleeok.dispatch({ type: 'setView', view: 'planner' });
+          }}
+        />
         {auto.length > 0 && (
           <section>
             <h4>自动维护</h4>

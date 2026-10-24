@@ -5,8 +5,10 @@ import { join } from 'node:path';
 import { BrowserWindow, Menu, app, clipboard, components, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
 import { shortName } from '../../../shared/src/library-format.ts';
 import type { LibraryItem } from '../../../shared/src/library.ts';
-import type { Action, Command, LibraryOp, PaneRects, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
+import type { Action, Command, LibraryOp, PaneRects, PlannerOp, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
+import { PLANNER_KINDS } from '../../../shared/src/planner.ts';
 import { LibraryClient } from './library.ts';
+import { SyncedClient } from './synced-client.ts';
 import { dblpApply, dblpAuto, dblpSearch } from './dblp.ts';
 import { ReaderBridge, registerReaderScheme, serveReader } from './reader.ts';
 import {
@@ -16,6 +18,7 @@ import {
   codeLinks,
   isInternalUrl,
   isLibraryUrl,
+  isPlannerUrl,
   librarySettings,
   isTerminalUrl,
   readerUrl,
@@ -692,6 +695,32 @@ library.onChange = () => {
   }, 80);
 };
 
+// ---- 日程 ----
+
+const planner = new SyncedClient(config, 'planner', PLANNER_KINDS);
+let plannerTimer: NodeJS.Timeout | undefined;
+planner.onChange = () => {
+  clearTimeout(plannerTimer);
+  plannerTimer = setTimeout(() => shells.broadcast('planner', planner.snapshot()), 60);
+};
+ipcMain.handle('planner:get', () => planner.snapshot());
+ipcMain.handle('planner:call', async (_e, op: PlannerOp) => {
+  try {
+    switch (op.op) {
+      case 'sync':
+        return { result: await planner.sync() };
+      case 'create':
+        return { result: await planner.create(op.kind, op.objects) };
+      case 'patch':
+        return { result: await planner.patch(op.kind, op.key, op.fields) };
+      case 'remove':
+        return { result: await planner.remove(op.kind, op.key) };
+    }
+  } catch (e) {
+    return { error: String((e as Error).message ?? e).slice(0, 300) };
+  }
+});
+
 const readerBridge = new ReaderBridge(library, {
   authorName: () => userInfo().username,
   view: () => {
@@ -1298,6 +1327,11 @@ function dispatch(action: Action) {
       state.view = action.view;
       changed();
       return;
+    case 'togglePlanner':
+      state.view = state.view === 'planner' ? 'panes' : 'planner';
+      if (state.view === 'planner') void planner.sync();
+      changed();
+      return;
     case 'toggleLibrary':
       state.view = state.view === 'library' ? 'panes' : 'library';
       if (state.view === 'library') void library.sync();
@@ -1375,12 +1409,12 @@ function dispatch(action: Action) {
       const slot = slotOf(action.slot);
       const url = normalizeUrl(action.url);
       const tab = activeTab(session.panes[slot]);
-      // A terminal or the 文献库 takes a blank tab, or opens beside the current page.
-      if (isTerminalUrl(url) || isLibraryUrl(url)) {
+      // A terminal, the 文献库 or the 日程 takes a blank tab, or opens beside the current page.
+      if (isTerminalUrl(url) || isLibraryUrl(url) || isPlannerUrl(url)) {
         state.view = 'panes';
         if (tab.url !== NEW_TAB_URL) return openTab(session, slot, url);
         tab.url = url;
-        tab.title = isLibraryUrl(url) ? '文献库' : terminalTitle(url);
+        tab.title = isLibraryUrl(url) ? '文献库' : isPlannerUrl(url) ? '日程' : terminalTitle(url);
         tabsChanged(session);
         changed();
         focusSlot(slot);
@@ -1618,6 +1652,7 @@ app.whenReady().then(async () => {
   for (const s of Object.values(state.sessions)) if (s.projectId !== state.currentProjectId) s.lifecycle = 'hibernated';
   config.load();
   library.load();
+  planner.load();
   vault = new Vault(config.vaultUrl);
   vault.onChange = changed;
   vault.prewarm();
@@ -1632,6 +1667,8 @@ app.whenReady().then(async () => {
   const expireTrash = () => void library.emptyTrash(librarySettings(state).trashDays);
   void library.sync().then(expireTrash);
   setInterval(() => void library.sync(), 60_000);
+  void planner.sync();
+  setInterval(() => void planner.sync(), 60_000);
   setInterval(expireTrash, 6 * 3600_000);
   publishAllTabs();
   if (state.currentProjectId) void checkRemoteTabs(state.currentProjectId);

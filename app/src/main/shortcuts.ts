@@ -35,6 +35,7 @@ export function matchShortcut(input: Input, platform: string): Action | null {
     if (code === 'ArrowRight' || code === 'KeyL') return { type: 'focusPaneDelta', delta: 1 };
     if (code === 'KeyE') return { type: 'toggleEntry' };
     if (code === 'KeyP') return { type: 'toggleLibrary' };
+    if (code === 'KeyA') return { type: 'togglePlanner' };
     if (code === 'KeyC') return { type: 'openCode' };
     if (code === 'KeyF') return { type: 'toggleFocusExpand' };
     if (code === 'KeyB') return { type: 'toggleSidebar' };

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
-import type { Command, GleeokApi, LibrarySnapshot, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
+import type { Command, GleeokApi, LibrarySnapshot, PlannerSnapshot, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 
 function subscribe<T>(channel: string, cb: (v: T) => void) {
   const handler = (_e: IpcRendererEvent, v: T) => cb(v);
@@ -37,6 +37,9 @@ const api: GleeokApi = {
   onLibrary: (cb) => subscribe<LibrarySnapshot>('library', cb),
   library: (op) => ipcRenderer.invoke('library:call', op),
   pathForFile: (file) => webUtils.getPathForFile(file),
+  getPlanner: () => ipcRenderer.invoke('planner:get'),
+  onPlanner: (cb) => subscribe<PlannerSnapshot>('planner', cb),
+  planner: (op) => ipcRenderer.invoke('planner:call', op),
   pairPaseo: (url) => ipcRenderer.invoke('paseo:pair', url),
   unpairPaseo: (serverId) => ipcRenderer.invoke('paseo:unpair', serverId),
   setCodeServer: (serverId, url) => ipcRenderer.invoke('paseo:code-server', serverId, url),

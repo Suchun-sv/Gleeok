@@ -2302,3 +2302,747 @@ input.managed {
   color: var(--accent);
   white-space: nowrap;
 }
+
+/* ---- 日程 ---- */
+
+.planner {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--bg);
+  font-size: 13px;
+}
+
+.content > .planner {
+  position: absolute;
+  inset: 0;
+}
+
+.planner.loading {
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.plan-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.plan-side {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  flex: none;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  overflow-y: auto;
+}
+
+.plan-side.detail {
+  width: 340px;
+}
+
+.plan-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: min(360px, 94%);
+  overflow-y: auto;
+  background: var(--panel);
+  box-shadow: 0 0 24px rgb(0 0 0 / 45%);
+}
+
+.plan-switch {
+  display: flex;
+  gap: 2px;
+  padding: 8px 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.plan-switch button {
+  padding: 5px 12px;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+}
+
+.plan-switch button.on {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.plan-status {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  z-index: 30;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: #e5b45a;
+}
+
+.plan-to-pane {
+  margin-left: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.plan-seg {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.plan-seg button {
+  padding: 3px 10px;
+  color: var(--muted);
+}
+
+.plan-seg button + button {
+  border-left: 1px solid var(--line);
+}
+
+.plan-seg button.on {
+  background: var(--panel-2);
+  color: var(--accent);
+}
+
+/* calendar */
+
+.plan-cal {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.plan-cal-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.plan-today {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.plan-cal-title {
+  flex: 1;
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+.plan-grid-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.plan-days-head {
+  display: grid;
+  border-bottom: 1px solid var(--line);
+}
+
+.plan-day-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 4px;
+  border-left: 1px solid var(--line);
+}
+
+.plan-dow {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.plan-dom {
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.plan-day-head.today .plan-dom {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.plan-due-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  max-height: 72px;
+  overflow-y: auto;
+}
+
+.plan-due-chip {
+  overflow: hidden;
+  padding: 1px 6px;
+  border-left: 3px solid var(--muted);
+  border-radius: 4px;
+  background: var(--panel-2);
+  font-size: 12px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-grid-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.plan-grid {
+  position: relative;
+  display: grid;
+}
+
+.plan-gutter {
+  position: relative;
+}
+
+.plan-hour-label {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.plan-columns {
+  position: relative;
+  display: grid;
+}
+
+.plan-col {
+  position: relative;
+  border-left: 1px solid var(--line);
+}
+
+.plan-col.today {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.plan-hour-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  pointer-events: none;
+}
+
+.plan-drop-mark {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 0;
+  border-top: 2px dashed var(--accent);
+  pointer-events: none;
+}
+
+.plan-block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 2px 6px;
+  border-left: 3px solid var(--accent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 22%, var(--panel));
+  font-size: 12px;
+  line-height: 1.3;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.plan-block.free {
+  border-left-color: var(--muted);
+  background: var(--panel-2);
+}
+
+.plan-block.done {
+  opacity: 0.55;
+}
+
+.plan-block.done .plan-block-name {
+  text-decoration: line-through;
+}
+
+.plan-block.moving {
+  z-index: 3;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 40%);
+  cursor: grabbing;
+}
+
+.plan-block-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-block-time {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.plan-resize {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.plan-now {
+  position: absolute;
+  left: -1px;
+  right: 0;
+  z-index: 2;
+  height: 0;
+  border-top: 2px solid var(--danger);
+  pointer-events: none;
+}
+
+.plan-now span {
+  position: absolute;
+  left: 2px;
+  top: -9px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+}
+
+.plan-now::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.plan-popover {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 260px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+}
+
+.plan-pop-title {
+  font-weight: 600;
+}
+
+input.plan-pop-title {
+  width: 100%;
+}
+
+.plan-pop-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.plan-pop-actions button,
+.plan-detail-foot button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.plan-pop-actions .danger,
+.plan-detail-foot .danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* month */
+
+.plan-month {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: auto repeat(6, 1fr);
+  min-height: 0;
+  overflow: auto;
+}
+
+.plan-month-dow {
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.plan-month-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  min-height: 84px;
+  padding: 4px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.plan-month-cell.other {
+  opacity: 0.45;
+}
+
+.plan-month-cell.drop {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+.plan-month-date {
+  align-self: flex-start;
+  min-width: 22px;
+  padding: 0 4px;
+  border-radius: 10px;
+}
+
+.plan-month-cell.today .plan-month-date {
+  background: var(--accent);
+  color: #0b1220;
+  font-weight: 600;
+}
+
+.plan-month-item {
+  overflow: hidden;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+  font-size: 12px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-month-item.due {
+  border-left: 3px solid var(--muted);
+  background: var(--panel-2);
+}
+
+.plan-more {
+  font-size: 11px;
+}
+
+/* tasks */
+
+.plan-tasks {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.plan-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 8px 8px 4px;
+}
+
+.plan-filters > button:not(.icon-btn) {
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+.plan-filters > button.on,
+.plan-filters > select.on {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.plan-filters select {
+  max-width: 120px;
+  padding: 3px 6px;
+  color: var(--muted);
+}
+
+.plan-add {
+  margin: 4px 8px 6px;
+}
+
+.plan-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 6px 12px;
+}
+
+.plan-empty {
+  margin: 30px 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.plan-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 4px 6px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+
+.plan-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.plan-task:hover {
+  background: var(--panel-2);
+}
+
+.plan-task.on {
+  background: var(--panel-2);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.plan-task.drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.plan-task.drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.plan-task.done .plan-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.plan-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1.5px solid var(--muted);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.plan-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-pomo {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.plan-chip {
+  max-width: 90px;
+  overflow: hidden;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-due {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.plan-due.late {
+  color: var(--danger);
+}
+
+/* task details */
+
+.plan-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 16px;
+}
+
+.plan-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-detail-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+.plan-detail-title:focus {
+  border-color: var(--accent) !important;
+}
+
+.plan-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.plan-fields label,
+.plan-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-fields label > span:first-child,
+.plan-field > span:first-child {
+  width: 48px;
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.plan-fields select {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-num {
+  width: 56px;
+}
+
+.plan-block-title {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.plan-subtask {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-subtask input[type='text'],
+.plan-subtask input:not([type]) {
+  flex: 1;
+  min-width: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.plan-subtask.done input:not([type='checkbox']) {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.plan-subtask-add {
+  margin-top: 2px;
+}
+
+.plan-notes {
+  min-height: 90px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.plan-blockref {
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: var(--accent);
+  text-align: left;
+}
+
+.plan-blockref:hover {
+  background: var(--panel-2);
+}
+
+.plan-detail-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.plan-detail-foot .meta {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+/* in a project's settings drawer */
+
+.drawer-h4-link {
+  float: right;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.drawer-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}

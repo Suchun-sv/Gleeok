@@ -2,12 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Command, PaneRects, Snapshot } from '../../../shared/src/ipc.ts';
 import { TerminalView } from './Terminal.tsx';
 import { LibraryView } from './library/LibraryView.tsx';
+import { PlannerView } from './planner/PlannerView.tsx';
 import { useLibrary } from './library/data.ts';
 import {
   NEW_TAB_URL,
   DEFAULT_SUGGESTIONS,
   LIBRARY_URL,
   isLibraryUrl,
+  isPlannerUrl,
   isReaderUrl,
   isTerminalUrl,
   paneName,
@@ -137,6 +139,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
           platform={snap.platform}
           name={paneName(names, slot)}
           suggestions={snap.state.suggestions ?? DEFAULT_SUGGESTIONS}
+          projects={snap.projects}
           leading={i === 0 ? leading : null}
           trailing={i === slots.length - 1 ? trailing : null}
           key={slot}
@@ -175,6 +178,7 @@ interface PaneProps {
   platform: string;
   name: string;
   suggestions: Suggestion[];
+  projects: Project[];
   slot: number;
   pane: Pane;
   project: Project;
@@ -195,11 +199,12 @@ interface PaneProps {
 }
 
 function PaneView(props: PaneProps) {
-  const { platform, name, suggestions, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep } = props;
+  const { platform, name, suggestions, projects, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep } = props;
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
   const isTerm = isTerminalUrl(tab.url);
   const isLib = isLibraryUrl(tab.url);
+  const isPlanner = isPlannerUrl(tab.url);
   // Bumped whenever main focuses this pane while it shows a terminal.
   const [termFocus, setTermFocus] = useState(0);
   const address = useRef<HTMLInputElement>(null);
@@ -285,13 +290,13 @@ function PaneView(props: PaneProps) {
         {trailing && <div className="tabs-trailing">{trailing}</div>}
       </div>
       <div className="toolbar">
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew || isTerm || isLib}>
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew || isTerm || isLib || isPlanner}>
           ‹
         </button>
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'forward' })} disabled={isNew || isTerm || isLib}>
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'forward' })} disabled={isNew || isTerm || isLib || isPlanner}>
           ›
         </button>
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'reload' })} disabled={isNew || isTerm || isLib}>
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'reload' })} disabled={isNew || isTerm || isLib || isPlanner}>
           ⟳
         </button>
         <input
@@ -383,7 +388,8 @@ function PaneView(props: PaneProps) {
         {isNew && <NewTab slot={slot} project={project} suggestions={suggestions} inputRef={search} />}
         {isTerm && <TerminalView key={tab.id} tab={tab} focusSeq={termFocus} platform={platform} />}
         {isLib && <LibraryView mode="pane" slot={slot} platform={platform} />}
-        {asleep && !isNew && !isTerm && !isLib && !dragging && (
+        {isPlanner && <PlannerView mode="pane" projects={projects} currentProjectId={project.id} />}
+        {asleep && !isNew && !isTerm && !isLib && !isPlanner && !dragging && (
           <div className="asleep">
             {tab.favicon ? <img src={tab.favicon} alt="" onError={(e) => (e.currentTarget.style.display = 'none')} /> : null}
             <p className="title">{tab.title || tab.url}</p>
@@ -394,7 +400,7 @@ function PaneView(props: PaneProps) {
           </div>
         )}
         {/* Painted beneath the page just before main hides it (see App), so covering never flashes. */}
-        {!isNew && !isTerm && !isLib && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
+        {!isNew && !isTerm && !isLib && !isPlanner && !asleep && dragImage && <img className="drop-shot" src={dragImage} alt="" />}
         {dragging && (
           <div className="drop-zone">
             <span>移到{name}</span>
@@ -512,7 +518,7 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
     >
       {tab.favicon ? (
         <img src={tab.favicon} alt="" />
-      ) : isTerminalUrl(tab.url) || isReaderUrl(tab.url) || isLibraryUrl(tab.url) ? (
+      ) : isTerminalUrl(tab.url) || isReaderUrl(tab.url) || isLibraryUrl(tab.url) || isPlannerUrl(tab.url) ? (
         <img src={faviconFor(tab.url)} alt="" />
       ) : (
         <span className="fav" />
@@ -620,6 +626,8 @@ const LIBRARY_ICON = glyph(
   '<rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/>',
 );
 
+const PLANNER_ICON = glyph('<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>');
+
 /** lucide "square-terminal", for terminal tabs and links. */
 const TERMINAL_ICON = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8a909c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>',
@@ -629,6 +637,7 @@ export function faviconFor(url: string) {
   if (isTerminalUrl(url)) return TERMINAL_ICON;
   if (isReaderUrl(url)) return PDF_ICON;
   if (isLibraryUrl(url)) return LIBRARY_ICON;
+  if (isPlannerUrl(url)) return PLANNER_ICON;
   try {
     return `https://www.google.com/s2/favicons?sz=32&domain=${new URL(url).hostname}`;
   } catch {

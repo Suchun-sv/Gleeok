@@ -1,5 +1,6 @@
 import type { GlobalState, LibrarySettings, Link, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
 import type { LibraryCollection, LibraryItem, LibraryKind } from './library.ts';
+import type { PlannerKind, PlannerTask, Pomodoro, TimeBlock } from './planner.ts';
 
 export interface VaultLoginSummary {
   id: string;
@@ -44,6 +45,22 @@ export type LibraryOp =
   | { op: 'saveBib'; text: string; name: string }
   /** Through main's clipboard, which works whether or not the window has focus. */
   | { op: 'copyText'; text: string };
+
+/** The 日程 as the renderer sees it (its own channel, like the library). */
+export interface PlannerSnapshot {
+  status: 'loading' | 'ok' | 'offline' | 'unavailable';
+  error?: string;
+  version: number;
+  tasks: PlannerTask[];
+  blocks: TimeBlock[];
+  pomodoros: Pomodoro[];
+}
+
+export type PlannerOp =
+  | { op: 'create'; kind: PlannerKind; objects: Record<string, unknown>[] }
+  | { op: 'patch'; kind: PlannerKind; key: string; fields: Record<string, unknown> }
+  | { op: 'remove'; kind: PlannerKind; key: string }
+  | { op: 'sync' };
 
 export type ServerStatus = 'ok' | 'offline' | 'unconfigured' | 'local';
 
@@ -120,6 +137,8 @@ export type Action =
   | { type: 'toggleEntry' }
   /** The 文献库 in place of the panes, and back. */
   | { type: 'toggleLibrary' }
+  /** The 日程 in place of the panes, and back. */
+  | { type: 'togglePlanner' }
   | { type: 'setLibrarySettings'; settings: Partial<LibrarySettings> }
   /** Read a 文献库 PDF in a pane (the given one, else the default reading pane). */
   | { type: 'openReader'; attachment: string; slot?: number }
@@ -205,6 +224,9 @@ export interface GleeokApi {
   getLibrary(): Promise<LibrarySnapshot>;
   onLibrary(cb: (lib: LibrarySnapshot) => void): () => void;
   library(op: LibraryOp): Promise<{ result?: unknown; error?: string }>;
+  getPlanner(): Promise<PlannerSnapshot>;
+  onPlanner(cb: (p: PlannerSnapshot) => void): () => void;
+  planner(op: PlannerOp): Promise<{ result?: unknown; error?: string }>;
   /** A dropped file's path on disk. */
   pathForFile(file: File): string;
   /** Remember a daemon's pairing link on this machine and read its projects through the relay. */
