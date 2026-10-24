@@ -186,6 +186,9 @@ function TimeGrid({
   const [moving, setMoving] = useState<{ key: string; start: Date; end: Date } | null>(null);
   const [popover, setPopover] = useState<{ key: string; x: number; y: number; edit?: boolean } | null>(null);
   const [hover, setHover] = useState<{ day: number; minutes: number } | null>(null);
+  /** Dragging out a new stretch of time on an empty part of a day, then naming it. */
+  const [draft, setDraft] = useState<{ day: number; from: number; to: number } | null>(null);
+  const [naming, setNaming] = useState<{ start: Date; end: Date; x: number; y: number } | null>(null);
   const today = dayKey(now);
 
   // Open near now (or the morning), once per view. A pane may lay the grid out after this runs
@@ -269,6 +272,38 @@ function TimeGrid({
     el.addEventListener('pointerup', up);
   };
 
+  /**
+   * Press on an empty part of a day and drag: the stretch (in 15-minute steps) becomes a new task
+   * with that time, or a block of its own. A plain click makes nothing (double-click still does).
+   */
+  const startCreate = (e: React.PointerEvent, d: Date, di: number) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest('.plan-block')) return;
+    const y0 = e.clientY;
+    const anchor = Math.floor(pointAt(e.clientX, e.clientY).minutes / SNAP) * SNAP;
+    let range: { from: number; to: number } | null = null;
+    const move = (ev: PointerEvent) => {
+      if (!range && Math.abs(ev.clientY - y0) < 6) return;
+      // The far end goes to the nearest 15 minutes; at least 15 minutes long, either way.
+      const m = snap(pointAt(ev.clientX, ev.clientY).minutes);
+      const from = Math.min(anchor, m);
+      const to = Math.min(24 * 60, Math.max(anchor + SNAP, m));
+      range = { from, to };
+      setDraft({ day: di, ...range });
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (!range) return;
+      setNaming({ start: atMinutes(d, range.from), end: atMinutes(d, range.to), x: ev.clientX, y: ev.clientY });
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  const stopNaming = () => {
+    setNaming(null);
+    setDraft(null);
+  };
+
   const shown = (b: TimeBlock): TimeBlock => (moving?.key === b.key ? { ...b, start: moving.start.toISOString(), end: moving.end.toISOString() } : b);
   const pop = popover && blocks.find((b) => b.key === popover.key);
   const dueOn = (day: Date) => data.tasks.filter((t) => !t.deleted && !t.done && dueDay(t) === dayKey(day));
@@ -344,6 +379,7 @@ function TimeGrid({
                     const length = Math.max(30, (t.estimate ?? 0) * 25);
                     void createBlock({ taskKey: key, start: start.toISOString(), end: new Date(start.getTime() + length * MINUTE).toISOString() });
                   }}
+                  onPointerDown={(e) => startCreate(e, d, di)}
                   onDoubleClick={async (e) => {
                     if (e.target !== e.currentTarget) return;
                     const start = atMinutes(d, Math.min(snap(pointAt(e.clientX, e.clientY).minutes - 15), 24 * 60 - 30));
@@ -355,6 +391,13 @@ function TimeGrid({
                     <div key={h} className="plan-hour-line" style={{ top: h * HOUR }} />
                   ))}
                   {hover?.day === di && <div className="plan-drop-mark" style={{ top: (hover.minutes / 60) * HOUR }} />}
+                  {draft?.day === di && (
+                    <div className="plan-block draft" style={{ top: (draft.from / 60) * HOUR, height: ((draft.to - draft.from) / 60) * HOUR - 2, left: 2, right: 2 }}>
+                      <span className="plan-block-time">
+                        {hhmm(atMinutes(d, draft.from))}–{hhmm(atMinutes(d, draft.to))}
+                      </span>
+                    </div>
+                  )}
                   {placed.map((p) => {
                     const t = p.block.taskKey ? tasks.get(p.block.taskKey) : undefined;
                     const s = new Date(p.block.start);
@@ -395,6 +438,17 @@ function TimeGrid({
           </div>
         </div>
       </div>
+      {naming && (
+        <NewTimePopover
+          start={naming.start}
+          end={naming.end}
+          x={naming.x}
+          y={naming.y}
+          top={Math.min(0, ...data.tasks.map((t) => t.order ?? 0)) - 1}
+          onClose={stopNaming}
+          onError={onError}
+        />
+      )}
       {pop && popover && (
         <BlockPopover
           block={pop}
@@ -407,6 +461,88 @@ function TimeGrid({
           onError={onError}
         />
       )}
+    </div>
+  );
+}
+
+/** Naming a stretch dragged out on the calendar: a new task that takes it, or just a block. */
+function NewTimePopover({
+  start,
+  end,
+  x,
+  y,
+  top,
+  onClose,
+  onError,
+}: {
+  start: Date;
+  end: Date;
+  x: number;
+  y: number;
+  /** An order that puts a new task at the top of the list. */
+  top: number;
+  onClose: () => void;
+  onError: (e: unknown) => void;
+}) {
+  const [title, setTitle] = useState('');
+  const minutes = Math.round((end.getTime() - start.getTime()) / MINUTE);
+  useEffect(() => {
+    const onDown = () => onClose();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
+  const times = { start: start.toISOString(), end: end.toISOString() };
+  const asTask = async () => {
+    const name = title.trim();
+    if (!name) return;
+    try {
+      // Due that day; its pomodoro estimate follows the length (25 minutes each).
+      const [t] = await plan<PlannerTask[]>({
+        op: 'create',
+        kind: 'tasks',
+        objects: [{ title: name, due: dayKey(start), order: top, ...(minutes >= 25 ? { estimate: Math.round(minutes / 25) } : {}) }],
+      });
+      await plan({ op: 'create', kind: 'blocks', objects: [{ taskKey: t.key, ...times }] });
+      onClose();
+    } catch (e) {
+      onError(e);
+    }
+  };
+  const asBlock = async () => {
+    try {
+      await plan({ op: 'create', kind: 'blocks', objects: [{ title: title.trim() || '新时间块', ...times }] });
+      onClose();
+    } catch (e) {
+      onError(e);
+    }
+  };
+  return (
+    <div className="plan-popover" style={{ left: Math.min(x, window.innerWidth - 280), top: Math.min(y, window.innerHeight - 160) }} onMouseDown={(ev) => ev.stopPropagation()}>
+      <input
+        className="plan-pop-title"
+        autoFocus
+        placeholder="做什么？回车新建任务"
+        value={title}
+        onChange={(ev) => setTitle(ev.target.value)}
+        onKeyDown={(ev) => ev.key === 'Enter' && void (ev.shiftKey ? asBlock() : asTask())}
+      />
+      <div className="meta">
+        {start.getMonth() + 1}月{start.getDate()}日 {WEEKDAYS[start.getDay()]} {hhmm(start)}–{hhmm(end)}（{minutes} 分钟）
+      </div>
+      <div className="plan-pop-actions">
+        <button className="primary" disabled={!title.trim()} onClick={() => void asTask()} title="新建任务（收件箱，截止这一天），并占这段时间">
+          新建任务
+        </button>
+        <button onClick={() => void asBlock()} title="只在日历上占这段时间，不建任务（Shift+回车）">
+          只占时间
+        </button>
+        <button onClick={onClose}>取消</button>
+      </div>
     </div>
   );
 }

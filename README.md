@@ -97,7 +97,8 @@ The calendar icon above 文献库 (or Prefix+A) opens the 日程: a calendar (da
 month) beside a task list, in place of the panes or as a tab in a pane. Tasks have a due date
 (and time), priority, estimate in pomodoros, subtasks, notes and optionally a Gleeok project
 (whose settings drawer lists them). Drag a task into the calendar to block time for it, drag
-and stretch blocks, double-click for a block of your own; in the month view a drop sets the due
+and stretch blocks; press and drag on an empty stretch of a day to make a task for that time
+(or just a block), double-click for a quick block; in the month view a drop sets the due
 date. Blocks never complete a task: only ticking it does. ▶ on a task, its details or a block
 starts a pomodoro: the sidebar row shows the time left, and when a phase ends a notification
 and a dialog ask whether to start the break or the next pomodoro. Lengths are in Settings → 日程.

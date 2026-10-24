@@ -2609,6 +2609,8 @@ body.resizing-rows * {
 .plan-col {
   position: relative;
   border-left: 1px solid var(--line);
+  /* Dragging out new time should not select text. */
+  user-select: none;
 }
 
 .plan-col.today {
@@ -2659,6 +2661,24 @@ body.resizing-rows * {
 
 .plan-block.done .plan-block-name {
   text-decoration: line-through;
+}
+
+.plan-block.draft {
+  z-index: 3;
+  border: 1px dashed var(--accent);
+  border-left-width: 3px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  pointer-events: none;
+}
+
+.plan-pop-actions .primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #0b1220;
+}
+
+.plan-pop-actions .primary:disabled {
+  opacity: 0.5;
 }
 
 .plan-block.moving {

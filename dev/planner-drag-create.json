@@ -1,0 +1,20 @@
+[
+ {"evalMain":"gleeok.createProject('拖动测试').then(()=>'project')"},{"wait":800},
+ {"evalMain":"(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"},{"wait":300},
+ {"action":{"type":"setView","view":"planner"}},{"wait":1200},
+ {"evalMain":"(()=>{const s=document.querySelector('.plan-grid-scroll');s.scrollTop=8*44;return 'scrolled'})()"},{"wait":300},
+ {"mouseDrag":{"selector":".plan-col","dx":0,"dy":88,"steps":12}},{"wait":400},
+ {"evalMain":"'popover: '+(document.querySelector('.plan-popover .meta')?.textContent||'none')"},
+ {"capture":"1-dragged"},
+ {"evalMain":"(()=>{const i=document.querySelector('.plan-popover input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'写 DS4D 讲义');i.dispatchEvent(new Event('input',{bubbles:true}));return 'typed'})()"},{"wait":200},
+ {"evalMain":"(document.querySelector('.plan-popover input').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})),'enter')"},{"wait":1000},
+ {"evalMain":"gleeok.getPlanner().then(p=>{const t=p.tasks.find(t=>t.title==='写 DS4D 讲义');const b=t&&p.blocks.find(b=>b.taskKey===t.key);return t?('task due='+t.due+' estimate='+t.estimate+' | block '+new Date(b.start).toTimeString().slice(0,5)+'-'+new Date(b.end).toTimeString().slice(0,5)):'no task'})"},
+ {"evalMain":"'popover after: '+(document.querySelector('.plan-popover')?'open':'closed')+' | draft: '+(document.querySelector('.plan-block.draft')?'shown':'gone')"},
+ {"mouseDrag":{"selector":".plan-hour-line","index":16,"dx":0,"dy":44,"steps":8}},{"wait":400},
+ {"evalMain":"(()=>{const i=document.querySelector('.plan-popover input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'午饭');i.dispatchEvent(new Event('input',{bubbles:true}));return 'typed'})()"},{"wait":200},
+ {"evalMain":"([...document.querySelectorAll('.plan-popover button')].find(b=>b.textContent==='只占时间').click(),'block only')"},{"wait":800},
+ {"evalMain":"gleeok.getPlanner().then(p=>'free blocks: '+p.blocks.filter(b=>!b.taskKey).map(b=>b.title).join(',')+' | tasks: '+p.tasks.length)"},
+ {"evalMain":"(()=>{const c=document.querySelector('.plan-col');const r=c.getBoundingClientRect();c.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,clientX:r.left+20,clientY:r.top+600}));window.dispatchEvent(new PointerEvent('pointerup',{clientX:r.left+20,clientY:r.top+600}));return 'plain click'})()"},{"wait":300},
+ {"evalMain":"'after click: popover '+(document.querySelector('.plan-popover')?'open':'none')"},
+ {"capture":"2-created"}
+]
