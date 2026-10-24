@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Command, PaneRects, Snapshot } from '../../../shared/src/ipc.ts';
 import { TerminalView } from './Terminal.tsx';
 import { LibraryView } from './library/LibraryView.tsx';
-import { PlannerView, showTask } from './planner/PlannerView.tsx';
-import { dayKey, dueDay, dueLabel, hhmm, isOverdue, usePlanner } from './planner/data.ts';
+import { PlannerView, showProjectTasks, showTask } from './planner/PlannerView.tsx';
+import { byOrder, dayKey, dueDay, dueLabel, hhmm, isOverdue, plan, usePlanner } from './planner/data.ts';
+import type { PlannerTask } from '../../../shared/src/planner.ts';
 import { useLibrary } from './library/data.ts';
 import {
   NEW_TAB_URL,
@@ -563,9 +564,17 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
   );
 }
 
-/** The new-tab page's way into the 日程: open it here, with what today holds (the next block, what is due). */
-function PlannerTile({ slot }: { slot: number }) {
+/** How many of the project's tasks the new-tab page lists before "还有 N 个". */
+const PROJECT_TASKS_SHOWN = 6;
+
+/**
+ * The new-tab page's way into the 日程: what today holds (the next block, what is due, all
+ * projects), then this project's open tasks with an input to add one.
+ */
+function PlannerTile({ slot, project }: { slot: number; project: Project }) {
   const data = usePlanner();
+  const [draft, setDraft] = useState('');
+  const [error, setError] = useState('');
   const now = new Date();
   const today = dayKey(now);
   const open = (data?.tasks ?? []).filter((t) => !t.done && !t.deleted);
@@ -581,9 +590,40 @@ function PlannerTile({ slot }: { slot: number }) {
     if (task) showTask(task);
     gleeok.dispatch({ type: 'navigate', slot, url: PLANNER_URL });
   };
+  const todayShown = due.slice(0, next ? 2 : 3);
+  // This project's open tasks not already listed under today: overdue, by date (none last), priority.
+  const mine = open
+    .filter((t) => t.projectId === project.id && !todayShown.includes(t))
+    .sort(
+      (a, b) =>
+        Number(isOverdue(b, now)) - Number(isOverdue(a, now)) ||
+        (a.due ?? '9').localeCompare(b.due ?? '9') ||
+        (b.priority ?? 0) - (a.priority ?? 0) ||
+        byOrder(a, b),
+    );
+  const add = async () => {
+    const title = draft.trim();
+    if (!title) return;
+    setDraft('');
+    const top = Math.min(0, ...(data?.tasks ?? []).map((t) => t.order ?? 0)) - 1;
+    try {
+      await plan<PlannerTask[]>({ op: 'create', kind: 'tasks', objects: [{ title, projectId: project.id, order: top }] });
+      setError('');
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+    }
+  };
+  const taskTile = (t: PlannerTask) => (
+    <button key={t.key} onClick={() => go(t.key)} title={t.title}>
+      <img src={faviconFor(PLANNER_URL)} alt="" />
+      <span>{t.title}</span>
+      <span className={`sub ${isOverdue(t, now) ? 'late' : ''}`}>{t.due ? dueLabel(t) : '没有日期'}</span>
+    </button>
+  );
   return (
     <>
       <h3>日程</h3>
+      <div className="newtab-label">今天</div>
       <div className="links">
         <button onClick={() => go()} title="在这一栏打开日程">
           <img src={faviconFor(PLANNER_URL)} alt="" />
@@ -599,14 +639,43 @@ function PlannerTile({ slot }: { slot: number }) {
             <span className="sub">{Date.parse(next.start) <= now.getTime() ? '进行中' : '接下来'}</span>
           </button>
         )}
-        {due.slice(0, next ? 2 : 3).map((t) => (
-          <button key={t.key} onClick={() => go(t.key)} title={t.title}>
-            <img src={faviconFor(PLANNER_URL)} alt="" />
-            <span>{t.title}</span>
-            <span className={`sub ${isOverdue(t, now) ? 'late' : ''}`}>{dueLabel(t)}</span>
-          </button>
-        ))}
+        {todayShown.map(taskTile)}
       </div>
+      <div className="newtab-label">
+        「{project.name}」的任务
+        <button
+          className="link"
+          onClick={() => {
+            showProjectTasks(project.id);
+            go();
+          }}
+        >
+          在日程中查看全部 →
+        </button>
+      </div>
+      <div className="links">
+        {mine.slice(0, PROJECT_TASKS_SHOWN).map(taskTile)}
+        {mine.length > PROJECT_TASKS_SHOWN && (
+          <button
+            onClick={() => {
+              showProjectTasks(project.id);
+              go();
+            }}
+          >
+            <img src={faviconFor(PLANNER_URL)} alt="" />
+            <span>还有 {mine.length - PROJECT_TASKS_SHOWN} 个</span>
+            <span className="sub">在日程中查看</span>
+          </button>
+        )}
+      </div>
+      <input
+        className="newtab-add"
+        placeholder={`+ 添加任务到「${project.name}」，回车`}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && void add()}
+      />
+      {error && <p className="hint error">{error}</p>}
     </>
   );
 }
@@ -677,7 +746,7 @@ function NewTab({
           </button>
         ))}
       </div>
-      <PlannerTile slot={slot} />
+      <PlannerTile slot={slot} project={project} />
       <LibraryTile slot={slot} />
       <h3>常用</h3>
       <div className="links">

@@ -1,0 +1,13 @@
+[
+ {"evalMain":"gleeok.createProject('DS4D').then(()=>'project')"},{"wait":800},
+ {"evalMain":"(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"},{"wait":300},
+ {"evalMain":"(async()=>{const s=await gleeok.getSnapshot();const p=s.projects[0].id;const d=n=>new Date(Date.now()+n*86400000).toISOString().slice(0,10);await gleeok.planner({op:'create',kind:'tasks',objects:[{title:'回导师邮件',due:d(0),priority:2},{title:'改讲义第 3 节',due:d(0),priority:3,projectId:p},{title:'出第 4 周作业',due:d(3),projectId:p},{title:'整理数据集',projectId:p},{title:'批改作业',due:d(-1),projectId:p},{title:'别的项目的事',due:d(2),projectId:'p_other'}]});return 'seeded'})()"},
+ {"wait":800},
+ {"evalMain":"(()=>{const pane=[...document.querySelectorAll('.pane')][0];const labels=[...pane.querySelectorAll('.newtab-label')].map(l=>l.firstChild.textContent);const groups=[...pane.querySelectorAll('.newtab-label + .links')].map(g=>[...g.querySelectorAll('button span:first-of-type')].map(s=>s.textContent).join('/'));return labels.map((l,i)=>l+': '+groups[i]).join(' || ')})()"},
+ {"evalMain":"(()=>{const i=[...document.querySelectorAll('.pane')][0].querySelector('.newtab-add');i.focus();Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'从新标签页加的');i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));return 'added'})()"},{"wait":800},
+ {"evalMain":"gleeok.getSnapshot().then(s=>gleeok.getPlanner().then(p=>{const t=p.tasks.find(t=>t.title==='从新标签页加的');return 'new task project ok: '+(t&&t.projectId===s.projects[0].id)+' | tile shown: '+[...document.querySelectorAll('.pane')][0].textContent.includes('从新标签页加的')}))"},
+ {"capture":"1-newtab"},
+ {"evalMain":"([...document.querySelectorAll('.pane')][0].querySelector('.newtab-label .link').click(),'view all')"},{"wait":1200},
+ {"evalMain":"'chips on: '+[...document.querySelectorAll('.plan-chips button.on')].map(b=>b.textContent).join(',')+' | time: '+document.querySelector('.plan-filters button.on')?.textContent"},
+ {"capture":"2-planner"}
+]

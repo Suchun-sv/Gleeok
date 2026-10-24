@@ -513,6 +513,36 @@ main {
   font-weight: 500;
 }
 
+.newtab-label {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: min(600px, 100%);
+  margin: 4px 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.newtab-label + .links {
+  margin-bottom: 14px;
+}
+
+.newtab-label .link {
+  margin-left: auto;
+  padding: 0;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.newtab-add {
+  width: min(600px, 100%);
+  margin-top: -4px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
 .newtab .links {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
