@@ -84,7 +84,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k ci "$kc" >/dev/null
           security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
           # Trusted for code signing, or codesign will not use a self-signed identity.
-          openssl pkcs12 -in "$RUNNER_TEMP/id.p12" -passin "pass:$MAC_CERT_PASSWORD" -clcerts -nokeys -out "$RUNNER_TEMP/cert.pem"
+          security find-certificate -c "Gleeok Self-Signed" -p "$kc" > "$RUNNER_TEMP/cert.pem"
           sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$RUNNER_TEMP/cert.pem"
           echo "MAC_SIGN_IDENTITY=Gleeok Self-Signed" >> "$GITHUB_ENV"
           echo "MAC_SIGN_KEYCHAIN=$kc" >> "$GITHUB_ENV"
