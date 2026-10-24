@@ -5,6 +5,7 @@ import { Calendar, type CalendarView } from './Calendar.tsx';
 import { TaskDetail } from './TaskDetail.tsx';
 import { TaskPanel, type TaskFilter } from './TaskPanel.tsx';
 import { usePlanner } from './data.ts';
+import { AgentButton } from '../AgentConnections.tsx';
 
 const loadPref = <T,>(name: string, fallback: T): T => {
   try {
@@ -51,12 +52,16 @@ export function PlannerView({ mode, projects, currentProjectId }: { mode: 'full'
   const onError = (e: unknown) => setError(String((e as Error).message ?? e));
   const task = selected ? data.tasks.find((t) => t.key === selected) : undefined;
 
-  const toPane =
-    mode === 'full' ? (
-      <button className="plan-to-pane" onClick={() => gleeok.dispatch({ type: 'newTab', url: PLANNER_URL })} title="在焦点所在的那一栏打开日程">
-        在栏中打开
-      </button>
-    ) : null;
+  const toPane = (
+    <>
+      <AgentButton scope="planner" />
+      {mode === 'full' && (
+        <button className="plan-to-pane" onClick={() => gleeok.dispatch({ type: 'newTab', url: PLANNER_URL })} title="在焦点所在的那一栏打开日程">
+          在栏中打开
+        </button>
+      )}
+    </>
+  );
   const calendar = (
     <Calendar data={data} view={view} anchor={anchor} onAnchor={setAnchor} onView={setView} onSelectTask={setSelected} onError={onError} extra={toPane} />
   );

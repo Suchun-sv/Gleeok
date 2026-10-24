@@ -151,6 +151,8 @@ export interface Snapshot {
   };
   /** Windows whose pages are swapped for screenshots because the command palette is open there. */
   paletteWindows: string[];
+  /** Tabs whose page process died (tab id → reason: oom, crashed, killed…). */
+  crashedTabs: Record<string, string>;
   state: GlobalState;
   platform: string;
   /** This machine's hostname: a terminal on a project's own machine needs no ssh. */
@@ -212,6 +214,10 @@ export type Action =
   | { type: 'projectMenu'; id: string }
   | { type: 'hibernate'; id: string }
   | { type: 'startProject'; id: string }
+  /** Rebuild a tab whose page process died. */
+  | { type: 'reviveTab'; tabId: string }
+  /** Open gleeok.log (page crashes, failed loads, dead processes). */
+  | { type: 'openLog' }
   | { type: 'archiveProject'; id: string; archived: boolean; open?: boolean }
   | { type: 'detachPane'; slot?: number }
   | { type: 'attachPane'; slot?: number }

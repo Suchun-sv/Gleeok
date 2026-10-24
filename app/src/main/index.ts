@@ -8,6 +8,7 @@ import type { LibraryItem } from '../../../shared/src/library.ts';
 import type { TranslateEngine, TranslateResult } from '../../../shared/src/translate.ts';
 import { agentHandoff, type AgentCreated, type AgentInfo } from '../../../shared/src/agents.ts';
 import { AgentPort } from './agent-port.ts';
+import { log, logPath, siteOf } from './log.ts';
 import type { Action, AgentNew, AgentOp, AgentPanel, Command, LibraryOp, PaneRects, PlannerOp, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 import { PLANNER_KINDS, type PlannerTask, type TimeBlock } from '../../../shared/src/planner.ts';
 import { LibraryClient } from './library.ts';
@@ -79,6 +80,21 @@ let dragToken = 0;
 let downloads: Downloads | null = null;
 /** Per project, most recently closed tabs last; for reopen-closed-tab. Not persisted. */
 const closedTabs = new Map<string, { slot: number; url: string }[]>();
+/** Tabs whose page process died, and why: the pane shows that instead of a white page. */
+const crashedTabs = new Map<string, string>();
+
+/** The crashed tabs that still have their dead view (hibernating or closing a tab drops it). */
+function crashed(): Map<string, string> {
+  for (const id of crashedTabs.keys()) if (!views.crashed(id)) crashedTabs.delete(id);
+  return crashedTabs;
+}
+
+/** Rebuild a tab's page from its address: a fresh view and process. */
+function reviveTab(tabId: string) {
+  crashedTabs.delete(tabId);
+  views.destroy(tabId);
+  changed();
+}
 
 const views = new TabViews({
   onUpdate(tabId, patch) {
@@ -119,6 +135,14 @@ const views = new TabViews({
     const hit = findTab(tabId);
     if (hit) send({ type: 'findResult', slot: hit.slot, active, total });
   },
+  onGone(tabId, reason, exitCode) {
+    const url = findTab(tabId)?.tab.url ?? '';
+    log(`page process gone: ${siteOf(url)} reason=${reason} exitCode=${exitCode}`);
+    if (reason === 'clean-exit') return;
+    crashedTabs.set(tabId, reason);
+    changed();
+  },
+  log,
 });
 
 // ---- state helpers ----
@@ -545,6 +569,7 @@ function snapshot(): Snapshot {
       entries: vault?.entries() ?? [],
     },
     paletteWindows: [...paletteWindows],
+    crashedTabs: Object.fromEntries(crashed()),
     state,
     platform: process.platform,
     hostname: hostname(),
@@ -565,7 +590,8 @@ function syncViews() {
       for (const slot of visibleSlots(ws)) {
         const tab = activeTab(session!.panes[slot]);
         const rect = rects[slot];
-        if (rect && !isInternalUrl(tab.url)) desired.set(tab.id, { url: tab.url, bounds: rect });
+        // A dead page is taken off, so the pane can say so (and offer to reload) instead of white.
+        if (rect && !isInternalUrl(tab.url) && !crashed().has(tab.id)) desired.set(tab.id, { url: tab.url, bounds: rect });
       }
     }
     views.sync(bw, desired);
@@ -599,7 +625,13 @@ async function sendPageImages(ws: AppWindowState) {
   const images: Record<number, string> = {};
   for (const slot of session?.lifecycle === 'live' ? visibleSlots(ws) : []) {
     const view = views.get(activeTab(session!.panes[slot]).id);
-    if (view && !view.webContents.isDestroyed()) images[slot] = (await view.webContents.capturePage()).toDataURL();
+    if (!view || view.webContents.isDestroyed() || view.webContents.isCrashed()) continue;
+    // A hung or dying page cannot be captured; its pane just goes without a stand-in.
+    try {
+      images[slot] = (await view.webContents.capturePage()).toDataURL();
+    } catch (e) {
+      log(`screenshot failed: ${siteOf(view.webContents.getURL())} ${(e as Error).message}`);
+    }
   }
   const shell = shells.get(ws.id);
   if (!shell) return;
@@ -1155,6 +1187,12 @@ function dispatch(action: Action) {
     case 'startProject':
       startProject(action.id);
       return;
+    case 'reviveTab':
+      reviveTab(action.tabId);
+      return;
+    case 'openLog':
+      void shell.openPath(logPath());
+      return;
     case 'archiveProject':
       void setArchived(action.id, action.archived, action.open);
       return;
@@ -1534,7 +1572,11 @@ function dispatch(action: Action) {
       const nav = view.webContents.navigationHistory;
       if (action.op === 'back' && nav.canGoBack()) nav.goBack();
       if (action.op === 'forward' && nav.canGoForward()) nav.goForward();
-      if (action.op === 'reload') view.webContents.reload();
+      // Reloading a dead page does not always bring it back; a fresh view does.
+      if (action.op === 'reload') {
+        if (views.crashed(activeTab(session.panes[slotOf(action.slot)]).id)) reviveTab(activeTab(session.panes[slotOf(action.slot)]).id);
+        else view.webContents.reload();
+      }
       return;
     }
     case 'focusAddress':
@@ -1839,6 +1881,7 @@ app.whenReady().then(async () => {
         const page = focusedPage();
         return page ? readPage(page.wc) : null;
       },
+      crashPage: () => focusedPage()?.wc.forcefullyCrashRenderer(),
       pressKey: async (key) => {
         const page = focusedPage();
         if (!page) return;
@@ -1878,6 +1921,8 @@ app.on('will-quit', () => {
   terminals.killAll();
 });
 app.on('window-all-closed', () => app.quit());
+// The GPU process and the like: when one dies every page may turn white at once.
+app.on('child-process-gone', (_e, d) => log(`${d.type} process gone: reason=${d.reason} exitCode=${d.exitCode}${d.name ? ` name=${d.name}` : ''}`));
 
 /** Same editor page: same origin and the same folder/workspace (code-server keeps `?folder=` in its URL). */
 function sameCodePage(tabUrl: string, linkUrl: string) {

@@ -2913,6 +2913,73 @@ input.plan-pop-title {
   flex: 1;
 }
 
+.agent-anchor {
+  position: relative;
+}
+
+.agent-pop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(460px, 86vw);
+  max-height: 70vh;
+  overflow: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  text-align: left;
+}
+
+.agent-compact h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.agent-compact .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.agent-compact .row input:not([type]) {
+  flex: 1;
+  min-width: 140px;
+}
+
+.agent-compact button:not(.link) {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.agent-compact button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1220;
+}
+
+.agent-compact button.primary:disabled {
+  opacity: 0.5;
+}
+
+.agent-compact .agent-row {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agent-pop button.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+}
+
 .agent-handoff {
   margin: 10px 0;
   padding: 10px 12px;

@@ -5,6 +5,7 @@ import { ITEM_TYPES, READ_STATUS_LABELS } from '../../../../shared/src/library-s
 import { LIBRARY_URL } from '../../../../shared/src/model.ts';
 import { ItemPane } from './ItemPane.tsx';
 import { Icon, type IconName } from '../Icons.tsx';
+import { AgentButton } from '../AgentConnections.tsx';
 import {
   collectionAndBelow,
   collectionTree,
@@ -503,6 +504,7 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
             </button>
           </>
         )}
+        <AgentButton scope="library" />
         {mode === 'full' && (
           <button onClick={() => gleeok.dispatch({ type: 'newTab', url: LIBRARY_URL })} title="在焦点所在的那一栏打开文献库">
             在栏中打开

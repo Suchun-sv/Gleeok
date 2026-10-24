@@ -21,6 +21,8 @@
   - **复制 Claude Code 命令**：`claude mcp add --transport http gleeok <url>/mcp --header "Authorization: Bearer <令牌>"`
   - **复制 Codex 配置**：`[mcp_servers.gleeok]` 加 `url` 和 `http_headers`，追加到 `~/.codex/config.toml`（没在 Codex 上实测）
 - 连接列表：名字、范围、最后使用时间（最多每分钟记一次）、换新令牌、吊销。
+- 日程（日历标题栏）和文献库（工具栏）各有一个机器人按钮：弹出同样的连接面板，范围默认勾选所在的那一块，
+  底下有「在设置里管理全部连接」。
 - 服务器模式下 agent 用的地址是这台电脑连同步服务器的地址（client.json 的 serverUrl）；本地模式见「本机接口」卡片。
 
 ## 后端

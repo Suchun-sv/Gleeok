@@ -20,6 +20,8 @@ type Step =
   /** Log what is on the clipboard. */
   | { clipboard: true }
   | { pressKey: string }
+  /** Kill the focused page's process, as a crash or the system running out of memory would. */
+  | { crashPage: true }
   /** A real key press in the main window's shell (goes through before-input-event), e.g. into a terminal. */
   | { shellKey: { key: string; modifiers?: ('control' | 'shift' | 'alt' | 'meta')[] } }
   /** Real mouse input to the main window's shell (e.g. dragging a pane divider): press, move in steps, release. */
@@ -33,6 +35,7 @@ export interface DevHooks {
   evalPage(js: string): Promise<unknown>;
   /** A real key press in the focused page (trusted input), e.g. "Enter". */
   pressKey(key: string): Promise<void>;
+  crashPage(): void;
 }
 
 /**
@@ -82,6 +85,7 @@ export async function runDevScript(
     }
     if ('readFocused' in step) console.log('[devscript] read ->', JSON.stringify(await hooks.readFocused()));
     if ('pressKey' in step) await hooks.pressKey(step.pressKey);
+    if ('crashPage' in step) hooks.crashPage();
     if ('shellKey' in step) {
       const wc = getWindows().find(([id]) => id === 'main')?.[1].webContents;
       const { key, modifiers = [] } = step.shellKey;

@@ -1,0 +1,12 @@
+[
+ {"evalMain":"gleeok.createProject('崩溃测试').then(()=>'project')"},{"wait":800},{"action":{"type":"toggleEntry"}},{"wait":500},
+ {"action":{"type":"navigate","slot":1,"url":"https://example.com/"}},{"wait":3000},
+ {"evalMain":"new Date().toISOString()+' before crash'"},{"crashPage":true},{"wait":8000},{"evalMain":"new Date().toISOString()+' after wait'"},
+ {"evalMain":"[...document.querySelectorAll('.pane')].map(p=>p.querySelector('.asleep .hint')?.textContent||'-').join(' | ')"},
+ {"capture":"1-crashed"},
+ {"action":{"type":"history","slot":1,"op":"reload"}},{"wait":3000},
+ {"evalMain":"[...document.querySelectorAll('.pane')].map(p=>p.querySelector('.asleep .hint')?.textContent||'-').join(' | ')"},
+ {"capture":"2-revived"},
+ {"action":{"type":"openPalette"}},{"wait":800},{"evalMain":"gleeok.getSnapshot ? '' : ''"},{"action":{"type":"closePalette","winId":"main"}},{"wait":800},
+ {"capture":"3-after-palette"}
+]

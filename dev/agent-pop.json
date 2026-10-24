@@ -1,0 +1,13 @@
+[
+ {"evalMain":"gleeok.createProject('入口测试').then(()=>'project')"},{"wait":800},{"action":{"type":"toggleEntry"}},{"wait":500},
+ {"action":{"type":"setView","view":"planner"}},{"wait":1200},
+ {"evalMain":"(document.querySelector('.planner .agent-anchor button').click(),'open')"},{"wait":800},
+ {"evalMain":"[...document.querySelectorAll('.agent-pop input[type=checkbox]')].map(c=>c.checked).join(',')"},
+ {"capture":"1-planner-pop"},
+ {"action":{"type":"setView","view":"library"}},{"wait":1200},
+ {"evalMain":"(document.querySelector('.lib-toolbar .agent-anchor button').click(),'open')"},{"wait":800},
+ {"evalMain":"[...document.querySelectorAll('.agent-pop input[type=checkbox]')].map(c=>c.checked).join(',')"},
+ {"capture":"2-library-pop"},
+ {"evalMain":"([...document.querySelectorAll('.agent-pop button.link')][0].click(),'to settings')"},{"wait":800},
+ {"evalMain":"document.querySelector('.settings-nav button.on')?.textContent"}
+]

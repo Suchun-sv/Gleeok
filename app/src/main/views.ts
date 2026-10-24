@@ -7,8 +7,10 @@ import {
   type Rectangle,
   type WebContents,
 } from 'electron';
+import { siteOf as hostOf } from './log.ts';
 
 export const PARTITION = 'persist:gleeok';
+
 /** Preload for web pages (see preload/page.ts); also given to popups they open. */
 const PAGE_PRELOAD = join(__dirname, 'page-preload.js');
 
@@ -19,6 +21,9 @@ export interface ViewHooks {
   onOpenTab(tabId: string, url: string): void;
   onContextMenu(tabId: string, wc: WebContents, params: ContextMenuParams): void;
   onFound(tabId: string, active: number, total: number): void;
+  /** The page's process died (crash, out of memory, killed): it stays white until rebuilt. */
+  onGone(tabId: string, reason: string, exitCode: number): void;
+  log(message: string): void;
 }
 
 /**
@@ -28,6 +33,8 @@ export interface ViewHooks {
 export class TabViews {
   #views = new Map<string, WebContentsView>();
   #attached = new Map<string, BrowserWindow>();
+  /** The bounds each view should have, for the repaint after it is put back. */
+  #bounds = new Map<string, Rectangle>();
   #hooks: ViewHooks;
 
   constructor(hooks: ViewHooks) {
@@ -59,6 +66,13 @@ export class TabViews {
     });
     wc.on('context-menu', (_e, params) => this.#hooks.onContextMenu(tabId, wc, params));
     wc.on('found-in-page', (_e, r) => r.finalUpdate && this.#hooks.onFound(tabId, r.activeMatchOrdinal, r.matches));
+    wc.on('render-process-gone', (_e, d) => this.#hooks.onGone(tabId, d.reason, d.exitCode));
+    wc.on('unresponsive', () => this.#hooks.log(`page unresponsive: ${hostOf(wc.getURL())}`));
+    wc.on('responsive', () => this.#hooks.log(`page responsive again: ${hostOf(wc.getURL())}`));
+    wc.on('did-fail-load', (_e, code, description, failedUrl, isMainFrame) => {
+      // -3 is a navigation that was replaced by another one: not a failure.
+      if (isMainFrame && code !== -3) this.#hooks.log(`load failed: ${hostOf(failedUrl)} ${code} ${description}`);
+    });
     wc.setWindowOpenHandler(({ url: target, disposition }) => {
       // Scripted popups (OAuth sign-in and the like) need a real window so window.opener keeps
       // working; plain link opens become tabs in the same pane.
@@ -96,14 +110,32 @@ export class TabViews {
     }
     for (const [tabId, { url, bounds }] of desired) {
       const view = this.ensure(tabId, url);
+      this.#bounds.set(tabId, bounds);
       view.setBounds(bounds);
       const owner = this.#attached.get(tabId);
       if (owner !== win) {
         if (owner && !owner.isDestroyed()) owner.contentView.removeChildView(view);
         win.contentView.addChildView(view);
         this.#attached.set(tabId, win);
+        this.#repaint(tabId, view);
       }
     }
+  }
+
+  /**
+   * A view taken off a window and put back (palette, dialogs, dragging a divider or a tab) does
+   * not always paint again until its size changes, which leaves the pane white. Change its size
+   * by a pixel and back, and ask for a full repaint.
+   */
+  #repaint(tabId: string, view: WebContentsView) {
+    const bounds = this.#bounds.get(tabId);
+    if (!bounds || bounds.width < 2) return;
+    view.setBounds({ ...bounds, width: bounds.width - 1 });
+    setTimeout(() => {
+      if (view.webContents.isDestroyed() || !this.#attached.has(tabId)) return;
+      view.setBounds(this.#bounds.get(tabId) ?? bounds);
+      view.webContents.invalidate();
+    }, 16);
   }
 
   /** Take every page off a window that is about to close, so the pages outlive it. */
@@ -118,6 +150,13 @@ export class TabViews {
   #forget(tabId: string) {
     this.#views.delete(tabId);
     this.#attached.delete(tabId);
+    this.#bounds.delete(tabId);
+  }
+
+  /** Whether the tab's page process has died (the view is still there, white). */
+  crashed(tabId: string) {
+    const view = this.#views.get(tabId);
+    return !!view && !view.webContents.isDestroyed() && view.webContents.isCrashed();
   }
 
   attachedIn(win: BrowserWindow): WebContentsView[] {
@@ -130,6 +169,7 @@ export class TabViews {
     this.#attached.get(tabId)?.contentView.removeChildView(view);
     this.#attached.delete(tabId);
     this.#views.delete(tabId);
-    view.webContents.close();
+    this.#bounds.delete(tabId);
+    if (!view.webContents.isDestroyed()) view.webContents.close();
   }
 }

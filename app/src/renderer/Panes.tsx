@@ -25,6 +25,17 @@ import {
   type Tab,
 } from '../../../shared/src/model.ts';
 
+/** Why a page's process stopped (Electron's render-process-gone reasons), for the pane's message. */
+const CRASH_REASONS: Record<string, string> = {
+  oom: '内存不足',
+  'memory-eviction': '内存紧张，被系统回收',
+  killed: '被系统结束',
+  crashed: '崩溃',
+  'abnormal-exit': '异常退出',
+  'launch-failed': '启动失败',
+  'integrity-failure': '代码完整性检查失败',
+};
+
 interface Props {
   snap: Snapshot;
   project: Project;
@@ -154,6 +165,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
           covered={snap.tabDragging || snap.paletteWindows.includes(win.id)}
           dragImage={dragImages[slot]}
           asleep={session.lifecycle !== 'live'}
+          crashedTabs={snap.crashedTabs}
           windowButton={
             win.role === 'satellite' ? (
               <button onClick={() => gleeok.dispatch({ type: 'attachPane', slot })} title="合并回主窗口">
@@ -196,10 +208,12 @@ interface PaneProps {
   dragImage?: string;
   /** The project is hibernated: pages are not loaded until the user starts it. */
   asleep: boolean;
+  /** Tabs whose page process died (tab id → reason). */
+  crashedTabs: Record<string, string>;
 }
 
 function PaneView(props: PaneProps) {
-  const { platform, name, suggestions, projects, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep } = props;
+  const { platform, name, suggestions, projects, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep, crashedTabs } = props;
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
   const isTerm = isTerminalUrl(tab.url);
@@ -396,6 +410,16 @@ function PaneView(props: PaneProps) {
             <p className="hint">项目已休眠，网页没有加载</p>
             <button className="primary" onClick={() => gleeok.dispatch({ type: 'startProject', id: project.id })}>
               启动「{project.name}」
+            </button>
+          </div>
+        )}
+        {!asleep && !dragging && crashedTabs[tab.id] && (
+          <div className="asleep">
+            {tab.favicon ? <img src={tab.favicon} alt="" onError={(e) => (e.currentTarget.style.display = 'none')} /> : null}
+            <p className="title">{tab.title || tab.url}</p>
+            <p className="hint">这个网页的进程停止了（{CRASH_REASONS[crashedTabs[tab.id]] ?? crashedTabs[tab.id]}），所以显示不出来。</p>
+            <button className="primary" onClick={() => gleeok.dispatch({ type: 'reviveTab', tabId: tab.id })}>
+              重新加载
             </button>
           </div>
         )}
