@@ -1164,7 +1164,15 @@ function dispatch(action: Action) {
     }
     case 'setVisiblePanes': {
       const main = mainWindowState();
-      const next = Math.min(Math.max(1, action.count), main.slots.length);
+      const want = Math.min(Math.max(1, action.count), state.paneNames.length);
+      // More panes than the main window holds: bring back panes that sit in windows of their own
+      // (perhaps out of sight, on another workspace), lowest first.
+      while (main.slots.length < want) {
+        const away = state.windows.filter((w) => w.role === 'satellite').flatMap((w) => w.slots);
+        if (away.length === 0) break;
+        attachPane(Math.min(...away));
+      }
+      const next = Math.min(want, main.slots.length);
       // Each count of panes keeps its own widths: those set for three are no use for two.
       if (next !== main.layout.visible) {
         const saved = { ...main.layout.weightsFor };

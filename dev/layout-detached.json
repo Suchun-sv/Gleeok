@@ -1,0 +1,10 @@
+[
+ {"evalMain":"gleeok.createProject('拆栏测试').then(()=>'project')"},{"wait":800},
+ {"evalMain":"(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"},{"wait":300},
+ {"action":{"type":"detachPane","slot":2}},{"wait":1500},
+ {"evalMain":"gleeok.getSnapshot().then(s=>'windows: '+s.state.windows.map(w=>w.id+':'+w.slots.join('/')).join(' ')+' | buttons: '+[...document.querySelectorAll('button[aria-pressed]')].map(b=>b.title.split('（')[0]+(b.getAttribute('aria-pressed')==='true'?'*':'')).join(' | '))"},
+ {"capture":"1-detached"},
+ {"evalMain":"([...document.querySelectorAll('button[aria-pressed]')].find(b=>b.title.startsWith('三栏')).click(),'click 3')"},{"wait":1200},
+ {"evalMain":"gleeok.getSnapshot().then(s=>'windows: '+s.state.windows.map(w=>w.id+':'+w.slots.join('/')).join(' ')+' | visible '+s.state.windows[0].layout.visible+' | panes shown '+document.querySelectorAll('.pane').length)"},
+ {"capture":"2-merged"}
+]

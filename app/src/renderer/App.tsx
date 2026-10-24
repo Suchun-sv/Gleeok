@@ -189,7 +189,14 @@ export function App() {
               <>
                 {/* The sidebar (and its clock) folded away: the clock sits by the layout buttons. */}
                 {collapsed && clockShown(snap) && <StripClock />}
-                <LayoutControls visible={win.layout.visible} max={win.slots.length} focusExpand={win.layout.focusExpand} platform={snap.platform} />
+                <LayoutControls
+                  visible={win.layout.visible}
+                  // The main window offers every count of panes, even with some in windows of their own.
+                  max={win.role === 'main' ? snap.state.paneNames.length : win.slots.length}
+                  inWindow={win.slots.length}
+                  focusExpand={win.layout.focusExpand}
+                  platform={snap.platform}
+                />
               </>
             }
           />

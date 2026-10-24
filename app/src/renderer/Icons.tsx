@@ -256,17 +256,31 @@ function Columns({ n }: { n: number }) {
 }
 
 /** One button per pane count the main window can show (2 up to the panes it holds), then focus-expand and settings. */
-export function LayoutControls({ visible, max, focusExpand, platform }: { visible: number; max: number; focusExpand: boolean; platform: string }) {
+export function LayoutControls({
+  visible,
+  max,
+  inWindow = max,
+  focusExpand,
+  platform,
+}: {
+  visible: number;
+  /** Every pane there is… */
+  max: number;
+  /** …and how many this window holds (the rest are in windows of their own). */
+  inWindow?: number;
+  focusExpand: boolean;
+  platform: string;
+}) {
   const mod = platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+';
   return (
     <>
       {Array.from({ length: Math.max(0, max - 1) }, (_, i) => i + 2).map((n) => (
         <button
           key={n}
-          className={`icon-btn ${Math.min(visible, max) === n ? 'on' : ''}`}
+          className={`icon-btn ${Math.min(visible, inWindow) === n ? 'on' : ''}`}
           onClick={() => gleeok.dispatch({ type: 'setVisiblePanes', count: n })}
-          title={`${COUNT_NAMES[n]}栏（${mod}Shift+${n}）`}
-          aria-pressed={Math.min(visible, max) === n}
+          title={n > inWindow ? `${COUNT_NAMES[n]}栏：有栏在单独的窗口里，点这里合并回来（${mod}Shift+${n}）` : `${COUNT_NAMES[n]}栏（${mod}Shift+${n}）`}
+          aria-pressed={Math.min(visible, inWindow) === n}
         >
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <Columns n={n} />
