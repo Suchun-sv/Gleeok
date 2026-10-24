@@ -6,6 +6,7 @@ import { createApp } from './app.ts';
 import { Library } from './library.ts';
 import { Planner } from './planner.ts';
 import { Store } from './store.ts';
+import { Translator } from './translate.ts';
 
 const token = process.env.GLEEOK_TOKEN;
 if (!token) {
@@ -25,6 +26,7 @@ const app = createApp(new Store(dbPath), {
   vaultUrl: process.env.GLEEOK_VAULT_URL || undefined,
   library: new Library(libraryDir),
   planner: new Planner(libraryDir),
+  translator: new Translator(libraryDir),
   publicDir: join(import.meta.dirname, '..', 'public'),
   mobileUrl: process.env.GLEEOK_MOBILE_URL || undefined,
 });

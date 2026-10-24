@@ -146,6 +146,13 @@ PDF 默认在哪一栏打开；本地缓存上限与「清空缓存」；回收�
 - **复制到 Overleaf**：`shared/src/bibtex.ts` 按条目字段生成 BibTeX（arXiv 按 DBLP 的写法记作 CoRR），
   转义 LaTeX 特殊字符、用花括号保护标题里的大写；引用键是 Google Scholar 风格，第一次复制时生成并存进
   `citationKey` 字段，之后不再变。可以复制 BibTeX、复制 `\cite{…}`，分类可以整体复制或导出 `.bib`。
+- **划词翻译**（2026-10-24）：阅读器的选中文字小窗给插件留了位置（`renderTextSelectionPopup` 事件，
+  Zotero 的翻译插件也用它），`app/src/reader/glue.ts` 在那里加一块译文，带「复制」「换另一个服务」
+  「存为批注」（黄色高亮，译文写进评论）。翻译由同步服务器做（`server/src/translate.ts`，`/api/translate`）：
+  DeepL（`:fx` 结尾的免费 key 走 api-free.deepl.com）或任意 OpenAI 兼容接口（baseURL + 模型 + 可选 key，
+  本地模型也行）。设置和 key 存在服务器的 `translate.db`，所有设备共用，客户端只看得到 key 的最后几位；
+  译文按（服务、模型、目标语言、文字）缓存，最多 2 万条。PDF 里的换行和行尾连字符先拼回句子再翻。
+  设置在 设置 → 文献库 →「划词翻译」。
 
 ## 8. 里程碑
 

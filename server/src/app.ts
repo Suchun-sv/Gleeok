@@ -6,6 +6,7 @@ import { detectCodeServer } from './codeserver.ts';
 import { type Library, libraryRoutes } from './library.ts';
 import type { Planner } from './planner.ts';
 import { syncedRoutes } from './synced.ts';
+import { type Translator, translateRoutes } from './translate.ts';
 import { type Store, parseDaemon, parseProjectInput, parseSession } from './store.ts';
 
 export interface AppOptions {
@@ -19,6 +20,8 @@ export interface AppOptions {
   library?: Library;
   /** The 日程; its API lives under /api/planner. */
   planner?: Planner;
+  /** 划词翻译 (settings, keys, cache); its API lives under /api/translate. */
+  translator?: Translator;
   /** Directory with the phone page (server/public), served at /m/. */
   publicDir?: string;
   /** Where phones open it (e.g. an HTTPS tailnet address ending in /m/), for clients to hand out. */
@@ -72,6 +75,7 @@ export function createApp(store: Store, opts: AppOptions = {}) {
 
   if (opts.library) app.route('/api/library', libraryRoutes(opts.library));
   if (opts.planner) app.route('/api/planner', syncedRoutes(opts.planner));
+  if (opts.translator) app.route('/api/translate', translateRoutes(opts.translator));
 
   app.get('/api/projects', (c) => c.json(store.list()));
 

@@ -11,6 +11,7 @@ import {
   type PomodoroSettings,
   type Suggestion,
 } from '../../../shared/src/model.ts';
+import { TRANSLATE_TARGETS, type TranslateEngine, type TranslateResult, type TranslateSettingsInput, type TranslateSettingsView } from '../../../shared/src/translate.ts';
 import { lib, useLibrary } from './library/data.ts';
 import { faviconFor } from './Panes.tsx';
 import { PaseoSettings } from './PaseoSettings.tsx';
@@ -58,7 +59,12 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
         </button>
         {tab === 'panes' && <PaneSettings snap={snap} />}
         {tab === 'suggestions' && <SuggestionSettings snap={snap} />}
-        {tab === 'library' && <LibrarySettingsCard snap={snap} />}
+        {tab === 'library' && (
+          <>
+            <LibrarySettingsCard snap={snap} />
+            <TranslateCard />
+          </>
+        )}
         {tab === 'planner' && (
           <>
             <PlannerSettings snap={snap} />
@@ -340,6 +346,102 @@ function LibrarySettingsCard({ snap }: { snap: Snapshot }) {
 }
 
 const blurOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && e.currentTarget.blur();
+
+/** 划词翻译: the engine and its keys, kept on the sync server for every device. */
+function TranslateCard() {
+  const [v, setV] = useState<TranslateSettingsView | null>(null);
+  const [error, setError] = useState('');
+  const [base, setBase] = useState('');
+  const [model, setModel] = useState('');
+  const [test, setTest] = useState('');
+  const show = (next: TranslateSettingsView) => {
+    setV(next);
+    setBase(next.openai.baseUrl);
+    setModel(next.openai.model);
+    setError('');
+  };
+  useEffect(() => void lib<TranslateSettingsView>({ op: 'translateSettings' }).then(show, (e: Error) => setError(e.message)), []);
+  const save = (settings: TranslateSettingsInput) => void lib<TranslateSettingsView>({ op: 'setTranslateSettings', settings }).then(show, (e: Error) => setError(e.message));
+  const runTest = (engine?: TranslateEngine) => {
+    setTest('翻译中…');
+    void lib<TranslateResult>({ op: 'translate', text: 'Attention is all you need: the Transformer relies entirely on self-attention.', engine }).then(
+      (r) => setTest(r.off ? '划词翻译是关闭的' : `${r.label}：${r.text}`),
+      (e: Error) => setTest(`失败：${e.message}`),
+    );
+  };
+  return (
+    <section className="card">
+      <h3>划词翻译</h3>
+      {error && <p className="hint error">{error}</p>}
+      {v && (
+        <>
+          <div className="row">
+            <span className="meta lib-setting-label">翻译服务</span>
+            <select value={v.engine ?? ''} onChange={(e) => save({ engine: (e.target.value || null) as TranslateEngine | null })}>
+              <option value="">关闭</option>
+              <option value="deepl">DeepL</option>
+              <option value="openai">OpenAI 兼容接口</option>
+            </select>
+            <span className="meta lib-setting-label">译成</span>
+            <select value={v.target} onChange={(e) => save({ target: e.target.value })}>
+              {TRANSLATE_TARGETS.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="row">
+            <span className="meta lib-setting-label">DeepL key</span>
+            <KeyInput saved={v.deepl.key} placeholder="DeepL API key（免费版以 :fx 结尾）" onSave={(deeplKey) => save({ deeplKey })} />
+          </div>
+          <div className="row">
+            <span className="meta lib-setting-label">OpenAI baseURL</span>
+            <input value={base} placeholder="https://api.openai.com/v1" onChange={(e) => setBase(e.target.value)} onBlur={() => base !== v.openai.baseUrl && save({ openaiBaseUrl: base })} onKeyDown={blurOnEnter} />
+          </div>
+          <div className="row">
+            <span className="meta lib-setting-label">模型</span>
+            <input value={model} placeholder="例如 gpt-4.1-mini、deepseek-chat" onChange={(e) => setModel(e.target.value)} onBlur={() => model !== v.openai.model && save({ openaiModel: model })} onKeyDown={blurOnEnter} />
+          </div>
+          <div className="row">
+            <span className="meta lib-setting-label">OpenAI key</span>
+            <KeyInput saved={v.openai.key} placeholder="API key（本地模型可以不填）" onSave={(openaiKey) => save({ openaiKey })} />
+          </div>
+          <div className="row">
+            <span className="meta lib-setting-label">试一下</span>
+            {v.engines.map((e) => (
+              <button key={e.id} onClick={() => runTest(e.id)}>
+                {e.label}
+              </button>
+            ))}
+            {v.engines.length === 0 && <span className="hint">先填 DeepL key，或 OpenAI 接口的模型</span>}
+            <span className="hint">{test}</span>
+          </div>
+        </>
+      )}
+      <p className="hint">
+        在文献库的阅读器里选中文字，弹出的小窗下面就是译文，可以复制、换另一个服务再翻，或者「存为批注」（高亮这段，译文写进评论）。
+        设置和 key 存在同步服务器上，所有设备共用，保存后只显示最后几位；同一段文字只请求一次。
+      </p>
+    </section>
+  );
+}
+
+/** A secret: shows only that one is saved; typing replaces it, 清除 removes it. */
+function KeyInput({ saved, placeholder, onSave }: { saved: string | null; placeholder: string; onSave: (key: string) => void }) {
+  const [draft, setDraft] = useState('');
+  const commit = () => {
+    if (!draft.trim()) return;
+    onSave(draft.trim());
+    setDraft('');
+  };
+  return (
+    <>
+      <input type="password" value={draft} placeholder={saved ? `已保存（${saved}），输入新的替换` : placeholder} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={blurOnEnter} />
+      {saved && <button onClick={() => onSave('')}>清除</button>}
+    </>
+  );
+}
 
 function SyncSettings({ snap }: { snap: Snapshot }) {
   const { server } = snap;

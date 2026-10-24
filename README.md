@@ -85,7 +85,10 @@ reading position that follows you between machines. Settings → 文献库 picks
 the reader's theme and first zoom, how long the trash keeps items, and how much disk the local
 copies of PDFs may use (the least recently opened go first). The palette finds papers too. Items, annotations and files live in
 `library.db` and `library/` next to the server's database (or in Gleeok's user data in local
-mode); other machines pick up changes within a minute. The design is in [docs/library.md](docs/library.md);
+mode); other machines pick up changes within a minute. Selecting text in a PDF shows a translation
+under the selection popup (DeepL or any OpenAI-compatible API, set up once in Settings → 文献库 →
+划词翻译; keys stay on the server), which can also be saved as a highlight with the translation as
+its comment. The design is in [docs/library.md](docs/library.md);
 the reader is built by `dev/build-reader.sh` into `app/vendor/zotero-reader/`.
 
 ## 日程 (tasks, calendar, pomodoro)

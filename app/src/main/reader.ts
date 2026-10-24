@@ -3,6 +3,7 @@ import { join, normalize, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { app, ipcMain, net, protocol, type IpcMainInvokeEvent, type Session, type WebContents } from 'electron';
 import type { LibraryAnnotation, LibraryItem } from '../../../shared/src/library.ts';
+import type { TranslateEngine, TranslateResult } from '../../../shared/src/translate.ts';
 import { shortName } from '../../../shared/src/library-format.ts';
 import { READER_ORIGIN } from '../../../shared/src/model.ts';
 import type { LibraryClient } from './library.ts';
@@ -63,6 +64,8 @@ export class ReaderBridge {
       /** Reader theme and the zoom for a PDF opened for the first time (Settings → 文献库). */
       view: () => { theme: 'auto' | 'dark' | 'light'; zoom: 'page-width' | 'page-fit' | 'auto' };
       openLink: (url: string, from: WebContents) => void;
+      /** 划词翻译, through the sync server. */
+      translate: (text: string, engine?: TranslateEngine) => Promise<TranslateResult>;
     },
   ) {
     const fromReaderPage = (e: IpcMainInvokeEvent) => {
@@ -84,6 +87,10 @@ export class ReaderBridge {
     ipcMain.handle('reader:saveState', async (e, attachment: string, state: unknown) => {
       fromReaderPage(e);
       await library.patch('states', attachment, { state });
+    });
+    ipcMain.handle('reader:translate', async (e, text: string, engine?: TranslateEngine) => {
+      fromReaderPage(e);
+      return hooks.translate(String(text), engine);
     });
     ipcMain.on('reader:openLink', (e, url: string) => {
       if (e.senderFrame?.url.startsWith(`${READER_ORIGIN}/`) && /^https?:\/\//.test(url)) hooks.openLink(url, e.sender);

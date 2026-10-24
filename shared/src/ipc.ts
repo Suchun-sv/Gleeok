@@ -1,5 +1,6 @@
 import type { GlobalState, LibrarySettings, Link, PomodoroSettings, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
 import type { LibraryCollection, LibraryItem, LibraryKind } from './library.ts';
+import type { TranslateEngine, TranslateSettingsInput } from './translate.ts';
 import type { PlannerKind, PlannerTask, Pomodoro, TimeBlock } from './planner.ts';
 
 export interface VaultLoginSummary {
@@ -44,7 +45,11 @@ export type LibraryOp =
   /** Save BibTeX through the system's save dialog. */
   | { op: 'saveBib'; text: string; name: string }
   /** Through main's clipboard, which works whether or not the window has focus. */
-  | { op: 'copyText'; text: string };
+  | { op: 'copyText'; text: string }
+  /** 划词翻译: the settings on the sync server, a change to them, a test translation. */
+  | { op: 'translateSettings' }
+  | { op: 'setTranslateSettings'; settings: TranslateSettingsInput }
+  | { op: 'translate'; text: string; engine?: TranslateEngine };
 
 /** The 日程 as the renderer sees it (its own channel, like the library). */
 export interface PlannerSnapshot {

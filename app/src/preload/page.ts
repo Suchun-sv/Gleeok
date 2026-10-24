@@ -9,6 +9,7 @@ if (location.protocol === 'gleeok:' && location.host === 'reader') {
     deleteAnnotations: (attachment: string, ids: string[]) => ipcRenderer.invoke('reader:deleteAnnotations', attachment, ids),
     saveState: (attachment: string, state: unknown) => ipcRenderer.invoke('reader:saveState', attachment, state),
     openLink: (url: string) => ipcRenderer.send('reader:openLink', url),
+    translate: (text: string, engine?: string) => ipcRenderer.invoke('reader:translate', text, engine),
     onAnnotations: (cb: (change: { set: unknown[]; unset: string[] }) => void) => {
       ipcRenderer.on('reader:annotations', (_e, change: { set: unknown[]; unset: string[] }) => cb(change));
     },

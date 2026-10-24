@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { BrowserWindow, Menu, Notification, app, clipboard, components, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
 import { shortName } from '../../../shared/src/library-format.ts';
 import type { LibraryItem } from '../../../shared/src/library.ts';
+import type { TranslateEngine, TranslateResult } from '../../../shared/src/translate.ts';
 import type { Action, Command, LibraryOp, PaneRects, PlannerOp, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 import { PLANNER_KINDS, type PlannerTask, type TimeBlock } from '../../../shared/src/planner.ts';
 import { LibraryClient } from './library.ts';
@@ -776,6 +777,7 @@ const readerBridge = new ReaderBridge(library, {
       });
     }
   },
+  translate: (text, engine) => translate(text, engine),
 });
 
 /** Read a PDF: bring its tab forward if this project has one open, else open it in the reading pane. */
@@ -814,6 +816,21 @@ function openReader(attachment: string, slot?: number) {
 }
 
 
+/** A JSON call to the sync server (or the in-process one), its `error` thrown as the message. */
+async function serverJson(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<unknown> {
+  const res = await config.fetchRaw(method, path, {
+    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: { 'content-type': 'application/json' },
+    timeoutMs,
+  });
+  const json = (await res.json().catch(() => null)) as { error?: string } | null;
+  if (res.status === 404) throw new Error('同步服务器还不支持划词翻译，先更新服务器');
+  if (!res.ok) throw new Error(json?.error ?? `${method} ${path}: ${res.status}`);
+  return json;
+}
+
+const translate = (text: string, engine?: TranslateEngine) => serverJson('POST', '/api/translate', { text, engine }, 70_000) as Promise<TranslateResult>;
+
 /** New PDFs whose titles DBLP knows exactly get its metadata, in the background. */
 function autoFill(added: LibraryItem[]) {
   if (librarySettings(state).autoDblp && added.length) void dblpAuto(library, added.map((i) => i.key)).catch(() => {});
@@ -840,6 +857,12 @@ async function libraryCall(op: LibraryOp): Promise<unknown> {
       return dblpAuto(library, op.keys);
     case 'copyText':
       return clipboard.writeText(op.text);
+    case 'translateSettings':
+      return serverJson('GET', '/api/translate/settings');
+    case 'setTranslateSettings':
+      return serverJson('PUT', '/api/translate/settings', op.settings);
+    case 'translate':
+      return translate(op.text, op.engine);
     case 'saveBib': {
       const bw = focusedWindow();
       const opts = { title: '导出 BibTeX', defaultPath: op.name, filters: [{ name: 'BibTeX', extensions: ['bib'] }] };

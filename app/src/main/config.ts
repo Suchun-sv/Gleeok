@@ -6,6 +6,7 @@ import { createApp } from '../../../server/src/app.ts';
 import { Library } from '../../../server/src/library.ts';
 import { Planner } from '../../../server/src/planner.ts';
 import { Store } from '../../../server/src/store.ts';
+import { Translator } from '../../../server/src/translate.ts';
 import type { ServerStatus } from '../../../shared/src/ipc.ts';
 import { isCodeLink, sameUrl, type DeviceSession, type Link, type PaseoDaemon, type Project } from '../../../shared/src/model.ts';
 
@@ -62,6 +63,7 @@ export class ConfigClient {
         local: true,
         library: new Library(app.getPath('userData')),
         planner: new Planner(app.getPath('userData')),
+        translator: new Translator(app.getPath('userData')),
       });
       this.status = 'local';
       return;
