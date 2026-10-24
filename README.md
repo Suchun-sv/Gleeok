@@ -21,6 +21,19 @@ Gleeok 基于 Electron，只能整合网页版工具，不过提供内置终端�
 
 ## 安装与运行
 
+### 下载安装包
+
+在 [Releases](https://github.com/Suchun-sv/Gleeok/releases/latest) 下载对应系统的安装包，安装后会自动检查更新：
+
+- **macOS**：`mac-arm64.zip`（Apple 芯片）或 `mac-x64.zip`（Intel），解压后把 `Gleeok.app` 拖进「应用程序」。
+- **Windows**：`windows-x64-setup.exe`，SmartScreen 提示时点「更多信息 → 仍要运行」。
+- **Linux**：`linux-x86_64.AppImage`，`chmod +x` 后直接运行。
+
+> [!IMPORTANT]
+> **macOS 第一次打开会被拦下**（Gleeok 没有苹果开发者签名）。请到 **系统设置 → 隐私与安全性**，在页面下方点 **「仍要打开」**。只需一次，之后的自动更新不会再被拦。
+
+### 从源码运行
+
 需要 **Node.js 22+** 和 **Git**。Linux 还需安装 gcc、make 和 Python，用于编译终端依赖。
 
 ```sh
