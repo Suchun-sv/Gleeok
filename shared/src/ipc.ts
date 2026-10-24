@@ -159,6 +159,12 @@ export interface Snapshot {
    * Electron has the production VMP signature (deploy/macos-vmp-sign.sh); n/a elsewhere.
    */
   drm: { widevine: string | null; vmp: 'signed' | 'stale' | 'none' | 'n/a' };
+  /**
+   * The code running: its commit and build time, whether it is a hot update, how this install
+   * updates (git checkout, releases, or not at all), and whether the newest beta needs a new
+   * installer (it was built for another Electron) before it can run here.
+   */
+  build: { version: string; commit: string; built: string; hot: boolean; updates: 'git' | 'release' | null; betaNeedsInstaller: boolean };
   /** The sidebar's weather (null: turned off). */
   weather: WeatherSnapshot | null;
   /** Windows that fill their screen (full screen, or the compositor made them so): they show a clock. */
@@ -232,6 +238,7 @@ export type Action =
   | { type: 'setWeatherPlace'; place: WeatherPlace | 'auto' | 'off' }
   | { type: 'refreshWeather' }
   | { type: 'setClock'; mode: 'fullscreen' | 'always' | 'never' }
+  | { type: 'setUpdateChannel'; channel: 'stable' | 'beta' }
   | { type: 'archiveProject'; id: string; archived: boolean; open?: boolean }
   | { type: 'detachPane'; slot?: number }
   | { type: 'attachPane'; slot?: number }

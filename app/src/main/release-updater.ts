@@ -63,6 +63,7 @@ export async function latestRelease(): Promise<Release | null> {
 
 /** Download, check and install a release; resolves when the app is about to restart. */
 export async function installRelease(release: Release, step: (text: string) => void): Promise<void> {
+  if (!canReleaseUpdate()) throw new Error(`这个安装方式不能自己换成新版本：从 https://github.com/${REPO}/releases 下载 ${release.version}`);
   if (process.platform === 'darwin') return installMac(release, step);
   // Windows and the AppImage: electron-updater reads latest.yml / latest-linux.yml from the release.
   const { autoUpdater } = await import('electron-updater');

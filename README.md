@@ -2,6 +2,7 @@
 
 # Gleeok
 
+AI的每个Session都可以是一个项目, 但是人需要更多的软件,比如PPT、Overleaf、Notion、Zotero或者仅仅是一个简单的浏览器来
 A browser workspace organised by project. Each project gets two or three browser panes side by
 side, each with its own tabs; a sidebar switches projects. Inspired by
 [Paseo](https://paseo.sh), and built to sit next to it: projects can be imported from a Paseo
@@ -32,6 +33,12 @@ git needed, and Gleeok updates itself from there (the update dialog offers each 
 - **Windows**: `Gleeok-<version>-windows-x64-setup.exe` installs for your user; SmartScreen may warn
   once ("More info" → "Run anyway"), as the installer is not code-signed.
 - **Linux**: `Gleeok-<version>-linux-x86_64.AppImage`: `chmod +x` it and run it.
+
+Settings → 关于 → 更新通道: **正式版** (default) installs releases only; **测试版** also takes a hot
+update of every push to main (`.github/workflows/beta.yml` builds just Gleeok's code, a few MB, into
+the rolling `beta` prerelease). Hot updates live in Gleeok's user data and `boot.js` runs them, so
+the installed, signed app is never modified; one that fails to start is dropped automatically, and
+one built for a newer Electron waits for the next release. A git checkout follows main as before.
 
 Release builds carry castLabs' production VMP signature, so Apple Music and other DRM services play
 full tracks on every platform. Releases are made by pushing a tag (`git tag v0.2.0 && git push

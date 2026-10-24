@@ -55,7 +55,8 @@ import { Terminals } from './terminal.ts';
 import { PARTITION, TabViews } from './views.ts';
 import { Shells } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.ts';
-import { canReleaseUpdate, installRelease, latestRelease, type Release } from './release-updater.ts';
+import { installRelease, latestRelease, type Release } from './release-updater.ts';
+import { buildInfo, confirmHotBoot, installHot, latestHot, leaveHot, runningHot, type HotUpdate } from './hot-update.ts';
 import { VAULT_URL_DEFAULT, Vault, fillPage, readPage } from './vault.ts';
 import { type Pairing, loadPairings, parseOffer, readLocalPaseo, readPairedPaseo, savePairings } from './paseo.ts';
 
@@ -593,6 +594,7 @@ function snapshot(): Snapshot {
     memoryTotal,
     tabDragging,
     canSelfUpdate: updateKind() !== null,
+    build: { version: app.getVersion(), ...buildInfo(), hot: runningHot(), updates: updateKind(), betaNeedsInstaller },
     pomodoro: pomodoro.state,
     update,
     vault: {
@@ -715,10 +717,32 @@ let updateAskedFor = '';
 
 /** A git checkout pulls and rebuilds; an installed build takes the latest GitHub release. */
 function updateKind(): 'git' | 'release' | null {
-  return canSelfUpdate() ? 'git' : canReleaseUpdate() ? 'release' : null;
+  // Any installed build can check (and take beta hot updates); installing a release itself may
+  // not be possible (a Linux build that is not the AppImage), which installRelease says.
+  return canSelfUpdate() ? 'git' : app.isPackaged ? 'release' : null;
 }
-/** The release found by the last check (installed builds). */
+/** The release, or beta hot update, found by the last check (installed builds). */
 let pendingRelease: Release | null = null;
+let pendingHot: HotUpdate | null = null;
+/** The newest beta was built for another Electron: it needs the next installer. */
+let betaNeedsInstaller = false;
+
+/** Installed builds: a newer release first (both channels); on the beta channel, else the newest hot update. */
+async function checkReleases(): Promise<{ head: string; commits: string[] }> {
+  pendingRelease = await latestRelease();
+  pendingHot = null;
+  betaNeedsInstaller = false;
+  if (pendingRelease) return { head: pendingRelease.version, commits: [`版本 ${pendingRelease.version}`, ...pendingRelease.notes] };
+  if (state.updateChannel !== 'beta') return { head: '', commits: [] };
+  const beta = await latestHot();
+  if (!beta) return { head: '', commits: [] };
+  if (!beta.compatible) {
+    betaNeedsInstaller = true;
+    return { head: '', commits: [] };
+  }
+  pendingHot = beta.hot;
+  return { head: beta.hot.commit, commits: [`测试版 ${beta.hot.commit.slice(0, 7)}`, ...beta.hot.notes] };
+}
 
 async function checkUpdate(announceNone: boolean) {
   const kind = updateKind();
@@ -726,12 +750,7 @@ async function checkUpdate(announceNone: boolean) {
   try {
     let head: string;
     let commits: string[];
-    if (kind === 'git') ({ head, commits } = await pendingUpdates());
-    else {
-      pendingRelease = await latestRelease();
-      head = pendingRelease?.version ?? '';
-      commits = pendingRelease ? [`版本 ${pendingRelease.version}`, ...pendingRelease.notes] : [];
-    }
+    ({ head, commits } = kind === 'git' ? await pendingUpdates() : await checkReleases());
     update = { commits };
     changed();
     if (commits.length > 0) {
@@ -781,9 +800,10 @@ async function runReleaseUpdate() {
     changed();
   };
   try {
-    pendingRelease ??= await latestRelease();
-    if (!pendingRelease) throw new Error('没有找到新版本');
-    await installRelease(pendingRelease, step);
+    if (!pendingRelease && !pendingHot) await checkReleases();
+    if (pendingRelease) await installRelease(pendingRelease, step);
+    else if (pendingHot) await installHot(pendingHot, step);
+    else throw new Error('没有找到新版本');
   } catch (e) {
     const error = String((e as Error).message ?? e).slice(0, 300);
     log(`update: ${error}`);
@@ -1299,6 +1319,16 @@ function dispatch(action: Action) {
       return;
     case 'refreshWeather':
       weather.placeChanged();
+      return;
+    case 'setUpdateChannel':
+      state.updateChannel = action.channel === 'beta' ? 'beta' : undefined;
+      // Back to stable: the next start runs the installed build's own code again.
+      if (action.channel === 'stable' && runningHot()) {
+        leaveHot();
+        send({ type: 'toast', slot: state.focusedPane, text: '已切回正式版：重启 Gleeok 后生效', ms: 8000 });
+      }
+      changed();
+      void checkUpdate(false);
       return;
     case 'setClock':
       state.clock = action.mode === 'fullscreen' ? undefined : action.mode;
@@ -1990,6 +2020,8 @@ app.whenReady().then(async () => {
   setInterval(() => void config.refresh().then(changed), 60_000);
   // Running from a git checkout: look for new commits shortly after launch and every 6 hours.
   setTimeout(() => void checkUpdate(false), 20_000);
+  // Up and running for a while: a hot update that got this far is fine (see boot.js).
+  setTimeout(confirmHotBoot, 15_000);
   setInterval(() => void checkUpdate(false), 6 * 3600_000);
   if (!state.currentProjectId && visibleProjects()[0]) state.currentProjectId = visibleProjects()[0].id;
   changed();

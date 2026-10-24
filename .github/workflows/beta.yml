@@ -1,0 +1,52 @@
+# The beta channel: every push to main builds Gleeok's code alone (dist/, vendor/, assets/) into the
+# rolling "beta" prerelease, where installed builds on the beta channel pick it up as a hot update
+# (app/src/main/hot-update.ts). No Electron, no installers, about a minute.
+name: Beta
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beta
+  cancel-in-progress: true
+
+jobs:
+  hot:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --no-fund --no-audit
+        env:
+          # Only the code is shipped; Electron itself is not needed to build it.
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: npm run build
+        env:
+          GLEEOK_COMMIT: ${{ github.sha }}
+      - name: Bundle
+        run: |
+          tar -czf ../hot.tar.gz dist vendor assets
+          node ../dev/hot-manifest.mjs ../hot.tar.gz > ../hot.json
+          cat ../hot.json
+      - name: Publish to the beta prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view beta >/dev/null 2>&1 || gh release create beta --prerelease --target "$GITHUB_SHA" \
+            --title "Gleeok 测试版（热更新）" \
+            --notes "测试版通道的热更新包：main 上每次提交都会更新这里的 hot.tar.gz / hot.json。正式版的安装包在其他 Release 里。"
+          # The archive first, then the manifest that points at it.
+          gh release upload beta ../hot.tar.gz --clobber
+          gh release upload beta ../hot.json --clobber

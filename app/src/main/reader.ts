@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join, normalize, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { app, ipcMain, net, protocol, type IpcMainInvokeEvent, type Session, type WebContents } from 'electron';
+import { ipcMain, net, protocol, type IpcMainInvokeEvent, type Session, type WebContents } from 'electron';
 import type { LibraryAnnotation, LibraryItem } from '../../../shared/src/library.ts';
 import type { TranslateEngine, TranslateResult } from '../../../shared/src/translate.ts';
 import { shortName } from '../../../shared/src/library-format.ts';
@@ -22,7 +22,8 @@ export function registerReaderScheme() {
   ]);
 }
 
-const vendorDir = () => join(app.getAppPath(), 'vendor', 'zotero-reader');
+// Next to the running code (dist/..): the installed app's, or a hot update's own copy.
+const vendorDir = () => join(__dirname, '..', 'vendor', 'zotero-reader');
 
 export function serveReader(ses: Session) {
   // The vendor page, plus the glue that starts the reader once reader.js has defined it.

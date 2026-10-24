@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Per-project browser workspace",
-  "main": "dist/main.js",
+  "main": "boot.js",
   "scripts": {
     "build": "node build.mjs",
     "postinstall": "node node_modules/electron/install.js",
@@ -32,6 +32,7 @@
       "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
     },
     "files": [
+      "boot.js",
       "dist/**",
       "assets/**",
       "vendor/**",

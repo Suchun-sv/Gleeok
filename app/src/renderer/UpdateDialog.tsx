@@ -12,7 +12,8 @@ export function UpdateDialog({ update, winId, onClose }: { update: Snapshot['upd
   const { commits, step, error } = update;
   // Installed builds get a release: "版本 x.y.z" first, then its notes.
   const release = commits[0]?.startsWith('版本 ') ? commits[0].slice(3) : null;
-  const items = release ? commits.slice(1) : commits;
+  const beta = commits[0]?.startsWith('测试版 ') ? commits[0].slice(4) : null;
+  const items = release || beta ? commits.slice(1) : commits;
   return (
     <div className="palette-backdrop" onMouseDown={close}>
       <div
@@ -26,7 +27,15 @@ export function UpdateDialog({ update, winId, onClose }: { update: Snapshot['upd
         }}
       >
         <div className="vault-form update-dialog">
-          <h3>{release ? `Gleeok ${release} 可以更新了` : commits.length ? `Gleeok 有 ${commits.length} 个更新` : 'Gleeok 已经是最新版本'}</h3>
+          <h3>
+            {release
+              ? `Gleeok ${release} 可以更新了`
+              : beta
+                ? `测试版有更新（${beta}）`
+                : commits.length
+                  ? `Gleeok 有 ${commits.length} 个更新`
+                  : 'Gleeok 已经是最新版本'}
+          </h3>
           {items.length > 0 && (
             <ul>
               {items.slice(0, 12).map((c, i) => (

@@ -198,6 +198,8 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
                 ? '更新失败，点此查看'
                 : snap.update.commits[0]?.startsWith('版本 ')
                   ? `⬆ 更新到 Gleeok ${snap.update.commits[0].slice(3)}`
+                  : snap.update.commits[0]?.startsWith('测试版 ')
+                    ? '⬆ 测试版有更新'
                   : `⬆ 更新 Gleeok（${snap.update.commits.length} 个更新）`}
           </button>
         )}

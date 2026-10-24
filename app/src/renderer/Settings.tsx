@@ -626,8 +626,30 @@ function About({ snap }: { snap: Snapshot }) {
     <section className="card">
       <h3>Gleeok</h3>
       <dl className="facts">
+        <dt>版本</dt>
+        <dd>
+          {snap.build.version}
+          {snap.build.commit !== 'unknown' && <span className="meta"> · {snap.build.commit.slice(0, 7)}</span>}
+          {snap.build.hot && <span className="meta">（测试版热更新）</span>}
+        </dd>
         <dt>构建时间</dt>
         <dd>{built}</dd>
+        <dt>更新通道</dt>
+        <dd>
+          {snap.build.updates === 'release' ? (
+            <>
+              <select value={snap.state.updateChannel ?? 'stable'} onChange={(e) => gleeok.dispatch({ type: 'setUpdateChannel', channel: e.target.value as 'stable' | 'beta' })}>
+                <option value="stable">正式版：只装发布的版本</option>
+                <option value="beta">测试版：main 上每次改动都热更新</option>
+              </select>
+              {snap.build.betaNeedsInstaller && <span className="hint"> · 最新的测试版换了 Electron，要等下一个正式版的安装包</span>}
+            </>
+          ) : snap.build.updates === 'git' ? (
+            '代码目录：跟着 main 分支（git pull 后重新构建）'
+          ) : (
+            '这个安装方式不能自动更新'
+          )}
+        </dd>
         <dt>DRM</dt>
         <dd>
           {snap.drm.widevine ? `Widevine ${snap.drm.widevine}` : 'Widevine 还没就绪（第一次启动要下载，稍后再看）'}
