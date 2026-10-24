@@ -276,6 +276,8 @@ export interface GlobalState {
   suggestions?: Suggestion[];
   /** 文献库 preferences changed in Settings (this machine only); see librarySettings(). */
   library?: Partial<LibrarySettings>;
+  /** Pomodoro lengths changed in Settings (this machine only); see pomodoroSettings(). */
+  pomodoro?: Partial<PomodoroSettings>;
 }
 
 export interface LibrarySettings {
@@ -291,6 +293,17 @@ export interface LibrarySettings {
   /** Look new PDFs up in DBLP and fill them when the title matches exactly. */
   autoDblp: boolean;
 }
+
+export interface PomodoroSettings {
+  focusMin: number;
+  shortMin: number;
+  longMin: number;
+  /** A long break after this many focus pomodoros. */
+  longEvery: number;
+}
+
+export const DEFAULT_POMODORO: PomodoroSettings = { focusMin: 25, shortMin: 5, longMin: 15, longEvery: 4 };
+export const pomodoroSettings = (s: Pick<GlobalState, 'pomodoro'>): PomodoroSettings => ({ ...DEFAULT_POMODORO, ...s.pomodoro });
 
 export const DEFAULT_LIBRARY_SETTINGS: LibrarySettings = { readerPane: 2, cacheGB: 5, trashDays: 30, readerTheme: 'auto', readerZoom: 'page-width', autoDblp: true };
 export const librarySettings = (s: Pick<GlobalState, 'library'>): LibrarySettings => ({ ...DEFAULT_LIBRARY_SETTINGS, ...s.library });

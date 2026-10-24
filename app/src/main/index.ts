@@ -2,13 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { freemem, hostname, totalmem, userInfo } from 'node:os';
 import { join } from 'node:path';
-import { BrowserWindow, Menu, app, clipboard, components, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
+import { BrowserWindow, Menu, Notification, app, clipboard, components, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
 import { shortName } from '../../../shared/src/library-format.ts';
 import type { LibraryItem } from '../../../shared/src/library.ts';
 import type { Action, Command, LibraryOp, PaneRects, PlannerOp, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
-import { PLANNER_KINDS } from '../../../shared/src/planner.ts';
+import { PLANNER_KINDS, type PlannerTask, type TimeBlock } from '../../../shared/src/planner.ts';
 import { LibraryClient } from './library.ts';
 import { SyncedClient } from './synced-client.ts';
+import { PomodoroTimer } from './pomodoro.ts';
 import { dblpApply, dblpAuto, dblpSearch } from './dblp.ts';
 import { ReaderBridge, registerReaderScheme, serveReader } from './reader.ts';
 import {
@@ -20,6 +21,7 @@ import {
   isLibraryUrl,
   isPlannerUrl,
   librarySettings,
+  pomodoroSettings,
   isTerminalUrl,
   readerUrl,
   primaryCodeLink,
@@ -531,6 +533,7 @@ function snapshot(): Snapshot {
     memoryTotal,
     tabDragging,
     canSelfUpdate: canSelfUpdate(),
+    pomodoro: pomodoro.state,
     update,
     vault: {
       unlocked: vault?.unlocked ?? false,
@@ -720,6 +723,43 @@ ipcMain.handle('planner:call', async (_e, op: PlannerOp) => {
     return { error: String((e as Error).message ?? e).slice(0, 300) };
   }
 });
+
+// ---- 番茄钟 ----
+
+const PHASE_NAMES = { focus: '专注', short: '短休息', long: '长休息' } as const;
+
+const pomodoro = new PomodoroTimer({
+  settings: () => pomodoroSettings(state),
+  changed: () => changed(),
+  record: (r) => void planner.create('pomodoros', [r]).catch((e) => console.warn('[gleeok] pomodoro not saved:', e)),
+  finished(phase, s) {
+    const next = s.awaiting ? `${PHASE_NAMES[s.awaiting]} ${pomodoroSettings(state)[s.awaiting === 'focus' ? 'focusMin' : s.awaiting === 'short' ? 'shortMin' : 'longMin']} 分钟` : '';
+    const n = new Notification({
+      title: phase === 'focus' ? '番茄完成 🍅' : '休息结束',
+      body: [s.taskTitle, next && `接下来：${next}（在 Gleeok 里确认）`].filter(Boolean).join('\n'),
+      silent: false,
+    });
+    n.on('click', () => {
+      const bw = shells.get('main');
+      if (bw) (bw.isMinimized() && bw.restore(), bw.show(), bw.focus());
+    });
+    n.show();
+    const bw = shells.get('main');
+    if (process.platform === 'darwin') app.dock?.bounce('informational');
+    else if (bw && !bw.isFocused()) bw.flashFrame(true);
+    void openOverlay('pomodoro-dialog');
+  },
+});
+
+/** Start focusing (on a task, with the block it is in now, if any). */
+function startPomodoro(taskKey?: string, blockKey?: string) {
+  const task = taskKey ? planner.get<PlannerTask>('tasks', taskKey) : undefined;
+  const now = Date.now();
+  const block =
+    blockKey ??
+    (task ? planner.all<TimeBlock>('blocks').find((b) => b.taskKey === task.key && Date.parse(b.start) <= now && Date.parse(b.end) > now)?.key : undefined);
+  pomodoro.start('focus', task ? { key: task.key, title: task.title, blockKey: block } : undefined);
+}
 
 const readerBridge = new ReaderBridge(library, {
   authorName: () => userInfo().username,
@@ -1325,6 +1365,28 @@ function dispatch(action: Action) {
     }
     case 'setView':
       state.view = action.view;
+      changed();
+      return;
+    case 'pomoStart':
+      startPomodoro(action.taskKey, action.blockKey);
+      return;
+    case 'pomoPause':
+      pomodoro.pause();
+      return;
+    case 'pomoResume':
+      pomodoro.resume();
+      return;
+    case 'pomoSkip':
+      pomodoro.skip();
+      return;
+    case 'pomoStop':
+      pomodoro.stop();
+      return;
+    case 'pomoConfirm':
+      pomodoro.confirm(action.go);
+      return;
+    case 'setPomodoroSettings':
+      state.pomodoro = { ...state.pomodoro, ...action.settings };
       changed();
       return;
     case 'togglePlanner':

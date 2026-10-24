@@ -5,6 +5,7 @@ import icon from '../../assets/icon-64.png';
 import { Icon, IconButton } from './Icons.tsx';
 import { useLibrary } from './library/data.ts';
 import { dayKey, usePlanner } from './planner/data.ts';
+import { PHASE_NAMES, mmss, remaining, useTick } from './planner/Pomodoro.tsx';
 
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
 export function SidebarToggle({ platform }: { platform: string }) {
@@ -184,7 +185,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         </div>
       )}
 
-      <PlannerEntry active={state.view === 'planner'} platform={snap.platform} />
+      <PlannerEntry active={state.view === 'planner'} platform={snap.platform} pomodoro={snap.pomodoro} />
       <LibraryEntry active={state.view === 'library'} platform={snap.platform} />
       <footer>
         {(snap.update.commits.length > 0 || snap.update.step || snap.update.error) && (
@@ -259,22 +260,61 @@ function LibraryEntry({ active, platform }: { active: boolean; platform: string 
 }
 
 /** The 日程 entry, with how many tasks are open for today (overdue included). */
-function PlannerEntry({ active, platform }: { active: boolean; platform: string }) {
+function PlannerEntry({ active, platform, pomodoro }: { active: boolean; platform: string; pomodoro: Snapshot['pomodoro'] }) {
   const planner = usePlanner();
   const today = dayKey(new Date());
   const count = planner?.tasks.filter((t) => !t.done && !t.deleted && t.due && t.due.slice(0, 10) <= today).length;
+  useTick(pomodoro.running);
+  const busy = pomodoro.phase !== 'idle';
+  const stop = (e: React.MouseEvent, action: Parameters<typeof gleeok.dispatch>[0]) => {
+    e.stopPropagation();
+    gleeok.dispatch(action);
+  };
+  // While a pomodoro runs, the row is its clock: phase, time left, pause / stop.
+  const label = !busy
+    ? '日程'
+    : pomodoro.awaiting
+      ? pomodoro.awaiting === 'focus'
+        ? '休息结束'
+        : '番茄完成'
+      : `${PHASE_NAMES[pomodoro.phase]} ${mmss(remaining(pomodoro, Date.now()))}${pomodoro.running ? '' : ' 已暂停'}`;
   return (
     <div
       role="button"
-      className={`project library-entry ${active ? 'active' : ''}`}
+      className={`project library-entry ${active ? 'active' : ''} ${busy ? 'pomo' : ''} ${pomodoro.phase === 'focus' ? 'focus' : ''}`}
       onClick={() => gleeok.dispatch({ type: 'togglePlanner' })}
-      title={`日程（${platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+'}A）${count ? `\n今天还有 ${count} 个任务` : ''}`}
+      title={`日程（${platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+'}A）${pomodoro.taskTitle && busy ? `\n${pomodoro.taskTitle}` : count ? `\n今天还有 ${count} 个任务` : ''}`}
     >
       <span className="status">
-        <Icon name="calendarCheck" size={13} />
+        <Icon name={busy ? 'timer' : 'calendarCheck'} size={13} />
       </span>
-      <span className="name">日程</span>
-      {count ? <kbd>{count}</kbd> : null}
+      <span className="name">{label}</span>
+      {busy ? (
+        pomodoro.awaiting ? (
+          <>
+            <button className="pomo-btn" onClick={(e) => stop(e, { type: 'pomoConfirm', go: true })} title={pomodoro.awaiting === 'focus' ? '开始下一个番茄' : '开始休息'}>
+              <Icon name="play" size={11} />
+            </button>
+            <button className="pomo-btn" onClick={(e) => stop(e, { type: 'pomoConfirm', go: false })} title="不用了">
+              <Icon name="stop" size={11} />
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="pomo-btn" onClick={(e) => stop(e, { type: pomodoro.running ? 'pomoPause' : 'pomoResume' })} title={pomodoro.running ? '暂停' : '继续'}>
+              <Icon name={pomodoro.running ? 'pause' : 'play'} size={11} />
+            </button>
+            <button className="pomo-btn" onClick={(e) => stop(e, { type: 'pomoSkip' })} title="提前结束这一段">
+              <Icon name="skip" size={11} />
+            </button>
+            <button className="pomo-btn" onClick={(e) => stop(e, { type: 'pomoStop' })} title="停止">
+              <Icon name="stop" size={11} />
+            </button>
+          </>
+        )
+      ) : count ? (
+        <kbd>{count}</kbd>
+      ) : null}
     </div>
   );
 }

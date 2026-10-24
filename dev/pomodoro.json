@@ -1,0 +1,23 @@
+[
+ {"evalMain":"gleeok.createProject('番茄测试').then(()=>'p')"},{"wait":800},{"action":{"type":"toggleEntry"}},{"wait":300},
+ {"action":{"type":"setPomodoroSettings","settings":{"focusMin":4,"shortMin":3}}},
+ {"evalMain":"gleeok.planner({op:'create',kind:'tasks',objects:[{title:'写论文 related work',estimate:2,due:new Date().toISOString().slice(0,10)}]}).then(r=>{window.__t=r.result[0].key;return 'task'})"},
+ {"action":{"type":"togglePlanner"}},{"wait":600},
+ {"evalMain":"(()=>{gleeok.dispatch({type:'pomoStart',taskKey:window.__t});return 'started'})()"},{"wait":1200},
+ {"evalMain":"(()=>document.querySelector('.library-entry.pomo')?.textContent||'no clock')()"},
+ {"capture":"1-running"},
+ {"action":{"type":"pomoPause"}},{"wait":1500},
+ {"evalMain":"(()=>document.querySelector('.library-entry.pomo')?.textContent)()"},
+ {"action":{"type":"pomoResume"}},{"wait":4500},
+ {"evalMain":"gleeok.getSnapshot().then(s=>'after focus: '+JSON.stringify({awaiting:s.pomodoro.awaiting,done:s.pomodoro.focusDone})+' dialog='+!!document.querySelector('.pomo-dialog'))"},
+ {"capture":"2-dialog"},
+ {"evalMain":"(()=>{document.querySelector('.pomo-dialog .primary').click();return 'start break'})()"},{"wait":800},
+ {"evalMain":"gleeok.getSnapshot().then(s=>'phase '+s.pomodoro.phase+' running '+s.pomodoro.running+' | sidebar: '+document.querySelector('.library-entry.pomo')?.textContent)"},
+ {"wait":3500},
+ {"evalMain":"gleeok.getSnapshot().then(s=>'after break: awaiting '+s.pomodoro.awaiting+' dialog='+!!document.querySelector('.pomo-dialog'))"},
+ {"evalMain":"(()=>{[...document.querySelectorAll('.pomo-dialog button')].find(b=>b.textContent==='结束').click();return 'ended'})()"},{"wait":800},
+ {"evalMain":"gleeok.getSnapshot().then(s=>'final phase '+s.pomodoro.phase)"},
+ {"evalMain":"gleeok.getPlanner().then(p=>'records: '+p.pomodoros.map(r=>r.kind+(r.completed?'✓':'✗')+' '+(r.taskTitle||'')).join(' | '))"},
+ {"evalMain":"(()=>document.querySelector('.plan-focus-today')?.textContent||'no stat')()"},
+ {"capture":"3-after"}
+]

@@ -3046,3 +3046,74 @@ input.plan-pop-title {
   gap: 6px;
   padding: 4px 0;
 }
+
+/* The 日程 row while a pomodoro runs. */
+.library-entry.pomo .name {
+  font-variant-numeric: tabular-nums;
+}
+
+.library-entry.pomo.focus .status,
+.library-entry.pomo.focus .name {
+  color: var(--danger);
+}
+
+.pomo-btn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.pomo-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.pomo-dialog .pomo-task {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pomo-dialog .row .spacer {
+  flex: 1;
+}
+
+.plan-start {
+  display: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.plan-task:hover .plan-start {
+  display: grid;
+}
+
+.plan-start:hover {
+  background: var(--bg);
+  color: var(--danger);
+}
+
+.plan-start-btn {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  color: var(--danger);
+}
+
+.plan-focus-today {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 10px 4px;
+  color: var(--muted);
+  font-size: 12px;
+}

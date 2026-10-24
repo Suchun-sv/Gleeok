@@ -1,4 +1,4 @@
-import type { GlobalState, LibrarySettings, Link, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
+import type { GlobalState, LibrarySettings, Link, PomodoroSettings, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
 import type { LibraryCollection, LibraryItem, LibraryKind } from './library.ts';
 import type { PlannerKind, PlannerTask, Pomodoro, TimeBlock } from './planner.ts';
 
@@ -62,6 +62,25 @@ export type PlannerOp =
   | { op: 'remove'; kind: PlannerKind; key: string }
   | { op: 'sync' };
 
+/** The pomodoro clock (main keeps it). */
+export interface PomodoroState {
+  phase: 'idle' | 'focus' | 'short' | 'long';
+  running: boolean;
+  /** When the phase ends (ms since epoch), while running. */
+  endsAt?: number;
+  /** Time left while paused (ms). */
+  remaining?: number;
+  /** Full length of the phase (ms). */
+  length?: number;
+  /** Focus pomodoros finished in this run (long breaks come every few). */
+  focusDone: number;
+  taskKey?: string;
+  taskTitle?: string;
+  blockKey?: string;
+  /** The phase ended: waiting for the user to start this one (or not). */
+  awaiting?: 'focus' | 'short' | 'long';
+}
+
 export type ServerStatus = 'ok' | 'offline' | 'unconfigured' | 'local';
 
 export interface Download {
@@ -90,6 +109,7 @@ export interface Snapshot {
   tabDragging: boolean;
   /** Running from a git checkout, so the palette can offer "update Gleeok". */
   canSelfUpdate: boolean;
+  pomodoro: PomodoroState;
   /** New commits upstream (subjects, newest first) and, while updating, the current step. */
   update: { commits: string[]; step?: string; error?: string };
   vault: {
@@ -139,6 +159,14 @@ export type Action =
   | { type: 'toggleLibrary' }
   /** The 日程 in place of the panes, and back. */
   | { type: 'togglePlanner' }
+  | { type: 'pomoStart'; taskKey?: string; blockKey?: string }
+  | { type: 'pomoPause' }
+  | { type: 'pomoResume' }
+  | { type: 'pomoSkip' }
+  | { type: 'pomoStop' }
+  /** The answer to "start the break / the next pomodoro?". */
+  | { type: 'pomoConfirm'; go: boolean }
+  | { type: 'setPomodoroSettings'; settings: Partial<PomodoroSettings> }
   | { type: 'setLibrarySettings'; settings: Partial<LibrarySettings> }
   /** Read a 文献库 PDF in a pane (the given one, else the default reading pane). */
   | { type: 'openReader'; attachment: string; slot?: number }
@@ -210,6 +238,8 @@ export interface GleeokApi {
   onVaultDialog(cb: (d: VaultDialog) => void): () => void;
   /** Main asks this window to show the update dialog. */
   onUpdateDialog(cb: () => void): () => void;
+  /** A pomodoro phase ended: ask what comes next. */
+  onPomodoroDialog(cb: () => void): () => void;
   /** Main asks this window to open (or, if open, close) the current project's entry drawer. */
   onEntryDrawer(cb: () => void): () => void;
   vaultUnlock(email: string, password: string, server?: string): Promise<{ error?: string }>;

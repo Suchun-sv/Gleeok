@@ -435,6 +435,16 @@ function BlockPopover({
         {task && isOverdue(task) ? ' · 已过期' : ''}
       </div>
       <div className="plan-pop-actions">
+        {task && !task.done && (
+          <button
+            onClick={() => {
+              gleeok.dispatch({ type: 'pomoStart', taskKey: task.key, blockKey: block.key });
+              onClose();
+            }}
+          >
+            <Icon name="play" size={11} /> 开始番茄
+          </button>
+        )}
         {task && (
           <button
             onClick={() => {

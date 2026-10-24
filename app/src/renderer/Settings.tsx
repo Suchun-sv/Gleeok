@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
-import { DEFAULT_PANE_NAMES, DEFAULT_SUGGESTIONS, MAX_PANES, librarySettings, paneName, type LibrarySettings, type Suggestion } from '../../../shared/src/model.ts';
+import {
+  DEFAULT_PANE_NAMES,
+  DEFAULT_SUGGESTIONS,
+  MAX_PANES,
+  librarySettings,
+  paneName,
+  pomodoroSettings,
+  type LibrarySettings,
+  type PomodoroSettings,
+  type Suggestion,
+} from '../../../shared/src/model.ts';
 import { lib, useLibrary } from './library/data.ts';
 import { faviconFor } from './Panes.tsx';
 import { PaseoSettings } from './PaseoSettings.tsx';
@@ -9,6 +19,7 @@ const TABS = [
   { id: 'panes', label: '栏' },
   { id: 'suggestions', label: '常用' },
   { id: 'library', label: '文献库' },
+  { id: 'planner', label: '日程' },
   { id: 'paseo', label: 'Paseo' },
   { id: 'sync', label: '同步' },
   { id: 'vault', label: '密码库' },
@@ -48,6 +59,7 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
         {tab === 'panes' && <PaneSettings snap={snap} />}
         {tab === 'suggestions' && <SuggestionSettings snap={snap} />}
         {tab === 'library' && <LibrarySettingsCard snap={snap} />}
+        {tab === 'planner' && <PlannerSettings snap={snap} />}
         {tab === 'paseo' && <PaseoSettings snap={snap} />}
         {tab === 'sync' && <SyncSettings snap={snap} />}
         {tab === 'vault' && <VaultSettings snap={snap} />}
@@ -151,6 +163,39 @@ function SuggestionSettings({ snap }: { snap: Snapshot }) {
           恢复默认
         </button>
       </div>
+    </section>
+  );
+}
+
+/** Pomodoro lengths (this machine). */
+function PlannerSettings({ snap }: { snap: Snapshot }) {
+  const s = pomodoroSettings(snap.state);
+  const set = (settings: Partial<PomodoroSettings>) => gleeok.dispatch({ type: 'setPomodoroSettings', settings });
+  const field = (key: keyof PomodoroSettings, label: string, unit: string, choices: number[]) => (
+    <div className="row">
+      <span className="meta lib-setting-label">{label}</span>
+      <select value={s[key]} onChange={(e) => set({ [key]: Number(e.target.value) })}>
+        {[...new Set([...choices, s[key]])]
+          .sort((a, b) => a - b)
+          .map((n) => (
+            <option key={n} value={n}>
+              {n} {unit}
+            </option>
+          ))}
+      </select>
+    </div>
+  );
+  return (
+    <section className="card">
+      <h3>番茄钟</h3>
+      {field('focusMin', '专注', '分钟', [15, 20, 25, 30, 40, 45, 50, 60, 90])}
+      {field('shortMin', '短休息', '分钟', [3, 5, 10, 15])}
+      {field('longMin', '长休息', '分钟', [10, 15, 20, 25, 30])}
+      {field('longEvery', '长休息间隔', '个番茄', [2, 3, 4, 5, 6])}
+      <p className="hint">
+        一段结束时会发系统通知，并在 Gleeok 里弹出确认：开不开始休息、开不开始下一个番茄，都由你决定。计时在后台进行，切换项目或关掉日程都不会中断；
+        侧边栏的「日程」那一行会显示剩余时间。这些设置只对这台电脑生效。
+      </p>
     </section>
   );
 }

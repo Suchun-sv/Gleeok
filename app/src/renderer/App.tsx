@@ -8,6 +8,8 @@ import { VaultDialog } from './VaultDialog.tsx';
 import { Panes } from './Panes.tsx';
 import { LibraryView } from './library/LibraryView.tsx';
 import { PlannerView } from './planner/PlannerView.tsx';
+import { PomodoroDialog } from './planner/Pomodoro.tsx';
+import { pomodoroSettings } from '../../../shared/src/model.ts';
 import { LayoutControls } from './Icons.tsx';
 import { Sidebar, SidebarToggle } from './Sidebar.tsx';
 
@@ -21,6 +23,7 @@ export function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [vaultDialog, setVaultDialog] = useState<VaultDialogState | null>(null);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [pomoOpen, setPomoOpen] = useState(false);
   const [entryOpen, setEntryOpen] = useState(false);
 
   useEffect(() => {
@@ -60,7 +63,13 @@ export function App() {
         return !open;
       });
     });
+    const offPomo = gleeok.onPomodoroDialog(() => {
+      setPaletteOpen(false);
+      setEntryOpen(false);
+      setPomoOpen(true);
+    });
     return () => {
+      offPomo();
       offEntry();
       offUpdate();
       offSnap();
@@ -70,6 +79,15 @@ export function App() {
       offVault();
     };
   }, []);
+
+  // The pomodoro question was answered elsewhere (the sidebar, another window): give the pages back.
+  const awaiting = snap?.pomodoro.awaiting;
+  useEffect(() => {
+    if (pomoOpen && !awaiting) {
+      setPomoOpen(false);
+      gleeok.dispatch({ type: 'closePalette', winId: WIN_ID });
+    }
+  }, [pomoOpen, awaiting]);
 
   // Screenshots are painted before main hides the pages, so they must go once the pages are
   // back (a little later, so the pages have repainted), or if the cover never came.
@@ -99,6 +117,8 @@ export function App() {
       serverUrl={snap.vault.serverUrl}
       onClose={() => setVaultDialog(null)}
     />
+  ) : pomoOpen && snap.pomodoro.awaiting ? (
+    <PomodoroDialog state={snap.pomodoro} settings={pomodoroSettings(snap.state)} winId={WIN_ID} onClose={() => setPomoOpen(false)} />
   ) : updateOpen ? (
     <UpdateDialog update={snap.update} winId={WIN_ID} onClose={() => setUpdateOpen(false)} />
   ) : paletteOpen ? (

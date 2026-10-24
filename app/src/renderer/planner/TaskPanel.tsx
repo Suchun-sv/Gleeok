@@ -166,6 +166,7 @@ export function TaskPanel({
           onKeyDown={(e) => e.key === 'Enter' && void add()}
         />
       )}
+      <TodayFocus data={data} />
       <div className="plan-list">
         {sections.every((s) => s.tasks.length === 0) && <p className="plan-empty">{filter.kind === 'trash' ? '回收站是空的' : '这里没有任务'}</p>}
         {sections
@@ -229,6 +230,18 @@ export function TaskPanel({
                           {done}/{t.estimate ?? 0}
                         </span>
                       )}
+                      {!t.done && !t.deleted && (
+                        <button
+                          className="plan-start"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            gleeok.dispatch({ type: 'pomoStart', taskKey: t.key });
+                          }}
+                          title="开始番茄"
+                        >
+                          <Icon name="play" size={11} />
+                        </button>
+                      )}
                       {t.projectId && filter.kind !== 'project' && <span className="plan-chip">{projectName.get(t.projectId) ?? '项目'}</span>}
                       {t.due && <span className={`plan-due ${isOverdue(t) ? 'late' : ''}`}>{dueLabel(t)}</span>}
                     </div>
@@ -237,6 +250,19 @@ export function TaskPanel({
             </div>
           ))}
       </div>
+    </div>
+  );
+}
+
+/** "今天专注 3 个番茄 · 75 分钟". */
+function TodayFocus({ data }: { data: PlannerSnapshot }) {
+  const today = dayKey(new Date());
+  const done = data.pomodoros.filter((p) => p.kind === 'focus' && p.completed && dayKey(new Date(p.start)) === today);
+  if (done.length === 0) return null;
+  const minutes = Math.round(done.reduce((n, p) => n + (Date.parse(p.end) - Date.parse(p.start)), 0) / 60_000);
+  return (
+    <div className="plan-focus-today">
+      <Icon name="timer" size={12} /> 今天专注 {done.length} 个番茄 · {minutes >= 60 ? `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟` : `${minutes} 分钟`}
     </div>
   );
 }

@@ -88,6 +88,19 @@ copies of PDFs may use (the least recently opened go first). The palette finds p
 mode); other machines pick up changes within a minute. The design is in [docs/library.md](docs/library.md);
 the reader is built by `dev/build-reader.sh` into `app/vendor/zotero-reader/`.
 
+## 日程 (tasks, calendar, pomodoro)
+
+The calendar icon above 文献库 (or Prefix+A) opens the 日程: a calendar (day, 3-day, week,
+month) beside a task list, in place of the panes or as a tab in a pane. Tasks have a due date
+(and time), priority, estimate in pomodoros, subtasks, notes and optionally a Gleeok project
+(whose settings drawer lists them). Drag a task into the calendar to block time for it, drag
+and stretch blocks, double-click for a block of your own; in the month view a drop sets the due
+date. Blocks never complete a task: only ticking it does. ▶ on a task, its details or a block
+starts a pomodoro: the sidebar row shows the time left, and when a phase ends a notification
+and a dialog ask whether to start the break or the next pomodoro. Lengths are in Settings → 日程.
+Everything lives in `planner.db` on the server (or in local mode on this machine). The design is
+in [docs/planner.md](docs/planner.md).
+
 ## Terminal tabs
 
 A tab can hold a real shell (xterm.js + node-pty, like VS Code's terminal): "终端 · 本机" on the
