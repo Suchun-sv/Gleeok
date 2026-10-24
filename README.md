@@ -19,6 +19,26 @@ daemon, with a pane that always opens the project's most recently used Paseo wor
 
 Electron + React. Runs on macOS, Linux (X11/Wayland, incl. niri) and Windows. Feedback and issues welcome.
 
+## Download (macOS, Windows, Linux)
+
+Installers are on the [Releases page](https://github.com/Suchun-sv/Gleeok/releases): no Node or
+git needed, and Gleeok updates itself from there (the update dialog offers each new release).
+
+- **macOS**: `Gleeok-<version>-mac-arm64.zip` (Apple Silicon) or `-mac-x64.zip` (Intel). Unzip and
+  move `Gleeok.app` to Applications (or `~/Applications`). It is not signed by an Apple developer,
+  so the first open is blocked: System Settings → Privacy & Security → "Open Anyway" (or run
+  `xattr -dr com.apple.quarantine /Applications/Gleeok.app`). Updates swap the app in place and
+  are not blocked again.
+- **Windows**: `Gleeok-<version>-windows-x64-setup.exe` installs for your user; SmartScreen may warn
+  once ("More info" → "Run anyway"), as the installer is not code-signed.
+- **Linux**: `Gleeok-<version>-linux-x86_64.AppImage`: `chmod +x` it and run it.
+
+Release builds carry castLabs' production VMP signature, so Apple Music and other DRM services play
+full tracks on every platform. Releases are made by pushing a tag (`git tag v0.2.0 && git push
+--tags`): `.github/workflows/release.yml` builds all three on GitHub and publishes them; it needs the
+`EVS_ACCOUNT_NAME` / `EVS_PASSWD` secrets for the VMP signature (and optionally `MAC_CERT_P12` /
+`MAC_CERT_PASSWORD`, a self-signed certificate so macOS's keychain keeps trusting new versions).
+
 ## Install and run (local mode)
 
 Without any configuration Gleeok runs in **local mode**: everything is stored on this machine.
@@ -57,8 +77,9 @@ adds the Widevine CDM, so DRM-protected media (Apple Music, Spotify, Netflix…)
 instead of stopping at previews. The first launch downloads the CDM (a few MB). Its builds carry a
 development VMP signature: on Linux that is all there is, while on macOS and Windows some services
 (Apple Music among them: it just says 发生错误) only accept a production signature, which castLabs'
-free [EVS service](https://github.com/castlabs/electron-releases/wiki/EVS) provides. On a Mac, run
-`deploy/macos-vmp-sign.sh` once from Terminal: it sets up the EVS client, has you create (or, with
+free [EVS service](https://github.com/castlabs/electron-releases/wiki/EVS) provides. Running from a
+checkout on a Mac, run `deploy/macos-vmp-sign.sh` once from Terminal (it also names the app Gleeok in
+the menu bar and Dock instead of Electron; `--name-only` does just that): it sets up the EVS client, has you create (or, with
 `--reauth`, log in to) a free castLabs account, signs `node_modules/electron/dist`, re-signs the app
 ad hoc (VMP has to come before code signing) and restarts nothing — restart Gleeok yourself; the
 first launch may ask once for keychain access. In-app updates re-sign a newly installed Electron

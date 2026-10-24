@@ -196,7 +196,9 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
               ? `正在更新：${snap.update.step}`
               : snap.update.error
                 ? '更新失败，点此查看'
-                : `⬆ 更新 Gleeok（${snap.update.commits.length} 个更新）`}
+                : snap.update.commits[0]?.startsWith('版本 ')
+                  ? `⬆ 更新到 Gleeok ${snap.update.commits[0].slice(3)}`
+                  : `⬆ 更新 Gleeok（${snap.update.commits.length} 个更新）`}
           </button>
         )}
         <div className="footer-row">

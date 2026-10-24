@@ -55,6 +55,7 @@ import { Terminals } from './terminal.ts';
 import { PARTITION, TabViews } from './views.ts';
 import { Shells } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.ts';
+import { canReleaseUpdate, installRelease, latestRelease, type Release } from './release-updater.ts';
 import { VAULT_URL_DEFAULT, Vault, fillPage, readPage } from './vault.ts';
 import { type Pairing, loadPairings, parseOffer, readLocalPaseo, readPairedPaseo, savePairings } from './paseo.ts';
 
@@ -591,7 +592,7 @@ function snapshot(): Snapshot {
     memory: Object.fromEntries(memory),
     memoryTotal,
     tabDragging,
-    canSelfUpdate: canSelfUpdate(),
+    canSelfUpdate: updateKind() !== null,
     pomodoro: pomodoro.state,
     update,
     vault: {
@@ -712,10 +713,25 @@ let update: Snapshot['update'] = { commits: [] };
 /** Upstream commit the dialog last popped up for: each new version asks once. */
 let updateAskedFor = '';
 
+/** A git checkout pulls and rebuilds; an installed build takes the latest GitHub release. */
+function updateKind(): 'git' | 'release' | null {
+  return canSelfUpdate() ? 'git' : canReleaseUpdate() ? 'release' : null;
+}
+/** The release found by the last check (installed builds). */
+let pendingRelease: Release | null = null;
+
 async function checkUpdate(announceNone: boolean) {
-  if (!canSelfUpdate() || updating) return;
+  const kind = updateKind();
+  if (!kind || updating) return;
   try {
-    const { head, commits } = await pendingUpdates();
+    let head: string;
+    let commits: string[];
+    if (kind === 'git') ({ head, commits } = await pendingUpdates());
+    else {
+      pendingRelease = await latestRelease();
+      head = pendingRelease?.version ?? '';
+      commits = pendingRelease ? [`版本 ${pendingRelease.version}`, ...pendingRelease.notes] : [];
+    }
     update = { commits };
     changed();
     if (commits.length > 0) {
@@ -731,7 +747,9 @@ async function checkUpdate(announceNone: boolean) {
 }
 
 async function runSelfUpdate() {
-  if (updating || !canSelfUpdate()) return;
+  const kind = updateKind();
+  if (updating || !kind) return;
+  if (kind === 'release') return runReleaseUpdate();
   updating = true;
   const say = (text: string, ms = 120_000) => send({ type: 'toast', slot: state.focusedPane, text, ms });
   const step = (s: string) => {
@@ -750,6 +768,28 @@ async function runSelfUpdate() {
     update = { ...update, step: undefined, error };
     changed();
     say(`更新失败：${error.slice(0, 140)}`, 30_000);
+  } finally {
+    updating = false;
+  }
+}
+
+/** Installed builds: download the release and restart into it (the installer / swap restarts). */
+async function runReleaseUpdate() {
+  updating = true;
+  const step = (s: string) => {
+    update = { ...update, step: s, error: undefined };
+    changed();
+  };
+  try {
+    pendingRelease ??= await latestRelease();
+    if (!pendingRelease) throw new Error('没有找到新版本');
+    await installRelease(pendingRelease, step);
+  } catch (e) {
+    const error = String((e as Error).message ?? e).slice(0, 300);
+    log(`update: ${error}`);
+    update = { ...update, step: undefined, error };
+    changed();
+    send({ type: 'toast', slot: state.focusedPane, text: `更新失败：${error.slice(0, 140)}`, ms: 30_000 });
   } finally {
     updating = false;
   }

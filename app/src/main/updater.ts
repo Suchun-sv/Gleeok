@@ -48,10 +48,10 @@ export async function selfUpdate(step: (text: string) => void) {
   await run('npm', ['install', '--no-fund', '--no-audit'], appDir);
   step('构建…');
   await run('npm', ['run', 'build'], appDir);
-  // A new Electron arrives without the production VMP signature this Mac may have given the old one
-  // (the script does nothing if this machine never signed, or the version is already signed).
-  if (process.platform === 'darwin' && vmpStatus().state === 'stale') {
-    step('给新的 Electron 签名（Apple Music）…');
+  // A new Electron arrives named "Electron" and without the production VMP signature this Mac may
+  // have given the old one: the script renames it, and signs it if this machine signed before.
+  if (process.platform === 'darwin') {
+    step('给新的 Electron 改名和签名…');
     await run('bash', [join(repoDir, 'deploy', 'macos-vmp-sign.sh'), '--if-needed'], repoDir).catch(() => {
       // Not fatal: Gleeok starts anyway and says how to sign by hand.
     });

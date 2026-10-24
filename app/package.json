@@ -9,7 +9,8 @@
     "postinstall": "node node_modules/electron/install.js",
     "start": "electron .",
     "typecheck": "tsc --noEmit -p .",
-    "dist:mac": "npm run build && electron-builder --mac dir"
+    "dist:mac": "npm run build && MAC_SIGN_IDENTITY=\"${MAC_SIGN_IDENTITY:-Gleeok Self-Signed}\" electron-builder --mac dir",
+    "dist": "npm run build && electron-builder --publish never"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
@@ -28,7 +29,7 @@
     "appId": "dev.gleeok.app",
     "productName": "Gleeok",
     "electronDownload": {
-      "mirror": "https://github.com/castlabs/electron-releases/releases/download/v"
+      "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
     },
     "files": [
       "dist/**",
@@ -37,23 +38,65 @@
       "package.json"
     ],
     "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "assets/icon.ico"
     },
     "linux": {
-      "icon": "assets/icon-512.png"
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon-512.png",
+      "category": "Utility",
+      "executableName": "gleeok"
     },
     "directories": {
       "output": "release"
     },
     "mac": {
-      "target": "dir",
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
       "category": "public.app-category.productivity",
       "icon": "assets/icon.icns",
-      "identity": "Gleeok Self-Signed",
+      "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "notarize": false
-    }
+    },
+    "afterPack": "build-hooks/vmp-sign.cjs",
+    "asar": false,
+    "artifactName": "Gleeok-${version}-${os}-${arch}.${ext}",
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "Gleeok-${version}-windows-${arch}-setup.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Suchun-sv",
+        "repo": "Gleeok",
+        "releaseType": "draft"
+      }
+    ]
   },
   "allowScripts": {
     "esbuild": true,
@@ -66,6 +109,7 @@
     "@getpaseo/client": "^0.12.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
+    "electron-updater": "^6.8.11",
     "hono": "^4.13.13",
     "node-pty": "^1.1.0"
   },

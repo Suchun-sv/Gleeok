@@ -1,0 +1,119 @@
+# Installers for macOS, Windows and Linux, built on GitHub's machines.
+#
+# Push a tag like v0.2.0: the version comes from the tag, a draft release collects the three builds
+# and is published once they all succeed (Gleeok's own updater then offers it). Run it by hand
+# (Actions → Release → Run workflow) to build without publishing; the files are kept as artifacts.
+#
+# Secrets (Settings → Secrets and variables → Actions), all optional:
+#   EVS_ACCOUNT_NAME, EVS_PASSWD   castLabs EVS account: production VMP signature, so DRM services
+#                                  (Apple Music…) play on macOS and Windows. Tags require them.
+#   MAC_CERT_P12, MAC_CERT_PASSWORD  a self-signed code-signing certificate (base64 PKCS#12, named
+#                                  "Gleeok Self-Signed"): every version keeps the same identity, so
+#                                  the macOS keychain stays trusting across updates.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Draft release for the tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "Gleeok ${GITHUB_REF_NAME#v}" --generate-notes
+
+  build:
+    needs: draft
+    # A tag waits for its draft; a hand-run build has none to wait for.
+    if: always() && (needs.draft.result == 'success' || needs.draft.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: --mac
+          - os: windows-latest
+            target: --win
+          - os: ubuntu-latest
+            target: --linux
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+    defaults:
+      run:
+        working-directory: app
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: castLabs EVS client
+        run: python -m pip install --quiet castlabs-evs
+
+      - name: Version from the tag
+        if: env.RELEASE == 'true'
+        run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
+
+      - run: npm ci --no-fund --no-audit
+      - run: npm run build
+
+      - name: Code-signing certificate (macOS)
+        if: runner.os == 'macOS' && env.MAC_CERT_P12 != ''
+        env:
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          kc="$RUNNER_TEMP/gleeok.keychain-db"
+          security create-keychain -p ci "$kc"
+          security set-keychain-settings "$kc"
+          security unlock-keychain -p ci "$kc"
+          echo "$MAC_CERT_P12" | base64 --decode > "$RUNNER_TEMP/id.p12"
+          security import "$RUNNER_TEMP/id.p12" -k "$kc" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$kc" >/dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          echo "MAC_SIGN_IDENTITY=Gleeok Self-Signed" >> "$GITHUB_ENV"
+          echo "MAC_SIGN_KEYCHAIN=$kc" >> "$GITHUB_ENV"
+
+      - name: Package
+        env:
+          EVS_ACCOUNT_NAME: ${{ secrets.EVS_ACCOUNT_NAME }}
+          EVS_PASSWD: ${{ secrets.EVS_PASSWD }}
+          EVS_PYTHON: python
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          # A release must carry the VMP signature (or Apple Music fails for everyone who installs it).
+          [ "$RELEASE" = true ] && export GLEEOK_REQUIRE_VMP=1
+          npx electron-builder ${{ matrix.target }} --publish "$([ "$RELEASE" = true ] && echo always || echo never)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gleeok-${{ runner.os }}
+          if-no-files-found: warn
+          path: |
+            app/release/*.zip
+            app/release/*.exe
+            app/release/*.AppImage
+            app/release/*.yml
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft=false --latest

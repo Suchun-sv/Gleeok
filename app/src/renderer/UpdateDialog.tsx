@@ -10,6 +10,9 @@ export function UpdateDialog({ update, winId, onClose }: { update: Snapshot['upd
     onClose();
   }
   const { commits, step, error } = update;
+  // Installed builds get a release: "版本 x.y.z" first, then its notes.
+  const release = commits[0]?.startsWith('版本 ') ? commits[0].slice(3) : null;
+  const items = release ? commits.slice(1) : commits;
   return (
     <div className="palette-backdrop" onMouseDown={close}>
       <div
@@ -23,13 +26,13 @@ export function UpdateDialog({ update, winId, onClose }: { update: Snapshot['upd
         }}
       >
         <div className="vault-form update-dialog">
-          <h3>{commits.length ? `Gleeok 有 ${commits.length} 个更新` : 'Gleeok 已经是最新版本'}</h3>
-          {commits.length > 0 && (
+          <h3>{release ? `Gleeok ${release} 可以更新了` : commits.length ? `Gleeok 有 ${commits.length} 个更新` : 'Gleeok 已经是最新版本'}</h3>
+          {items.length > 0 && (
             <ul>
-              {commits.slice(0, 12).map((c, i) => (
+              {items.slice(0, 12).map((c, i) => (
                 <li key={i}>{c}</li>
               ))}
-              {commits.length > 12 && <li className="hint">…还有 {commits.length - 12} 个</li>}
+              {items.length > 12 && <li className="hint">…还有 {items.length - 12} 个</li>}
             </ul>
           )}
           {step && <p className="progress">正在更新：{step}</p>}

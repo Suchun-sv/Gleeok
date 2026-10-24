@@ -8,7 +8,7 @@ await build({
   platform: 'node',
   format: 'cjs',
   target: 'node22',
-  external: ['electron', '@bitwarden/cli', 'node-pty'],
+  external: ['electron', '@bitwarden/cli', 'node-pty', 'electron-updater'],
   // server/src (used by local mode) imports hono; resolve it from the app's own node_modules.
   nodePaths: [resolve('node_modules')],
   outdir: 'dist',
