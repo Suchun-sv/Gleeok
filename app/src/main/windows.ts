@@ -62,6 +62,15 @@ export class Shells {
       if (this.#hooks.onInput(input, win.webContents)) e.preventDefault();
     });
     win.on('focus', () => this.#hooks.onFocus(ws.id));
+    // Going full screen (or being made to fill the screen) changes whether the window shows a clock.
+    let fullTimer: NodeJS.Timeout | undefined;
+    const fullChanged = () => {
+      clearTimeout(fullTimer);
+      fullTimer = setTimeout(() => this.#hooks.onPlacementChanged(), 150);
+    };
+    win.on('enter-full-screen', fullChanged);
+    win.on('leave-full-screen', fullChanged);
+    win.on('resize', fullChanged);
 
     let timer: NodeJS.Timeout | undefined;
     const remember = () => {

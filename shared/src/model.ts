@@ -1,3 +1,4 @@
+import type { WeatherPlace } from './weather.ts';
 // Config lives on the Gleeok server and is shared by every machine.
 
 export interface Link {
@@ -280,6 +281,10 @@ export interface GlobalState {
   pomodoro?: Partial<PomodoroSettings>;
   /** Local mode: let other machines reach the agents' port (else 127.0.0.1 only). */
   agentLan?: boolean;
+  /** The sidebar's weather: a place picked in Settings; unset: located by IP address; null: off. */
+  weatherPlace?: WeatherPlace | null;
+  /** When the sidebar shows a clock (unset: while the window is full screen). */
+  clock?: 'fullscreen' | 'always' | 'never';
 }
 
 export interface LibrarySettings {

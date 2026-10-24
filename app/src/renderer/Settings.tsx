@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
+import { describeWeather, type WeatherPlace } from '../../../shared/src/weather.ts';
 import { AgentSettings, SETTINGS_TAB_KEY } from './AgentConnections.tsx';
 import {
   DEFAULT_PANE_NAMES,
@@ -20,6 +21,7 @@ import { PaseoSettings } from './PaseoSettings.tsx';
 const TABS = [
   { id: 'panes', label: '栏' },
   { id: 'suggestions', label: '常用' },
+  { id: 'today', label: '天气与时间' },
   { id: 'library', label: '文献库' },
   { id: 'planner', label: '日程' },
   { id: 'agent', label: 'Agent' },
@@ -66,6 +68,7 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
         </button>
         {tab === 'panes' && <PaneSettings snap={snap} />}
         {tab === 'suggestions' && <SuggestionSettings snap={snap} />}
+        {tab === 'today' && <TodaySettings snap={snap} />}
         {tab === 'library' && (
           <>
             <LibrarySettingsCard snap={snap} />
@@ -354,6 +357,92 @@ function LibrarySettingsCard({ snap }: { snap: Snapshot }) {
 }
 
 const blurOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && e.currentTarget.blur();
+
+/** The sidebar's weather place and clock (this machine). */
+function TodaySettings({ snap }: { snap: Snapshot }) {
+  const [q, setQ] = useState('');
+  const [found, setFound] = useState<WeatherPlace[] | null>(null);
+  const [error, setError] = useState('');
+  const place = snap.state.weatherPlace;
+  const search = () => {
+    if (!q.trim()) return;
+    setError('');
+    void gleeok.weatherSearch(q).then((r) => (r.error ? setError(r.error) : setFound(r.result ?? [])));
+  };
+  const pick = (p: WeatherPlace | 'auto' | 'off') => {
+    gleeok.dispatch({ type: 'setWeatherPlace', place: p });
+    setFound(null);
+    setQ('');
+  };
+  return (
+    <>
+      <section className="card">
+        <h3>天气</h3>
+        <dl className="facts">
+          <dt>地点</dt>
+          <dd>
+            {place === null
+              ? '不显示天气'
+              : place
+                ? `${place.name}${place.detail ? `（${place.detail}）` : ''}`
+                : `按 IP 自动定位${snap.weather?.place ? `：现在是 ${snap.weather.place}` : ''}`}
+          </dd>
+          {snap.weather?.current && (
+            <>
+              <dt>现在</dt>
+              <dd>
+                {snap.weather.current.temp}°，{describeWeather(snap.weather.current.code, snap.weather.current.isDay).label}
+              </dd>
+            </>
+          )}
+          {snap.weather?.error && (
+            <>
+              <dt>问题</dt>
+              <dd className="error">{snap.weather.error}</dd>
+            </>
+          )}
+        </dl>
+        <div className="row">
+          <input value={q} placeholder="搜索城市，例如 爱丁堡 / Edinburgh / 上海" onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} />
+          <button onClick={search}>搜索</button>
+          <button disabled={place === undefined} onClick={() => pick('auto')}>
+            按 IP 自动定位
+          </button>
+          <button disabled={place === null} onClick={() => pick('off')}>
+            不显示
+          </button>
+        </div>
+        {error && <p className="hint error">{error}</p>}
+        {found && (
+          <div className="place-results">
+            {found.length === 0 && <p className="hint">没找到这个地方</p>}
+            {found.map((p) => (
+              <button key={`${p.latitude},${p.longitude}`} onClick={() => pick(p)}>
+                <b>{p.name}</b> <span className="meta">{p.detail}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="hint">
+          天气数据来自 Open-Meteo（免费，不需要账号），每半小时更新。自动定位按这台电脑的 IP 地址估计所在城市（用 VPN 时可能不准），每 3
+          小时和唤醒后重新定位；选了城市就一直用它。只对这台电脑生效。
+        </p>
+      </section>
+      <section className="card">
+        <h3>时间</h3>
+        <div className="row">
+          <span className="meta lib-setting-label">显示时钟</span>
+          <select value={snap.state.clock ?? 'fullscreen'} onChange={(e) => gleeok.dispatch({ type: 'setClock', mode: e.target.value as 'fullscreen' | 'always' | 'never' })}>
+            <option value="fullscreen">窗口全屏时</option>
+            <option value="always">总是</option>
+            <option value="never">不显示</option>
+          </select>
+        </div>
+        <p className="hint">时钟在侧边栏的天气上面；侧边栏收起时，显示在最右边一栏标签条的右端。全屏会挡住系统的时钟，所以默认只在全屏时显示。</p>
+      </section>
+    </>
+  );
+}
 
 /** 划词翻译: the engine and its keys, kept on the sync server for every device. */
 function TranslateCard() {

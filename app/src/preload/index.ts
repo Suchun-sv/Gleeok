@@ -27,6 +27,7 @@ const api: GleeokApi = {
   termFocus: (focused) => ipcRenderer.send('term:focus', focused),
   onTermEvent: (cb) => subscribe('term-event', cb),
   clipboardRead: () => ipcRenderer.invoke('clipboard:read'),
+  weatherSearch: (name) => ipcRenderer.invoke('weather:search', name),
   clipboardWrite: (text) => ipcRenderer.send('clipboard:write', text),
   reportPaneRects: (winId, rects) => ipcRenderer.send('pane-rects', winId, rects),
   createProject: (name) => ipcRenderer.invoke('project:create', name),

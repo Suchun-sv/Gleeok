@@ -109,6 +109,13 @@ On the phone: set `GLEEOK_MOBILE_URL` on the server (see docs/planner.md), then 
 「复制手机登录链接」, open the link once on the phone (on the tailnet) and add it to the home
 screen. The link carries the server token: keep it private.
 
+## Weather and clock
+
+Above the 日程 in the sidebar: the weather where you are (Open-Meteo, no account; the place comes
+from the machine's IP address unless you pick a city in Settings → 天气与时间), with the next hours
+and days a click away, and a clock while the window fills the screen (or always / never). With the
+sidebar folded the clock sits at the right end of the last pane's tab strip.
+
 ## Agents (REST and MCP)
 
 Your own agents (Claude Code, Codex, an assistant in a Paseo workspace…) can manage the 日程 and

@@ -282,6 +282,153 @@ main {
   margin-top: 4px;
 }
 
+.today-card {
+  position: relative;
+  margin: 4px 8px 4px;
+}
+
+.today-clock {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 4px;
+}
+
+.today-clock .time {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+
+.today-clock .date {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.today-weather {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+}
+
+.today-weather:hover {
+  background: var(--panel-2);
+}
+
+.today-weather .temp {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.today-weather .label,
+.today-weather .range,
+.today-weather .place {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.today-weather .place {
+  overflow: hidden;
+  margin-left: auto;
+  text-overflow: ellipsis;
+}
+
+.weather-pop {
+  /* Within the sidebar: pages next to it would cover anything that reaches into a pane. */
+  position: absolute;
+  z-index: 60;
+  bottom: calc(100% + 6px);
+  left: -4px;
+  right: -4px;
+  padding: 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+}
+
+.weather-pop-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.weather-pop-head .icon-btn {
+  margin-left: auto;
+}
+
+.weather-hours {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.weather-hours > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.weather-days > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.weather-days > div {
+  gap: 6px;
+}
+
+.weather-days .name {
+  width: 28px;
+  color: var(--muted);
+}
+
+.weather-days .label {
+  flex: 1;
+}
+
+.weather-pop .rain {
+  color: #5aa9e6;
+  font-size: 11px;
+}
+
+.strip-clock {
+  margin: 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.place-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.place-results button {
+  padding: 5px 8px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.place-results button:hover {
+  background: var(--panel-2);
+}
+
 .sidebar footer {
   display: flex;
   flex-direction: column;

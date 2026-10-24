@@ -4,6 +4,7 @@ import { EntryDrawer } from './EntryDrawer.tsx';
 import { SettingsPage } from './Settings.tsx';
 import { Palette } from './Palette.tsx';
 import { UpdateDialog } from './UpdateDialog.tsx';
+import { StripClock, clockShown } from './TodayCard.tsx';
 import { VaultDialog } from './VaultDialog.tsx';
 import { Panes } from './Panes.tsx';
 import { LibraryView } from './library/LibraryView.tsx';
@@ -184,7 +185,13 @@ export function App() {
             win={win}
             dragImages={dragImages}
             leading={toggle}
-            trailing={<LayoutControls visible={win.layout.visible} max={win.slots.length} focusExpand={win.layout.focusExpand} platform={snap.platform} />}
+            trailing={
+              <>
+                {/* The sidebar (and its clock) folded away: the clock sits by the layout buttons. */}
+                {collapsed && clockShown(snap) && <StripClock />}
+                <LayoutControls visible={win.layout.visible} max={win.slots.length} focusExpand={win.layout.focusExpand} platform={snap.platform} />
+              </>
+            }
           />
         ) : null}
       </main>

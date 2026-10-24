@@ -2,13 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { freemem, hostname, totalmem, userInfo } from 'node:os';
 import { join } from 'node:path';
-import { BrowserWindow, Menu, Notification, app, clipboard, components, dialog, ipcMain, powerMonitor, session, shell, type Input } from 'electron';
+import { BrowserWindow, Menu, Notification, app, clipboard, components, dialog, ipcMain, powerMonitor, screen, session, shell, type Input } from 'electron';
 import { shortName } from '../../../shared/src/library-format.ts';
 import type { LibraryItem } from '../../../shared/src/library.ts';
 import type { TranslateEngine, TranslateResult } from '../../../shared/src/translate.ts';
 import { agentHandoff, type AgentCreated, type AgentInfo } from '../../../shared/src/agents.ts';
 import { AgentPort } from './agent-port.ts';
 import { log, logPath, siteOf } from './log.ts';
+import { Weather, searchPlaces } from './weather.ts';
 import type { Action, AgentNew, AgentOp, AgentPanel, Command, LibraryOp, PaneRects, PlannerOp, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 import { PLANNER_KINDS, type PlannerTask, type TimeBlock } from '../../../shared/src/planner.ts';
 import { LibraryClient } from './library.ts';
@@ -80,6 +81,23 @@ let dragToken = 0;
 let downloads: Downloads | null = null;
 /** Per project, most recently closed tabs last; for reopen-closed-tab. Not persisted. */
 const closedTabs = new Map<string, { slot: number; url: string }[]>();
+/** The sidebar's weather. */
+const weather = new Weather({ place: () => state.weatherPlace, changed: () => changed() });
+
+/** Windows filling their screen: full screen, or a compositor (niri) sized them to the whole display. */
+function fullscreenWindows(): string[] {
+  return state.windows
+    .filter((ws) => {
+      const bw = shells.get(ws.id);
+      if (!bw || bw.isDestroyed() || !bw.isVisible()) return false;
+      if (bw.isFullScreen() || bw.isSimpleFullScreen()) return true;
+      const b = bw.getBounds();
+      const d = screen.getDisplayMatching(b).bounds;
+      return b.x === d.x && b.y === d.y && b.width === d.width && b.height === d.height;
+    })
+    .map((ws) => ws.id);
+}
+
 /** Tabs whose page process died, and why: the pane shows that instead of a white page. */
 const crashedTabs = new Map<string, string>();
 
@@ -570,6 +588,8 @@ function snapshot(): Snapshot {
     },
     paletteWindows: [...paletteWindows],
     crashedTabs: Object.fromEntries(crashed()),
+    weather: weather.snapshot,
+    fullscreenWindows: fullscreenWindows(),
     state,
     platform: process.platform,
     hostname: hostname(),
@@ -1198,6 +1218,19 @@ function dispatch(action: Action) {
     case 'openLog':
       void shell.openPath(logPath());
       return;
+    case 'setWeatherPlace':
+      if (action.place === 'auto') delete state.weatherPlace;
+      else state.weatherPlace = action.place === 'off' ? null : action.place;
+      weather.placeChanged();
+      changed();
+      return;
+    case 'refreshWeather':
+      weather.placeChanged();
+      return;
+    case 'setClock':
+      state.clock = action.mode === 'fullscreen' ? undefined : action.mode;
+      changed();
+      return;
     case 'archiveProject':
       void setArchived(action.id, action.archived, action.open);
       return;
@@ -1796,6 +1829,14 @@ ipcMain.handle('agents:call', async (_e, op: AgentOp) => {
   }
 });
 
+ipcMain.handle('weather:search', async (_e, name: string) => {
+  try {
+    return { result: await searchPlaces(String(name)) };
+  } catch (e) {
+    return { error: String((e as Error).message ?? e) };
+  }
+});
+
 ipcMain.handle('library:get', () => library.snapshot());
 ipcMain.handle('library:call', async (_e, op: LibraryOp) => {
   try {
@@ -1841,6 +1882,7 @@ app.whenReady().then(async () => {
   vault.serverUrl = config.vaultUrl ?? VAULT_URL_DEFAULT;
   void syncPaseo();
   setInterval(() => void syncPaseo(), 2 * 60_000);
+  weather.start();
   // Local mode: reopen the agents' port if there are connections.
   if (config.local) void agentPanel().catch((e: unknown) => console.warn('[gleeok] agent port:', e));
   // Other machines' library edits arrive within a minute (and right away when the library opens);
@@ -1856,6 +1898,8 @@ app.whenReady().then(async () => {
   hibernateStale();
   setInterval(hibernateStale, 10 * 60_000);
   powerMonitor.on('resume', hibernateStale);
+  // Woken up, perhaps somewhere else: locate again and fetch a fresh forecast.
+  powerMonitor.on('resume', () => weather.placeChanged());
   // A locked screen locks the vault too (and drops the decrypted logins from memory).
   powerMonitor.on('lock-screen', () => {
     if (vault?.unlocked) void vault.lock().then(changed);

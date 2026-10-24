@@ -2,6 +2,7 @@ import type { GlobalState, LibrarySettings, Link, PomodoroSettings, Suggestion, 
 import type { LibraryCollection, LibraryItem, LibraryKind } from './library.ts';
 import type { TranslateEngine, TranslateSettingsInput } from './translate.ts';
 import type { AgentCreated, AgentHandoff, AgentInfo, AgentScope } from './agents.ts';
+import type { WeatherPlace, WeatherSnapshot } from './weather.ts';
 import type { PlannerKind, PlannerTask, Pomodoro, TimeBlock } from './planner.ts';
 
 export interface VaultLoginSummary {
@@ -153,6 +154,10 @@ export interface Snapshot {
   paletteWindows: string[];
   /** Tabs whose page process died (tab id → reason: oom, crashed, killed…). */
   crashedTabs: Record<string, string>;
+  /** The sidebar's weather (null: turned off). */
+  weather: WeatherSnapshot | null;
+  /** Windows that fill their screen (full screen, or the compositor made them so): they show a clock. */
+  fullscreenWindows: string[];
   state: GlobalState;
   platform: string;
   /** This machine's hostname: a terminal on a project's own machine needs no ssh. */
@@ -218,6 +223,10 @@ export type Action =
   | { type: 'reviveTab'; tabId: string }
   /** Open gleeok.log (page crashes, failed loads, dead processes). */
   | { type: 'openLog' }
+  /** The weather's place: one picked in Settings, located by IP address, or no weather. */
+  | { type: 'setWeatherPlace'; place: WeatherPlace | 'auto' | 'off' }
+  | { type: 'refreshWeather' }
+  | { type: 'setClock'; mode: 'fullscreen' | 'always' | 'never' }
   | { type: 'archiveProject'; id: string; archived: boolean; open?: boolean }
   | { type: 'detachPane'; slot?: number }
   | { type: 'attachPane'; slot?: number }
@@ -268,6 +277,8 @@ export interface GleeokApi {
   termFocus(focused: boolean): void;
   onTermEvent(cb: (e: { tabId: string; data?: string; end?: number; exit?: number }) => void): () => void;
   clipboardRead(): Promise<string>;
+  /** Places for a name (Settings → 天气与时间). */
+  weatherSearch(name: string): Promise<{ result?: WeatherPlace[]; error?: string }>;
   clipboardWrite(text: string): void;
   /** Main asks this window to show the command palette. */
   onPalette(cb: () => void): () => void;

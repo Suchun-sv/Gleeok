@@ -6,6 +6,7 @@ import { Icon, IconButton } from './Icons.tsx';
 import { useLibrary } from './library/data.ts';
 import { dayKey, usePlanner } from './planner/data.ts';
 import { PHASE_NAMES, mmss, remaining, useTick } from './planner/Pomodoro.tsx';
+import { TodayCard } from './TodayCard.tsx';
 
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
 export function SidebarToggle({ platform }: { platform: string }) {
@@ -185,6 +186,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         </div>
       )}
 
+      <TodayCard snap={snap} />
       <PlannerEntry active={state.view === 'planner'} platform={snap.platform} pomodoro={snap.pomodoro} />
       <LibraryEntry active={state.view === 'library'} platform={snap.platform} />
       <footer>
@@ -206,7 +208,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
           />
           <span className="build" title={memoryTitle(snap)}>
             {snap.memoryTotal.gleeok > 0 && <span className="mem">内存占用 {gb(snap.memoryTotal.gleeok)} · </span>}
-            {new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+            版本 {new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
           </span>
           {snap.canSelfUpdate ? (
             <IconButton icon="refresh" size={13} title="检查 Gleeok 有没有更新" onClick={() => gleeok.dispatch({ type: 'checkUpdate' })} />
