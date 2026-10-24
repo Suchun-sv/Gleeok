@@ -131,7 +131,10 @@ export function TaskDetail({
             <Icon name="trash" size={13} /> 移到回收站
           </button>
         )}
-        <span className="meta">创建于 {new Date(task.dateAdded).toLocaleDateString('zh-CN')}</span>
+        <span className="meta">
+          {task.createdBy ? `由 ${task.createdBy} 创建于 ` : '创建于 '}
+          {new Date(task.dateAdded).toLocaleDateString('zh-CN')}
+        </span>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { GlobalState, LibrarySettings, Link, PomodoroSettings, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
 import type { LibraryCollection, LibraryItem, LibraryKind } from './library.ts';
 import type { TranslateEngine, TranslateSettingsInput } from './translate.ts';
+import type { AgentCreated, AgentHandoff, AgentInfo, AgentScope } from './agents.ts';
 import type { PlannerKind, PlannerTask, Pomodoro, TimeBlock } from './planner.ts';
 
 export interface VaultLoginSummary {
@@ -50,6 +51,30 @@ export type LibraryOp =
   | { op: 'translateSettings' }
   | { op: 'setTranslateSettings'; settings: TranslateSettingsInput }
   | { op: 'translate'; text: string; engine?: TranslateEngine };
+
+/** Agent connections (Settings → Agent). */
+export type AgentOp =
+  | { op: 'list' }
+  | { op: 'create'; name: string; scopes: AgentScope[] }
+  | { op: 'rotate'; id: string }
+  | { op: 'revoke'; id: string }
+  | { op: 'setLan'; lan: boolean };
+
+export interface AgentPanel {
+  agents: AgentInfo[];
+  /** server: agents use the sync server; local: Gleeok's own port. */
+  mode: 'server' | 'local';
+  /** The address agents use (null in local mode while the port is closed). */
+  url: string | null;
+  port?: { listening: boolean; error?: string; lan: boolean };
+}
+
+/** After creating a connection or a new token: what to paste into the agent (shown once). */
+export interface AgentNew {
+  panel: AgentPanel;
+  created: AgentCreated;
+  handoff: AgentHandoff;
+}
 
 /** The 日程 as the renderer sees it (its own channel, like the library). */
 export interface PlannerSnapshot {
@@ -259,6 +284,7 @@ export interface GleeokApi {
   getLibrary(): Promise<LibrarySnapshot>;
   onLibrary(cb: (lib: LibrarySnapshot) => void): () => void;
   library(op: LibraryOp): Promise<{ result?: unknown; error?: string }>;
+  agents(op: AgentOp): Promise<{ result?: unknown; error?: string }>;
   getPlanner(): Promise<PlannerSnapshot>;
   /** The phone page's sign-in link, when the sync server offers one (GLEEOK_MOBILE_URL). */
   mobileLink(): Promise<string | null>;

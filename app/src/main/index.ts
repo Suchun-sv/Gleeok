@@ -6,7 +6,9 @@ import { BrowserWindow, Menu, Notification, app, clipboard, components, dialog, 
 import { shortName } from '../../../shared/src/library-format.ts';
 import type { LibraryItem } from '../../../shared/src/library.ts';
 import type { TranslateEngine, TranslateResult } from '../../../shared/src/translate.ts';
-import type { Action, Command, LibraryOp, PaneRects, PlannerOp, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
+import { agentHandoff, type AgentCreated, type AgentInfo } from '../../../shared/src/agents.ts';
+import { AgentPort } from './agent-port.ts';
+import type { Action, AgentNew, AgentOp, AgentPanel, Command, LibraryOp, PaneRects, PlannerOp, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 import { PLANNER_KINDS, type PlannerTask, type TimeBlock } from '../../../shared/src/planner.ts';
 import { LibraryClient } from './library.ts';
 import { SyncedClient } from './synced-client.ts';
@@ -824,7 +826,7 @@ async function serverJson(method: string, path: string, body?: unknown, timeoutM
     timeoutMs,
   });
   const json = (await res.json().catch(() => null)) as { error?: string } | null;
-  if (res.status === 404) throw new Error('同步服务器还不支持划词翻译，先更新服务器');
+  if (res.status === 404 && !json?.error) throw new Error('同步服务器还不支持这个功能，先更新服务器');
   if (!res.ok) throw new Error(json?.error ?? `${method} ${path}: ${res.status}`);
   return json;
 }
@@ -1703,6 +1705,50 @@ ipcMain.handle('paseo:unpair', (_e, serverId: string) => {
   pairingStatus.delete(serverId);
   changed();
 });
+// Agent connections: managed on the sync server (or the in-process one), handed over as text.
+const agentPort = new AgentPort((req) => config.localFetch(req));
+
+async function agentPanel(): Promise<AgentPanel> {
+  const agents = (await serverJson('GET', '/api/agents')) as AgentInfo[];
+  if (!config.local) return { agents, mode: 'server', url: config.serverUrl?.replace(/\/+$/, '') ?? null };
+  await agentPort.update(agents.length > 0, !!state.agentLan);
+  return { agents, mode: 'local', url: agentPort.status.url ?? null, port: { ...agentPort.status, lan: !!state.agentLan } };
+}
+
+async function agentNew(created: AgentCreated): Promise<AgentNew> {
+  const panel = await agentPanel();
+  if (!panel.url) throw new Error(panel.port?.error ?? '没有可以给 agent 的地址');
+  const { name, scopes } = created.agent;
+  const handoff = agentHandoff({ url: panel.url, token: created.token, name, scopes, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  return { panel, created, handoff };
+}
+
+async function agentCall(op: AgentOp): Promise<unknown> {
+  switch (op.op) {
+    case 'list':
+      return agentPanel();
+    case 'create':
+      return agentNew((await serverJson('POST', '/api/agents', { name: op.name, scopes: op.scopes })) as AgentCreated);
+    case 'rotate':
+      return agentNew((await serverJson('POST', `/api/agents/${op.id}/rotate`)) as AgentCreated);
+    case 'revoke':
+      await config.fetchRaw('DELETE', `/api/agents/${op.id}`);
+      return agentPanel();
+    case 'setLan':
+      state.agentLan = op.lan || undefined;
+      changed();
+      return agentPanel();
+  }
+}
+
+ipcMain.handle('agents:call', async (_e, op: AgentOp) => {
+  try {
+    return { result: await agentCall(op) };
+  } catch (e) {
+    return { error: String((e as Error).message ?? e).slice(0, 300) };
+  }
+});
+
 ipcMain.handle('library:get', () => library.snapshot());
 ipcMain.handle('library:call', async (_e, op: LibraryOp) => {
   try {
@@ -1748,6 +1794,8 @@ app.whenReady().then(async () => {
   vault.serverUrl = config.vaultUrl ?? VAULT_URL_DEFAULT;
   void syncPaseo();
   setInterval(() => void syncPaseo(), 2 * 60_000);
+  // Local mode: reopen the agents' port if there are connections.
+  if (config.local) void agentPanel().catch((e: unknown) => console.warn('[gleeok] agent port:', e));
   // Other machines' library edits arrive within a minute (and right away when the library opens);
   // the trash empties itself of old items a few times a day.
   const expireTrash = () => void library.emptyTrash(librarySettings(state).trashDays);

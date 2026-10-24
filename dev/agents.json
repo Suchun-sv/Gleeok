@@ -1,0 +1,20 @@
+[
+ {"evalMain":"gleeok.createProject('Agent 测试').then(()=>'project')"},{"wait":800},{"action":{"type":"toggleEntry"}},{"wait":500},
+ {"evalMain":"gleeok.agents({op:'list'}).then(r=>JSON.stringify(r))"},
+ {"evalMain":"gleeok.agents({op:'create',name:'测试助手',scopes:['planner','library']}).then(r=>r.error||('TOKEN '+r.result.created.token+' URL '+r.result.handoff.url+' LISTEN '+r.result.panel.port.listening))"},
+ {"wait":12000},
+ {"evalMain":"gleeok.planner({op:'sync'}).then(()=>'synced')"},
+ {"evalMain":"gleeok.getPlanner().then(p=>p.tasks.map(t=>t.title+'/'+(t.createdBy||'-')).join(', '))"},
+ {"evalMain":"(localStorage.setItem('gleeok.planner.filter',JSON.stringify({kind:'all'})),'filter all')"},
+ {"action":{"type":"setView","view":"planner"}},{"wait":1500},
+ {"evalMain":"([...document.querySelectorAll('.plan-task')].find(r=>r.textContent.includes('回复导师'))?.click(),'opened')"},{"wait":600},
+ {"capture":"1-planner"},
+ {"action":{"type":"setView","view":"settings"}},{"wait":600},
+ {"evalMain":"([...document.querySelectorAll('.settings button')].find(b=>b.textContent==='Agent')?.click(),'tab')"},
+ {"wait":800},
+ {"evalMain":"(()=>{const i=document.querySelector('input[placeholder^=\"名字\"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'邮件助手');i.dispatchEvent(new Event('input',{bubbles:true}));return 'typed'})()"},
+ {"wait":200},
+ {"evalMain":"([...document.querySelectorAll('button')].find(b=>b.textContent==='新建连接')?.click(),'created')"},
+ {"wait":800},
+ {"capture":"2-agent-settings"}
+]

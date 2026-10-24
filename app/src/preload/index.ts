@@ -38,6 +38,7 @@ const api: GleeokApi = {
   onLibrary: (cb) => subscribe<LibrarySnapshot>('library', cb),
   library: (op) => ipcRenderer.invoke('library:call', op),
   pathForFile: (file) => webUtils.getPathForFile(file),
+  agents: (op) => ipcRenderer.invoke('agents:call', op),
   getPlanner: () => ipcRenderer.invoke('planner:get'),
   mobileLink: () => ipcRenderer.invoke('planner:mobileLink'),
   onPlanner: (cb) => subscribe<PlannerSnapshot>('planner', cb),

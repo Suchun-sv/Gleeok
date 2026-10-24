@@ -7,6 +7,7 @@ import { Library } from '../../../server/src/library.ts';
 import { Planner } from '../../../server/src/planner.ts';
 import { Store } from '../../../server/src/store.ts';
 import { Translator } from '../../../server/src/translate.ts';
+import { Agents } from '../../../server/src/agents.ts';
 import type { ServerStatus } from '../../../shared/src/ipc.ts';
 import { isCodeLink, sameUrl, type DeviceSession, type Link, type PaseoDaemon, type Project } from '../../../shared/src/model.ts';
 
@@ -59,7 +60,9 @@ export class ConfigClient {
       this.#conf = JSON.parse(readFileSync(path, 'utf8')) as ClientConfig;
       this.status = 'offline';
     } catch {
-      this.#local = createApp(new Store(join(app.getPath('userData'), 'gleeok.db')), {
+      const db = join(app.getPath('userData'), 'gleeok.db');
+      this.#local = createApp(new Store(db), {
+        agents: new Agents(db),
         local: true,
         library: new Library(app.getPath('userData')),
         planner: new Planner(app.getPath('userData')),
@@ -198,6 +201,12 @@ export class ConfigClient {
   async remove(id: string) {
     await this.#request('DELETE', `/api/projects/${id}`);
     await this.refresh();
+  }
+
+  /** Local mode: hand a request (from the agents' port) to the in-process app as it is. */
+  localFetch(req: Request): Promise<Response> {
+    if (!this.#local) throw new Error('not in local mode');
+    return Promise.resolve(this.#local.fetch(req));
   }
 
   /** A request to the sync server (or the in-process app in local mode), for callers that read the response themselves. */

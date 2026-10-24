@@ -161,6 +161,7 @@ function taskRow(t) {
     ),
     h('span', { class: 'title' }, t.title || '（无标题）'),
     subs.length > 0 && h('span', { class: 'muted small' }, `${subs.filter((s) => s.done).length}/${subs.length}`),
+    t.createdBy && h('span', { class: 'chip', title: `由 ${t.createdBy} 创建` }, t.createdBy),
     t.projectId && h('span', { class: 'chip' }, projects.get(t.projectId) ?? '项目'),
     t.due && h('span', { class: `due ${isOverdue(t) ? 'late' : ''}` }, dueLabel(t)),
   );

@@ -17,6 +17,16 @@ const paths = {
     </>
   ),
   play: <path d="M6 3 20 12 6 21Z" />,
+  bot: (
+    <>
+      <path d="M12 8V4H8" />
+      <rect width="16" height="12" x="4" y="8" rx="2" />
+      <path d="M2 14h2" />
+      <path d="M20 14h2" />
+      <path d="M15 13v2" />
+      <path d="M9 13v2" />
+    </>
+  ),
   pause: (
     <>
       <rect x="14" y="4" width="4" height="16" rx="1" />

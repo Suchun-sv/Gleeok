@@ -242,6 +242,11 @@ export function TaskPanel({
                           <Icon name="play" size={11} />
                         </button>
                       )}
+                      {t.createdBy && (
+                        <span className="plan-agent" title={`由 ${t.createdBy} 创建`}>
+                          <Icon name="bot" size={12} />
+                        </span>
+                      )}
                       {t.projectId && filter.kind !== 'project' && <span className="plan-chip">{projectName.get(t.projectId) ?? '项目'}</span>}
                       {t.due && <span className={`plan-due ${isOverdue(t) ? 'late' : ''}`}>{dueLabel(t)}</span>}
                     </div>

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Hono, type Context } from 'hono';
+import { byAgent } from './synced.ts';
 import {
   KEY_RE,
   LIBRARY_KINDS,
@@ -338,7 +339,7 @@ export function libraryRoutes(lib: Library) {
     const kind = c.req.param('kind');
     if (!isKind(kind) || kind === 'states') return c.json({ error: 'unknown kind' }, 404);
     const body = await c.req.json().catch(() => null);
-    const result = lib.create(kind, Array.isArray(body) ? body : [body]);
+    const result = lib.create(kind, byAgent(c.req.raw, Array.isArray(body) ? body : [body]));
     if (typeof result === 'string') return c.json({ error: result }, 400);
     return c.json(versioned(c, Array.isArray(body) ? result : result[0]), 201);
   });

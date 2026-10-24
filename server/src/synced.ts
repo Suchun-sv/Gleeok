@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Hono, type Context } from 'hono';
 import { newLibraryKey } from '../../shared/src/library.ts';
+import { agentOf } from './agents.ts';
 
 export type Obj = Record<string, unknown>;
 type Row = { key: string; version: number; data: string };
@@ -172,6 +173,12 @@ export abstract class SyncedStore<K extends string> {
   }
 }
 
+/** What an agent creates carries its connection's name. */
+export function byAgent(req: Request, objects: unknown[]): unknown[] {
+  const by = agentOf(req)?.name;
+  return by ? objects.map((o) => (o && typeof o === 'object' && !Array.isArray(o) ? { ...o, createdBy: by } : o)) : objects;
+}
+
 function toObject(row: Row): Obj {
   return { key: row.key, version: row.version, ...(JSON.parse(row.data) as Obj) };
 }
@@ -195,7 +202,7 @@ export function syncedRoutes<K extends string>(store: SyncedStore<K>) {
     const kind = c.req.param('kind');
     if (!isKind(kind)) return c.json({ error: 'unknown kind' }, 404);
     const body = await c.req.json().catch(() => null);
-    const result = store.create(kind, Array.isArray(body) ? body : [body]);
+    const result = store.create(kind, byAgent(c.req.raw, Array.isArray(body) ? body : [body]));
     if (typeof result === 'string') return c.json({ error: result }, 400);
     return c.json(versioned(c, Array.isArray(body) ? result : result[0]), 201);
   });

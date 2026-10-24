@@ -278,6 +278,8 @@ export interface GlobalState {
   library?: Partial<LibrarySettings>;
   /** Pomodoro lengths changed in Settings (this machine only); see pomodoroSettings(). */
   pomodoro?: Partial<PomodoroSettings>;
+  /** Local mode: let other machines reach the agents' port (else 127.0.0.1 only). */
+  agentLan?: boolean;
 }
 
 export interface LibrarySettings {

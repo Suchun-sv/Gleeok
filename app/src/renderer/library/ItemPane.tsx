@@ -153,7 +153,8 @@ function Info({ item, save }: { item: LibraryItem; save: (fields: Record<string,
         <pre>{toBibtex(item, typeof item.citationKey === 'string' && item.citationKey ? item.citationKey : '复制时生成引用键')}</pre>
       </details>
       <p className="lib-dates">
-        添加于 {new Date(item.dateAdded).toLocaleString('zh-CN')} · 修改于 {new Date(item.dateModified).toLocaleString('zh-CN')}
+        {item.createdBy ? `由 ${item.createdBy} 添加于 ` : '添加于 '}
+        {new Date(item.dateAdded).toLocaleString('zh-CN')} · 修改于 {new Date(item.dateModified).toLocaleString('zh-CN')}
       </p>
     </div>
   );

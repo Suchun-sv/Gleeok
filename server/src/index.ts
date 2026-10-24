@@ -5,6 +5,7 @@ import { serve } from '@hono/node-server';
 import { createApp } from './app.ts';
 import { Library } from './library.ts';
 import { Planner } from './planner.ts';
+import { Agents } from './agents.ts';
 import { Store } from './store.ts';
 import { Translator } from './translate.ts';
 
@@ -27,6 +28,7 @@ const app = createApp(new Store(dbPath), {
   library: new Library(libraryDir),
   planner: new Planner(libraryDir),
   translator: new Translator(libraryDir),
+  agents: new Agents(dbPath),
   publicDir: join(import.meta.dirname, '..', 'public'),
   mobileUrl: process.env.GLEEOK_MOBILE_URL || undefined,
 });

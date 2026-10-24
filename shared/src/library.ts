@@ -50,6 +50,8 @@ export interface LibraryItem extends Versioned {
   tags?: Tag[];
   /** In the trash. */
   deleted?: boolean;
+  /** The agent connection that created it (set by the server). */
+  createdBy?: string;
   dateAdded: string;
   dateModified: string;
   /** Attachments: the stored file, once uploaded. */

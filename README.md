@@ -108,6 +108,17 @@ On the phone: set `GLEEOK_MOBILE_URL` on the server (see docs/planner.md), then 
 「复制手机登录链接」, open the link once on the phone (on the tailnet) and add it to the home
 screen. The link carries the server token: keep it private.
 
+## Agents (REST and MCP)
+
+Your own agents (Claude Code, Codex, an assistant in a Paseo workspace…) can manage the 日程 and
+the 文献库. Settings → Agent creates a connection with a name and scopes (日程, 文献库) and shows
+its token once, with three buttons: copy a Markdown guide for the agent (address, token, rules,
+data, REST calls), copy the `claude mcp add` command, or copy a Codex `config.toml` entry for the
+MCP endpoint (`/mcp`). Agent tokens reach only their scopes and can be replaced or revoked; what an
+agent creates is marked with its name. With a sync server agents use its address; in local mode
+Gleeok listens on 127.0.0.1:7421 (other machines optionally) while there are connections. See
+[docs/agents.md](docs/agents.md).
+
 ## Terminal tabs
 
 A tab can hold a real shell (xterm.js + node-pty, like VS Code's terminal): "终端 · 本机" on the

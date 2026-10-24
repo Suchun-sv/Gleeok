@@ -37,6 +37,8 @@ export interface PlannerTask extends Versioned {
   order?: number;
   /** In the trash. */
   deleted?: boolean;
+  /** The agent connection that created it (set by the server). */
+  createdBy?: string;
   dateAdded: string;
   dateModified: string;
 }
