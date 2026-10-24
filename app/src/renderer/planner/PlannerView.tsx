@@ -3,7 +3,7 @@ import type { Project } from '../../../../shared/src/model.ts';
 import { PLANNER_URL } from '../../../../shared/src/model.ts';
 import { Calendar, type CalendarView } from './Calendar.tsx';
 import { TaskDetail } from './TaskDetail.tsx';
-import { TaskPanel, type TaskFilter } from './TaskPanel.tsx';
+import { TaskPanel, readFilter, type TaskFilter } from './TaskPanel.tsx';
 import { usePlanner } from './data.ts';
 import { AgentButton } from '../AgentConnections.tsx';
 
@@ -17,7 +17,7 @@ const loadPref = <T,>(name: string, fallback: T): T => {
 const savePref = (name: string, value: unknown) => localStorage.setItem(`gleeok.planner.${name}`, JSON.stringify(value));
 
 /** Show a project's tasks next time the 日程 opens (from the project's settings drawer). */
-export const showProjectTasks = (projectId: string) => savePref('filter', { kind: 'project', id: projectId });
+export const showProjectTasks = (projectId: string) => savePref('filter', { time: 'all', projects: [projectId] } satisfies TaskFilter);
 
 /** Open the 日程 on this task next time (the new-tab page's tile). */
 export const showTask = (key: string) => sessionStorage.setItem('gleeok.planner.open', key);
@@ -35,7 +35,7 @@ export function PlannerView({ mode, projects, currentProjectId }: { mode: 'full'
   const [width, setWidth] = useState(0);
   const [view, setView] = useState<CalendarView>(() => loadPref('view', 'day'));
   const [anchor, setAnchor] = useState(() => new Date());
-  const [filter, setFilter] = useState<TaskFilter>(() => loadPref('filter', { kind: 'today' }));
+  const [filter, setFilter] = useState<TaskFilter>(() => readFilter(loadPref('filter', null)));
   const [selected, setSelected] = useState<string | null>(() => {
     const asked = sessionStorage.getItem('gleeok.planner.open');
     sessionStorage.removeItem('gleeok.planner.open');

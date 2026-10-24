@@ -2566,6 +2566,8 @@ body.resizing-rows * {
 }
 
 .plan-due-chip {
+  /* Keep their height: with many due the list scrolls rather than squashing them. */
+  flex: none;
   overflow: hidden;
   padding: 1px 6px;
   border-left: 3px solid var(--muted);
@@ -2883,6 +2885,95 @@ input.plan-pop-title {
   margin: 30px 0;
   color: var(--muted);
   text-align: center;
+}
+
+.plan-filters .spacer {
+  flex: 1;
+}
+
+.plan-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 8px 4px;
+}
+
+.plan-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 140px;
+  overflow: hidden;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-chips button.on {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.plan-chips .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.plan-group-head {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  border-radius: 6px;
+}
+
+.plan-group-head.drop {
+  background: var(--panel-2);
+  outline: 1px dashed var(--accent);
+}
+
+.plan-group-name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 4px 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.plan-group-name .fold {
+  width: 10px;
+  font-size: 10px;
+}
+
+.plan-group-name .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-group-add {
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.55;
+}
+
+.plan-group-head:hover .plan-group-add {
+  opacity: 1;
+}
+
+.plan-add.inline {
+  width: calc(100% - 16px);
+  margin: 2px 8px 4px;
 }
 
 .plan-section {

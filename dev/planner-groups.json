@@ -1,0 +1,20 @@
+[
+ {"evalMain":"gleeok.createProject('DS4D').then(()=>gleeok.createProject('Gleeok')).then(()=>'projects')"},{"wait":1000},{"evalMain":"(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"},{"wait":400},
+ {"evalMain":"(async()=>{const s=await gleeok.getSnapshot();const [a,b]=s.projects;window.__p=[a.id,b.id];const day=new Date().toISOString().slice(0,10);await gleeok.planner({op:'create',kind:'tasks',objects:[{title:'改 DS4D 讲义第 3 节',due:day,priority:3,projectId:a.id},{title:'DS4D 作业批改',due:day,projectId:a.id},{title:'修白屏 bug',due:day,priority:2,projectId:b.id},{title:'回导师邮件',due:day},{title:'读 RAG 论文'}]});localStorage.removeItem('gleeok.planner.filter');return 'seeded '+a.name+','+b.name})()"},
+ {"action":{"type":"setView","view":"planner"}},{"wait":1200},
+ {"evalMain":"[...document.querySelectorAll('.plan-group-head .name')].map(e=>e.textContent+':'+e.parentElement.querySelector('.meta').textContent).join(' | ')"},
+ {"capture":"1-groups-today"},
+ {"evalMain":"([...document.querySelectorAll('.plan-filters button')].find(b=>b.textContent==='全部').click(),'all')"},{"wait":400},
+ {"evalMain":"[...document.querySelectorAll('.plan-group-head .name')].map(e=>e.textContent+':'+e.parentElement.querySelector('.meta').textContent).join(' | ')"},
+ {"evalMain":"([...document.querySelectorAll('.plan-chips button')].find(b=>b.textContent.startsWith('Gleeok')).click(),'chip gleeok')"},{"wait":300},
+ {"evalMain":"([...document.querySelectorAll('.plan-chips button')].find(b=>b.textContent==='收件箱').click(),'chip inbox')"},{"wait":300},
+ {"evalMain":"'chips on: '+[...document.querySelectorAll('.plan-chips button.on')].map(b=>b.textContent).join(',')+' | groups: '+[...document.querySelectorAll('.plan-group-head .name')].map(e=>e.textContent).join(',')"},
+ {"evalMain":"([...document.querySelectorAll('.plan-filters button')].find(b=>b.textContent==='今天').click(),'today')"},{"wait":300},
+ {"evalMain":"(()=>{const h=[...document.querySelectorAll('.plan-group-head')].find(x=>x.textContent.includes('Gleeok'));h.querySelector('.plan-group-add').click();return 'plus'})()"},{"wait":300},
+ {"evalMain":"(()=>{const i=document.querySelector('.plan-add.inline');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'写 agent 文档');i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));return 'typed'})()"},{"wait":800},
+ {"evalMain":"gleeok.getPlanner().then(p=>{const t=p.tasks.find(t=>t.title==='写 agent 文档');const today=new Date().toISOString().slice(0,10);return 'created: project='+(t.projectId===window.__p[1]?'Gleeok':t.projectId)+' due='+(t.due===today?'today':t.due)})"},
+ {"capture":"2-chips-add"},
+ {"action":{"type":"setView","view":"panes"}},{"wait":400},
+ {"action":{"type":"newTab","url":"gleeok://planner"}},{"wait":1200},
+ {"capture":"3-pane"}
+]

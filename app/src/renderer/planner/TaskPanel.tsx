@@ -5,18 +5,47 @@ import type { Project } from '../../../../shared/src/model.ts';
 import { Icon } from '../Icons.tsx';
 import { PRIORITY_COLORS, TASK_MIME, byOrder, dayKey, dueDay, dueLabel, isOverdue, patchTask, plan, pomodoroCounts } from './data.ts';
 
-export type TaskFilter = { kind: 'today' | 'inbox' | 'all' | 'done' | 'trash' } | { kind: 'project'; id: string };
-
-const sameFilter = (a: TaskFilter, b: TaskFilter) => a.kind === b.kind && (a.kind !== 'project' || (b.kind === 'project' && a.id === b.id));
-
-interface Section {
-  title?: string;
-  tasks: PlannerTask[];
-  /** Folded until opened (the done tasks under a project). */
-  folded?: boolean;
+/** Which tasks (one time range) from which projects ('' is the inbox; none chosen: all of them). */
+export interface TaskFilter {
+  time: 'today' | 'all' | 'done' | 'trash';
+  projects: string[];
 }
 
-/** The task list: quick add, filters, rows to tick, open, reorder or drag onto the calendar. */
+export const DEFAULT_FILTER: TaskFilter = { time: 'today', projects: [] };
+
+/** A saved filter, including the { kind } ones older versions saved. */
+export function readFilter(saved: unknown): TaskFilter {
+  const f = saved as (Partial<TaskFilter> & { kind?: string; id?: string }) | null;
+  if (f && typeof f.time === 'string' && Array.isArray(f.projects)) return { time: f.time, projects: f.projects };
+  switch (f?.kind) {
+    case 'inbox':
+      return { time: 'all', projects: [''] };
+    case 'project':
+      return { time: 'all', projects: [f.id ?? ''] };
+    case 'all':
+    case 'done':
+    case 'trash':
+      return { time: f.kind, projects: [] };
+    default:
+      return DEFAULT_FILTER;
+  }
+}
+
+interface Group {
+  /** The project, '' for the inbox. */
+  id: string;
+  name: string;
+  tasks: PlannerTask[];
+}
+
+/** For 全部: overdue, today, tomorrow, later, no date; hand order within each. */
+function dueRank(t: PlannerTask, today: string, tomorrow: string) {
+  const d = dueDay(t);
+  if (!d) return 4;
+  return d < today ? 0 : d === today ? 1 : d === tomorrow ? 2 : 3;
+}
+
+/** The task list: a time range, the projects to show, one group per project with its own +. */
 export function TaskPanel({
   data,
   projects,
@@ -37,150 +66,202 @@ export function TaskPanel({
   onError: (e: unknown) => void;
 }) {
   const [draft, setDraft] = useState('');
-  const [openFolded, setOpenFolded] = useState(false);
+  /** The group whose + was pressed: its input is open. */
+  const [adding, setAdding] = useState<string | null>(null);
+  const [addDraft, setAddDraft] = useState('');
+  const [folded, setFolded] = useState<Set<string>>(new Set());
   const [dropAt, setDropAt] = useState<{ key: string; after: boolean } | null>(null);
+  const [dropGroup, setDropGroup] = useState<string | null>(null);
   const today = dayKey(new Date());
+  const tomorrow = dayKey(new Date(Date.now() + 86_400_000));
   const counts = useMemo(() => pomodoroCounts(data.pomodoros), [data.pomodoros]);
   const projectName = new Map(projects.map((p) => [p.id, p.name]));
+  const nameOf = (id: string) => (id ? (projectName.get(id) ?? '已存档的项目') : '收件箱');
+  const chosen = new Set(filter.projects);
   const blockedToday = useMemo(
     () => new Set(data.blocks.filter((b) => b.taskKey && dayKey(new Date(b.start)) === today).map((b) => b.taskKey!)),
     [data.blocks, today],
   );
 
-  const sections = useMemo((): Section[] => {
+  const groups = useMemo((): Group[] => {
     const live = data.tasks.filter((t) => !t.deleted);
-    const open = live.filter((t) => !t.done).sort(byOrder);
-    switch (filter.kind) {
-      case 'today': {
-        const mine = open.filter((t) => (dueDay(t) ?? '9') <= today || blockedToday.has(t.key));
-        return [
-          { title: '已过期', tasks: mine.filter((t) => isOverdue(t) && dueDay(t)! < today) },
-          { title: '今天', tasks: mine.filter((t) => !(isOverdue(t) && dueDay(t)! < today)) },
-        ];
-      }
-      case 'inbox':
-        return [{ tasks: open.filter((t) => !t.projectId) }];
-      case 'all': {
-        const tomorrow = dayKey(new Date(Date.now() + 86_400_000));
-        return [
-          { title: '已过期', tasks: open.filter((t) => dueDay(t) && dueDay(t)! < today) },
-          { title: '今天', tasks: open.filter((t) => dueDay(t) === today) },
-          { title: '明天', tasks: open.filter((t) => dueDay(t) === tomorrow) },
-          { title: '之后', tasks: open.filter((t) => dueDay(t) && dueDay(t)! > tomorrow) },
-          { title: '没有日期', tasks: open.filter((t) => !dueDay(t)) },
-        ];
-      }
-      case 'project':
-        return [
-          { tasks: open.filter((t) => t.projectId === filter.id) },
-          { title: '已完成', tasks: live.filter((t) => t.done && t.projectId === filter.id).sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? '')), folded: true },
-        ];
+    const late = (t: PlannerTask) => Number(isOverdue(t) && dueDay(t)! < today);
+    let pool: PlannerTask[];
+    switch (filter.time) {
+      case 'today':
+        pool = live.filter((t) => !t.done && ((dueDay(t) ?? '9') <= today || blockedToday.has(t.key))).sort((a, b) => late(b) - late(a) || byOrder(a, b));
+        break;
+      case 'all':
+        pool = live.filter((t) => !t.done).sort((a, b) => dueRank(a, today, tomorrow) - dueRank(b, today, tomorrow) || byOrder(a, b));
+        break;
       case 'done':
-        return [{ tasks: live.filter((t) => t.done).sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? '')) }];
+        pool = live.filter((t) => t.done).sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''));
+        break;
       case 'trash':
-        return [{ tasks: data.tasks.filter((t) => t.deleted).sort((a, b) => b.dateModified.localeCompare(a.dateModified)) }];
+        return [{ id: '', name: '回收站', tasks: data.tasks.filter((t) => t.deleted).sort((a, b) => b.dateModified.localeCompare(a.dateModified)) }];
     }
-  }, [data.tasks, filter, today, blockedToday]);
+    // The inbox, the sidebar's projects in order, then projects that are no longer listed.
+    const ids = ['', ...projects.map((p) => p.id)];
+    for (const t of pool) if (t.projectId && !ids.includes(t.projectId)) ids.push(t.projectId);
+    const all = ids
+      .filter((id) => chosen.size === 0 || chosen.has(id))
+      .map((id) => ({ id, name: nameOf(id), tasks: pool.filter((t) => (t.projectId ?? '') === id) }));
+    // Empty groups only where a + is wanted: chosen ones, the inbox and the current project.
+    const keepEmpty = (id: string) => filter.time !== 'done' && (chosen.has(id) || id === '' || id === currentProjectId);
+    return [...all.filter((g) => g.tasks.length), ...all.filter((g) => !g.tasks.length && keepEmpty(g.id))];
+  }, [data.tasks, filter, today, tomorrow, blockedToday, projects, currentProjectId]);
 
-  /** New tasks go on top, into whatever the list shows (today, a project). */
-  const add = async () => {
-    const title = draft.trim();
-    if (!title) return;
-    setDraft('');
+  /** New tasks go on top of their group; due today when only today is shown. */
+  const create = async (title: string, projectId: string) => {
     const top = Math.min(0, ...data.tasks.map((t) => t.order ?? 0)) - 1;
     try {
       const [t] = await plan<PlannerTask[]>({
         op: 'create',
         kind: 'tasks',
-        objects: [
-          {
-            title,
-            order: top,
-            ...(filter.kind === 'today' ? { due: today } : {}),
-            ...(filter.kind === 'project' ? { projectId: filter.id } : {}),
-          },
-        ],
+        objects: [{ title, order: top, ...(filter.time === 'today' ? { due: today } : {}), ...(projectId ? { projectId } : {}) }],
       });
       onSelect(t.key);
     } catch (e) {
       onError(e);
     }
   };
+  /** The top input: into the one project chosen, else the inbox. */
+  const topProject = filter.projects.length === 1 ? filter.projects[0] : '';
 
   const toggle = (t: PlannerTask) =>
     void patchTask(t.key, t.done ? { done: null, doneAt: null } : { done: true, doneAt: new Date().toISOString() }).catch(onError);
 
-  /** Dropped between rows: an order halfway between its new neighbours. */
-  const reorder = (moved: string, target: PlannerTask, after: boolean, list: PlannerTask[]) => {
+  /** Dropped between rows: an order halfway between its new neighbours, and that group's project. */
+  const reorder = (moved: string, target: PlannerTask, after: boolean, group: Group) => {
     if (moved === target.key) return;
-    const rest = list.filter((t) => t.key !== moved);
+    const rest = group.tasks.filter((t) => t.key !== moved);
     const i = rest.findIndex((t) => t.key === target.key) + (after ? 1 : 0);
     const before = rest[i - 1]?.order ?? (rest[i]?.order ?? 0) - 2;
     const next = rest[i]?.order ?? before + 2;
-    void patchTask(moved, { order: (before + next) / 2 }).catch(onError);
+    const task = data.tasks.find((t) => t.key === moved);
+    const project = (task?.projectId ?? '') === group.id ? {} : { projectId: group.id || null };
+    void patchTask(moved, { order: (before + next) / 2, ...project }).catch(onError);
   };
 
-  const filters: [TaskFilter, string][] = [
-    [{ kind: 'today' }, '今天'],
-    [{ kind: 'inbox' }, '收件箱'],
-    [{ kind: 'all' }, '全部'],
-    [{ kind: 'done' }, '已完成'],
+  /** Dropped on a group's header: into that project. */
+  const moveTo = (moved: string, group: string) => {
+    const task = data.tasks.find((t) => t.key === moved);
+    if (task && (task.projectId ?? '') !== group) void patchTask(moved, { projectId: group || null }).catch(onError);
+  };
+
+  const times: [TaskFilter['time'], string][] = [
+    ['today', '今天'],
+    ['all', '全部'],
+    ['done', '已完成'],
   ];
-  const projectFilter = filter.kind === 'project' ? filter.id : '';
-  const canAdd = filter.kind !== 'done' && filter.kind !== 'trash';
+  const setTime = (time: TaskFilter['time']) => setFilter({ ...filter, time });
+  const toggleProject = (id: string) =>
+    setFilter({ ...filter, projects: chosen.has(id) ? filter.projects.filter((p) => p !== id) : [...filter.projects, id] });
+  const canAdd = filter.time === 'today' || filter.time === 'all';
+  const chips = ['', ...(currentProjectId ? [currentProjectId] : []), ...projects.map((p) => p.id).filter((id) => id !== currentProjectId)];
+  const fold = (id: string) => setFolded((f) => (f.has(id) ? new Set([...f].filter((x) => x !== id)) : new Set([...f, id])));
 
   return (
     <div className="plan-tasks">
       <div className="plan-filters">
-        {filters.map(([f, label]) => (
-          <button key={label} className={sameFilter(f, filter) ? 'on' : ''} onClick={() => setFilter(f)}>
+        {times.map(([t, label]) => (
+          <button key={t} className={filter.time === t ? 'on' : ''} onClick={() => setTime(t)}>
             {label}
           </button>
         ))}
-        <select
-          className={projectFilter ? 'on' : ''}
-          value={projectFilter}
-          onChange={(e) => setFilter(e.target.value ? { kind: 'project', id: e.target.value } : { kind: 'all' })}
-          title="只看某个项目的任务"
-        >
-          <option value="">项目…</option>
-          {currentProjectId && <option value={currentProjectId}>当前项目：{projectName.get(currentProjectId)}</option>}
-          {projects
-            .filter((p) => p.id !== currentProjectId)
-            .map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-        </select>
-        <button className={`icon-btn ${filter.kind === 'trash' ? 'on' : ''}`} onClick={() => setFilter({ kind: 'trash' })} title="回收站">
+        <span className="spacer" />
+        <button className={`icon-btn ${filter.time === 'trash' ? 'on' : ''}`} onClick={() => setTime(filter.time === 'trash' ? 'today' : 'trash')} title="回收站">
           <Icon name="trash" size={13} />
         </button>
       </div>
+      {filter.time !== 'trash' && (
+        <div className="plan-chips" title="只看这些项目（可以选几个；都不选就是全部）">
+          <button className={chosen.size === 0 ? 'on' : ''} onClick={() => setFilter({ ...filter, projects: [] })}>
+            全部项目
+          </button>
+          {chips.map((id) => (
+            <button key={id || 'inbox'} className={chosen.has(id) ? 'on' : ''} onClick={() => toggleProject(id)} title={id === currentProjectId ? '当前项目' : undefined}>
+              {nameOf(id)}
+              {id === currentProjectId && <span className="dot" />}
+            </button>
+          ))}
+        </div>
+      )}
       {canAdd && (
         <input
           className="plan-add"
-          placeholder={filter.kind === 'today' ? '+ 添加今天的任务，回车' : filter.kind === 'project' ? `+ 添加到「${projectName.get(filter.id) ?? '项目'}」，回车` : '+ 添加任务，回车'}
+          placeholder={`+ 添加${filter.time === 'today' ? '今天的' : ''}任务到「${nameOf(topProject)}」，回车`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && void add()}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || !draft.trim()) return;
+            void create(draft.trim(), topProject);
+            setDraft('');
+          }}
         />
       )}
       <TodayFocus data={data} />
       <div className="plan-list">
-        {sections.every((s) => s.tasks.length === 0) && <p className="plan-empty">{filter.kind === 'trash' ? '回收站是空的' : '这里没有任务'}</p>}
-        {sections
-          .filter((s) => s.tasks.length)
-          .map((s, si) => (
-            <div key={si}>
-              {s.title && (
-                <button className="plan-section" onClick={() => s.folded && setOpenFolded(!openFolded)}>
-                  {s.folded && <span>{openFolded ? '▾' : '▸'}</span>}
-                  {s.title} <span className="meta">{s.tasks.length}</span>
-                </button>
+        {groups.every((g) => g.tasks.length === 0) && filter.time !== 'today' && filter.time !== 'all' && (
+          <p className="plan-empty">{filter.time === 'trash' ? '回收站是空的' : '这里没有任务'}</p>
+        )}
+        {groups.map((g) => {
+          const isFolded = folded.has(g.id);
+          return (
+            <div key={g.id || 'inbox'} className="plan-group">
+              {filter.time !== 'trash' && (
+                <div
+                  className={`plan-group-head ${dropGroup === g.id ? 'drop' : ''}`}
+                  onDragOver={(e) => {
+                    if (!e.dataTransfer.types.includes(TASK_MIME) || !canAdd) return;
+                    e.preventDefault();
+                    setDropGroup(g.id);
+                  }}
+                  onDragLeave={() => setDropGroup(null)}
+                  onDrop={(e) => {
+                    setDropGroup(null);
+                    const moved = e.dataTransfer.getData(TASK_MIME);
+                    if (moved) moveTo(moved, g.id);
+                  }}
+                >
+                  <button className="plan-group-name" onClick={() => fold(g.id)} title={isFolded ? '展开' : '收起'}>
+                    <span className="fold">{isFolded ? '▸' : '▾'}</span>
+                    <span className="name">{g.name}</span>
+                    <span className="meta">{g.tasks.length}</span>
+                  </button>
+                  {canAdd && (
+                    <button
+                      className="icon-btn plan-group-add"
+                      onClick={() => {
+                        setAdding(g.id);
+                        setAddDraft('');
+                        setFolded((f) => new Set([...f].filter((x) => x !== g.id)));
+                      }}
+                      title={`添加任务到「${g.name}」`}
+                    >
+                      +
+                    </button>
+                  )}
+                </div>
               )}
-              {(!s.folded || openFolded) &&
-                s.tasks.map((t) => {
+              {adding === g.id && !isFolded && (
+                <input
+                  className="plan-add inline"
+                  autoFocus
+                  placeholder={`添加到「${g.name}」，回车；Esc 取消`}
+                  value={addDraft}
+                  onChange={(e) => setAddDraft(e.target.value)}
+                  onBlur={() => !addDraft.trim() && setAdding(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setAdding(null);
+                    if (e.key !== 'Enter' || !addDraft.trim()) return;
+                    void create(addDraft.trim(), g.id);
+                    setAddDraft('');
+                  }}
+                />
+              )}
+              {!isFolded &&
+                g.tasks.map((t) => {
                   const subs = t.subtasks ?? [];
                   const done = counts.get(t.key) ?? 0;
                   return (
@@ -193,7 +274,7 @@ export function TaskPanel({
                         e.dataTransfer.effectAllowed = 'copyMove';
                       }}
                       onDragOver={(e) => {
-                        if (!e.dataTransfer.types.includes(TASK_MIME) || filter.kind === 'done' || filter.kind === 'trash') return;
+                        if (!e.dataTransfer.types.includes(TASK_MIME) || !canAdd) return;
                         e.preventDefault();
                         const r = e.currentTarget.getBoundingClientRect();
                         setDropAt({ key: t.key, after: e.clientY > r.top + r.height / 2 });
@@ -202,7 +283,7 @@ export function TaskPanel({
                       onDrop={(e) => {
                         const moved = e.dataTransfer.getData(TASK_MIME);
                         setDropAt(null);
-                        if (moved) reorder(moved, t, e.clientY > e.currentTarget.getBoundingClientRect().top + e.currentTarget.offsetHeight / 2, s.tasks);
+                        if (moved) reorder(moved, t, e.clientY > e.currentTarget.getBoundingClientRect().top + e.currentTarget.offsetHeight / 2, g);
                       }}
                       onClick={() => onSelect(t.key)}
                     >
@@ -247,13 +328,14 @@ export function TaskPanel({
                           <Icon name="bot" size={12} />
                         </span>
                       )}
-                      {t.projectId && filter.kind !== 'project' && <span className="plan-chip">{projectName.get(t.projectId) ?? '项目'}</span>}
+                      {filter.time === 'trash' && t.projectId && <span className="plan-chip">{nameOf(t.projectId)}</span>}
                       {t.due && <span className={`plan-due ${isOverdue(t) ? 'late' : ''}`}>{dueLabel(t)}</span>}
                     </div>
                   );
                 })}
             </div>
-          ))}
+          );
+        })}
       </div>
     </div>
   );
