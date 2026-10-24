@@ -1164,7 +1164,17 @@ function dispatch(action: Action) {
     }
     case 'setVisiblePanes': {
       const main = mainWindowState();
-      main.layout.visible = Math.min(Math.max(1, action.count), main.slots.length);
+      const next = Math.min(Math.max(1, action.count), main.slots.length);
+      // Each count of panes keeps its own widths: those set for three are no use for two.
+      if (next !== main.layout.visible) {
+        const saved = { ...main.layout.weightsFor };
+        if (main.layout.weights) saved[main.layout.visible] = main.layout.weights;
+        else delete saved[main.layout.visible];
+        main.layout.weights = saved[next];
+        delete saved[next];
+        main.layout.weightsFor = Object.keys(saved).length ? saved : undefined;
+      }
+      main.layout.visible = next;
       const visible = allVisibleSlots();
       if (!visible.includes(state.focusedPane)) focusSlot(visible[visible.length - 1]);
       changed();

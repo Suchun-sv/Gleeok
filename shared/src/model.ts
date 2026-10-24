@@ -240,6 +240,8 @@ export interface Layout {
   focusRatio: number;
   /** Relative pane widths by slot (1 when unset), set by dragging the dividers between panes. */
   weights?: Record<number, number>;
+  /** The widths each other count of panes had, restored when switching back to it. */
+  weightsFor?: Record<number, Record<number, number>>;
 }
 
 export interface Rect {

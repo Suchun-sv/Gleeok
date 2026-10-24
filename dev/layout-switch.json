@@ -1,0 +1,96 @@
+[
+ {
+  "evalMain": "gleeok.createProject('布局测试').then(()=>'project')"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "evalMain": "(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"
+ },
+ {
+  "wait": 300
+ },
+ {
+  "evalMain": "(()=>{const s=document.querySelectorAll('.pane');const b=[...document.querySelectorAll('.pane-tabs .icon-btn, .tabs .icon-btn')];return 'panes '+s.length+' widths '+[...s].map(p=>Math.round(p.getBoundingClientRect().width)).join(',')+' | on: '+[...document.querySelectorAll('button[aria-pressed=true]')].map(b=>b.title).join(',')})()"
+ },
+ {
+  "capture": "1-three"
+ },
+ {
+  "evalMain": "([...document.querySelectorAll('button[aria-pressed]')].find(b=>b.title.startsWith('两栏')||b.title.startsWith('二栏')).click(),'click 2')"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "evalMain": "(()=>{const s=document.querySelectorAll('.pane');return 'panes '+s.length+' widths '+[...s].map(p=>Math.round(p.getBoundingClientRect().width)).join(',')+' | on: '+[...document.querySelectorAll('button[aria-pressed=true]')].map(b=>b.title).join(',')})()"
+ },
+ {
+  "capture": "2-two"
+ },
+ {
+  "evalMain": "([...document.querySelectorAll('button[aria-pressed]')].find(b=>b.title.startsWith('三栏')).click(),'click 3')"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "evalMain": "(()=>{const s=document.querySelectorAll('.pane');return 'panes '+s.length+' widths '+[...s].map(p=>Math.round(p.getBoundingClientRect().width)).join(',')+' | on: '+[...document.querySelectorAll('button[aria-pressed=true]')].map(b=>b.title).join(',')})()"
+ },
+ {
+  "mouseDrag": {
+   "selector": ".pane-divider",
+   "index": 0,
+   "dx": -200
+  }
+ },
+ {
+  "wait": 500
+ },
+ {
+  "evalMain": "(()=>{const s=document.querySelectorAll('.pane');return 'after drag widths '+[...s].map(p=>Math.round(p.getBoundingClientRect().width)).join(',')})()"
+ },
+ {
+  "evalMain": "([...document.querySelectorAll('button[aria-pressed]')].find(b=>b.title.startsWith('两栏')||b.title.startsWith('二栏')).click(),'click 2 again')"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "evalMain": "(()=>{const s=document.querySelectorAll('.pane');return 'panes '+s.length+' widths '+[...s].map(p=>Math.round(p.getBoundingClientRect().width)).join(',')})()"
+ },
+ {
+  "capture": "3-two-after-drag"
+ },
+ {
+  "evalMain": "([...document.querySelectorAll('button[aria-pressed]')].find(b=>b.title.startsWith('三栏')).click(),'back to 3')"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "evalMain": "(()=>{const s=document.querySelectorAll('.pane');return 'three again widths '+[...s].map(p=>Math.round(p.getBoundingClientRect().width)).join(',')})()"
+ },
+ {
+  "action": {
+   "type": "setPanes",
+   "names": [
+    "AI区",
+    "草稿区",
+    "产出区",
+    "阅读",
+    "写作"
+   ]
+  }
+ },
+ {
+  "wait": 600
+ },
+ {
+  "evalMain": "'buttons: '+[...document.querySelectorAll('button[aria-pressed]')].map(b=>b.title+(b.getAttribute('aria-pressed')==='true'?'*':'')).join(' | ')"
+ },
+ {
+  "capture": "4-five"
+ }
+]
