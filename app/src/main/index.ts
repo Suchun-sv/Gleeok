@@ -622,19 +622,24 @@ function shellOfSlot(slot: number): BrowserWindow | null {
 /** Send a window screenshots of its visible pages, so they can stand in while the pages are hidden. */
 async function sendPageImages(ws: AppWindowState) {
   const session = currentSession();
+  const shell = shells.get(ws.id);
+  if (!shell) return;
+  // Only pages on screen: with the 文献库, 日程 or settings showing, the pages are off the window,
+  // and capturing a page that is not on any window never finishes (the dialog never came).
+  const onScreen = new Set(views.attachedIn(shell));
   const images: Record<number, string> = {};
   for (const slot of session?.lifecycle === 'live' ? visibleSlots(ws) : []) {
     const view = views.get(activeTab(session!.panes[slot]).id);
-    if (!view || view.webContents.isDestroyed() || view.webContents.isCrashed()) continue;
-    // A hung or dying page cannot be captured; its pane just goes without a stand-in.
+    if (!view || !onScreen.has(view) || view.webContents.isDestroyed() || view.webContents.isCrashed()) continue;
+    // A hung page may never hand over a picture, or fail: its pane just goes without a stand-in.
     try {
-      images[slot] = (await view.webContents.capturePage()).toDataURL();
+      const image = await Promise.race([view.webContents.capturePage(), new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000))]);
+      if (image) images[slot] = image.toDataURL();
+      else log(`screenshot timed out: ${siteOf(view.webContents.getURL())}`);
     } catch (e) {
       log(`screenshot failed: ${siteOf(view.webContents.getURL())} ${(e as Error).message}`);
     }
   }
-  const shell = shells.get(ws.id);
-  if (!shell) return;
   // Wait until the window has painted them (beneath the pages); hiding the pages before that
   // flashes the empty panes for a frame.
   const shown = new Promise<void>((resolve) => {

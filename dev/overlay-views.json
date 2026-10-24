@@ -1,0 +1,20 @@
+[
+ {"evalMain":"gleeok.createProject('弹窗测试').then(()=>'project')"},{"wait":800},{"action":{"type":"toggleEntry"}},{"wait":500},
+ {"action":{"type":"navigate","slot":1,"url":"https://example.com/"}},{"wait":3000},
+ {"action":{"type":"setView","view":"library"}},{"wait":1000},
+ {"action":{"type":"openUpdate"}},{"wait":2500},
+ {"evalMain":"'library: '+(document.querySelector('.update-dialog')?'dialog shown':'NO dialog')"},
+ {"capture":"1-library-update"},
+ {"evalMain":"(document.querySelector('.palette-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'closed')"},{"wait":800},
+ {"action":{"type":"setView","view":"planner"}},{"wait":1000},
+ {"action":{"type":"openPalette"}},{"wait":2500},
+ {"evalMain":"'planner palette: '+(document.querySelector('.palette input')?'shown':'NOT shown')"},
+ {"evalMain":"(document.querySelector('.palette-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'closed')"},{"wait":800},
+ {"action":{"type":"setView","view":"settings"}},{"wait":1000},
+ {"action":{"type":"openUpdate"}},{"wait":2500},
+ {"evalMain":"'settings: '+(document.querySelector('.update-dialog')?'dialog shown':'NO dialog')"},
+ {"evalMain":"(document.querySelector('.palette-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'closed')"},{"wait":800},
+ {"action":{"type":"setView","view":"panes"}},{"wait":1000},
+ {"action":{"type":"openUpdate"}},{"wait":2500},
+ {"evalMain":"'panes: '+(document.querySelector('.update-dialog')?'dialog shown':'NO dialog')"}
+]

@@ -2917,6 +2917,27 @@ input.plan-pop-title {
   position: relative;
 }
 
+.agent-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.lib-toolbar .agent-btn {
+  margin-left: 0;
+  padding: 4px 10px;
+}
+
+.agent-btn.on,
+.agent-btn:hover {
+  border-color: var(--accent);
+}
+
 .agent-pop {
   position: absolute;
   z-index: 40;

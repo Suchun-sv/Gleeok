@@ -195,8 +195,9 @@ export function AgentButton({ scope }: { scope: AgentScope }) {
   }, [open]);
   return (
     <div className="agent-anchor" ref={box}>
-      <button className={`icon-btn ${open ? 'on' : ''}`} onClick={() => setOpen(!open)} title="交给 agent：复制连接说明或 MCP 命令">
-        <Icon name="bot" size={14} />
+      <button className={`agent-btn ${open ? 'on' : ''}`} onClick={() => setOpen(!open)} title="交给 agent：复制连接说明或 MCP 命令">
+        <Icon name="bot" size={13} />
+        Agent 连接
       </button>
       {open && (
         <div className="agent-pop">
