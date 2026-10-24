@@ -628,6 +628,15 @@ function About({ snap }: { snap: Snapshot }) {
       <dl className="facts">
         <dt>构建时间</dt>
         <dd>{built}</dd>
+        <dt>DRM</dt>
+        <dd>
+          {snap.drm.widevine ? `Widevine ${snap.drm.widevine}` : 'Widevine 还没就绪（第一次启动要下载，稍后再看）'}
+          {snap.drm.vmp === 'signed' && ' · 已有正式 VMP 签名'}
+          {snap.drm.vmp === 'none' && (
+            <span className="hint"> · 只有开发签名：Apple Music 等可能报错，在终端运行 deploy/macos-vmp-sign.sh</span>
+          )}
+          {snap.drm.vmp === 'stale' && <span className="error"> · Electron 更新后签名失效：在终端运行 deploy/macos-vmp-sign.sh</span>}
+        </dd>
         <dt>更新</dt>
         <dd>
           {!snap.canSelfUpdate

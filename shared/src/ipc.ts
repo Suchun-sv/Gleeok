@@ -154,6 +154,11 @@ export interface Snapshot {
   paletteWindows: string[];
   /** Tabs whose page process died (tab id → reason: oom, crashed, killed…). */
   crashedTabs: Record<string, string>;
+  /**
+   * DRM: the Widevine CDM's version (null: not there yet), and on macOS whether this checkout's
+   * Electron has the production VMP signature (deploy/macos-vmp-sign.sh); n/a elsewhere.
+   */
+  drm: { widevine: string | null; vmp: 'signed' | 'stale' | 'none' | 'n/a' };
   /** The sidebar's weather (null: turned off). */
   weather: WeatherSnapshot | null;
   /** Windows that fill their screen (full screen, or the compositor made them so): they show a clock. */

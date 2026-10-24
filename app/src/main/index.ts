@@ -54,7 +54,7 @@ import { activeTab, createSession, loadState, looksLikeUrl, newTab, normalizeUrl
 import { Terminals } from './terminal.ts';
 import { PARTITION, TabViews } from './views.ts';
 import { Shells } from './windows.ts';
-import { canSelfUpdate, pendingUpdates, selfUpdate } from './updater.ts';
+import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.ts';
 import { VAULT_URL_DEFAULT, Vault, fillPage, readPage } from './vault.ts';
 import { type Pairing, loadPairings, parseOffer, readLocalPaseo, readPairedPaseo, savePairings } from './paseo.ts';
 
@@ -81,6 +81,20 @@ let dragToken = 0;
 let downloads: Downloads | null = null;
 /** Per project, most recently closed tabs last; for reopen-closed-tab. Not persisted. */
 const closedTabs = new Map<string, { slot: number; url: string }[]>();
+/** Widevine (castLabs' Electron) and, on macOS, the production VMP signature DRM services need. */
+let drm: Snapshot['drm'] = { widevine: null, vmp: vmpStatus().state };
+function noteDrm() {
+  try {
+    const cdm = Object.values(components.status()).find((c) => /widevine/i.test(c.title ?? ''));
+    const next = { widevine: cdm?.version ?? null, vmp: vmpStatus().state };
+    if (next.widevine !== drm.widevine || next.vmp !== drm.vmp) log(`drm: widevine=${next.widevine ?? 'none'} vmp=${next.vmp}`);
+    drm = next;
+    changed();
+  } catch (e) {
+    log(`drm status: ${String(e)}`);
+  }
+}
+
 /** The sidebar's weather. */
 const weather = new Weather({ place: () => state.weatherPlace, changed: () => changed() });
 
@@ -589,6 +603,7 @@ function snapshot(): Snapshot {
     paletteWindows: [...paletteWindows],
     crashedTabs: Object.fromEntries(crashed()),
     weather: weather.snapshot,
+    drm,
     fullscreenWindows: fullscreenWindows(),
     state,
     platform: process.platform,
@@ -1872,9 +1887,16 @@ app.whenReady().then(async () => {
   // castLabs' Electron fetches the Widevine CDM (DRM for Apple Music, Netflix…) on first run and
   // keeps it updated. Pages wait briefly for it; offline, they open without DRM.
   await Promise.race([
-    components.whenReady().catch((e: unknown) => console.warn('[gleeok] Widevine unavailable:', e)),
+    components.whenReady().catch((e: unknown) => log(`widevine unavailable: ${String(e)}`)),
     new Promise((r) => setTimeout(r, 8000)),
   ]);
+  noteDrm();
+  // Late (first run, slow network): note it once the CDM is there.
+  void components.whenReady().then(noteDrm, () => {});
+  // The in-app update re-signs a new Electron; if that did not work, say how to do it by hand.
+  if (drm.vmp === 'stale') {
+    setTimeout(() => send({ type: 'toast', slot: state.focusedPane, text: 'Electron 更新后 Apple Music 的签名失效了：在终端运行 deploy/macos-vmp-sign.sh', ms: 20_000 }), 4000);
+  }
   // Run from a checkout, the Dock would show Electron's icon; packaged builds carry their own.
   if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'assets', 'icon.png'));
   // Present as plain Chrome: some sites refuse or degrade for UAs that mention Electron.

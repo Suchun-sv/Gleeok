@@ -56,9 +56,13 @@ Gleeok runs on [castLabs' Electron build](https://github.com/castlabs/electron-r
 adds the Widevine CDM, so DRM-protected media (Apple Music, Spotify, Netflix…) can play in a pane
 instead of stopping at previews. The first launch downloads the CDM (a few MB). Its builds carry a
 development VMP signature: on Linux that is all there is, while on macOS and Windows some services
-only accept a production signature, which castLabs' free
-[EVS service](https://github.com/castlabs/electron-releases/wiki/EVS) provides (on macOS it has to
-come before code signing).
+(Apple Music among them: it just says 发生错误) only accept a production signature, which castLabs'
+free [EVS service](https://github.com/castlabs/electron-releases/wiki/EVS) provides. On a Mac, run
+`deploy/macos-vmp-sign.sh` once from Terminal: it sets up the EVS client, has you create (or, with
+`--reauth`, log in to) a free castLabs account, signs `node_modules/electron/dist`, re-signs the app
+ad hoc (VMP has to come before code signing) and restarts nothing — restart Gleeok yourself; the
+first launch may ask once for keychain access. In-app updates re-sign a newly installed Electron
+automatically; Settings → 关于 shows the Widevine version and whether the signature is in place.
 `app/.npmrc` lets npm 12 install this Electron, which comes from a GitHub release rather than the
 npm registry.
 

@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { app } from 'electron';
 
@@ -47,4 +48,40 @@ export async function selfUpdate(step: (text: string) => void) {
   await run('npm', ['install', '--no-fund', '--no-audit'], appDir);
   step('构建…');
   await run('npm', ['run', 'build'], appDir);
+  // A new Electron arrives without the production VMP signature this Mac may have given the old one
+  // (the script does nothing if this machine never signed, or the version is already signed).
+  if (process.platform === 'darwin' && vmpStatus().state === 'stale') {
+    step('给新的 Electron 签名（Apple Music）…');
+    await run('bash', [join(repoDir, 'deploy', 'macos-vmp-sign.sh'), '--if-needed'], repoDir).catch(() => {
+      // Not fatal: Gleeok starts anyway and says how to sign by hand.
+    });
+  }
+}
+
+/** Where deploy/macos-vmp-sign.sh records the Electron version it signed. */
+const VMP_MARKER = join(homedir(), '.config', 'gleeok', 'vmp-signed');
+
+/**
+ * macOS: whether this checkout's Electron carries the production VMP signature (DRM services such
+ * as Apple Music need it there). none: never signed on this machine; stale: signed, but for an
+ * older Electron.
+ */
+export function vmpStatus(): { state: 'signed' | 'stale' | 'none' | 'n/a'; signed?: string } {
+  if (process.platform !== 'darwin' || app.isPackaged) return { state: 'n/a' };
+  let signed: string;
+  try {
+    signed = readFileSync(VMP_MARKER, 'utf8').trim();
+  } catch {
+    return { state: 'none' };
+  }
+  return { state: signed === installedElectron() ? 'signed' : 'stale', signed };
+}
+
+/** The Electron version npm has installed in this checkout (as the signing script records it). */
+function installedElectron(): string {
+  try {
+    return (JSON.parse(readFileSync(join(appDir, 'node_modules', 'electron', 'package.json'), 'utf8')) as { version: string }).version;
+  } catch {
+    return '';
+  }
 }
