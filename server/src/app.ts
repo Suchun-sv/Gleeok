@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { extname, join, normalize, sep } from 'node:path';
 import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
 import { detectCodeServer } from './codeserver.ts';
@@ -17,6 +19,10 @@ export interface AppOptions {
   library?: Library;
   /** The 日程; its API lives under /api/planner. */
   planner?: Planner;
+  /** Directory with the phone page (server/public), served at /m/. */
+  publicDir?: string;
+  /** Where phones open it (e.g. an HTTPS tailnet address ending in /m/), for clients to hand out. */
+  mobileUrl?: string;
 }
 
 const DETECT_EVERY_MS = 10 * 60_000;
@@ -39,7 +45,30 @@ export function createApp(store: Store, opts: AppOptions = {}) {
   app.get('/health', (c) => c.json({ ok: true }));
   if (opts.token) app.use('/api/*', bearerAuth({ token: opts.token }));
 
-  app.get('/api/client-config', (c) => c.json({ vaultUrl: opts.vaultUrl ?? null }));
+  app.get('/api/client-config', (c) => c.json({ vaultUrl: opts.vaultUrl ?? null, mobileUrl: opts.mobileUrl ?? null }));
+
+  // The 日程 phone page: static files, no data (it signs in with the token like any client).
+  if (opts.publicDir) {
+    const root = join(opts.publicDir, 'm');
+    const types: Record<string, string> = {
+      '.html': 'text/html; charset=utf-8',
+      '.js': 'text/javascript; charset=utf-8',
+      '.css': 'text/css; charset=utf-8',
+      '.png': 'image/png',
+      '.webmanifest': 'application/manifest+json',
+    };
+    app.get('/m', (c) => c.redirect('/m/'));
+    app.get('/m/*', (c) => {
+      const rel = decodeURIComponent(new URL(c.req.url).pathname.slice(3)) || 'index.html';
+      const file = normalize(join(root, rel));
+      if (!file.startsWith(root + sep)) return c.text('not found', 404);
+      try {
+        return c.body(readFileSync(file), 200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-cache' });
+      } catch {
+        return c.text('not found', 404);
+      }
+    });
+  }
 
   if (opts.library) app.route('/api/library', libraryRoutes(opts.library));
   if (opts.planner) app.route('/api/planner', syncedRoutes(opts.planner));

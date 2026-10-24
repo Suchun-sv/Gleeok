@@ -39,6 +39,7 @@ const api: GleeokApi = {
   library: (op) => ipcRenderer.invoke('library:call', op),
   pathForFile: (file) => webUtils.getPathForFile(file),
   getPlanner: () => ipcRenderer.invoke('planner:get'),
+  mobileLink: () => ipcRenderer.invoke('planner:mobileLink'),
   onPlanner: (cb) => subscribe<PlannerSnapshot>('planner', cb),
   planner: (op) => ipcRenderer.invoke('planner:call', op),
   pairPaseo: (url) => ipcRenderer.invoke('paseo:pair', url),

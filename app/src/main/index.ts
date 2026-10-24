@@ -707,6 +707,7 @@ planner.onChange = () => {
   plannerTimer = setTimeout(() => shells.broadcast('planner', planner.snapshot()), 60);
 };
 ipcMain.handle('planner:get', () => planner.snapshot());
+ipcMain.handle('planner:mobileLink', () => config.mobileLink);
 ipcMain.handle('planner:call', async (_e, op: PlannerOp) => {
   try {
     switch (op.op) {

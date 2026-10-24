@@ -255,6 +255,8 @@ export interface GleeokApi {
   onLibrary(cb: (lib: LibrarySnapshot) => void): () => void;
   library(op: LibraryOp): Promise<{ result?: unknown; error?: string }>;
   getPlanner(): Promise<PlannerSnapshot>;
+  /** The phone page's sign-in link, when the sync server offers one (GLEEOK_MOBILE_URL). */
+  mobileLink(): Promise<string | null>;
   onPlanner(cb: (p: PlannerSnapshot) => void): () => void;
   planner(op: PlannerOp): Promise<{ result?: unknown; error?: string }>;
   /** A dropped file's path on disk. */

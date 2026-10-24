@@ -101,6 +101,10 @@ and a dialog ask whether to start the break or the next pomodoro. Lengths are in
 Everything lives in `planner.db` on the server (or in local mode on this machine). The design is
 in [docs/planner.md](docs/planner.md).
 
+On the phone: set `GLEEOK_MOBILE_URL` on the server (see docs/planner.md), then Settings → 日程 →
+「复制手机登录链接」, open the link once on the phone (on the tailnet) and add it to the home
+screen. The link carries the server token: keep it private.
+
 ## Terminal tabs
 
 A tab can hold a real shell (xterm.js + node-pty, like VS Code's terminal): "终端 · 本机" on the

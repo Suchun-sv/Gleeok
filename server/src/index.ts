@@ -25,6 +25,8 @@ const app = createApp(new Store(dbPath), {
   vaultUrl: process.env.GLEEOK_VAULT_URL || undefined,
   library: new Library(libraryDir),
   planner: new Planner(libraryDir),
+  publicDir: join(import.meta.dirname, '..', 'public'),
+  mobileUrl: process.env.GLEEOK_MOBILE_URL || undefined,
 });
 
 serve({ fetch: app.fetch, hostname, port }, (info) => {

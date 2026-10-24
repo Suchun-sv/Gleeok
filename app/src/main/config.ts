@@ -30,6 +30,7 @@ export class ConfigClient {
   error?: string;
   #conf?: ClientConfig;
   #suggestedVaultUrl?: string;
+  #mobileUrl: string | undefined;
   #local: ReturnType<typeof createApp> | null = null;
   #cachePath = join(app.getPath('userData'), 'projects-cache.json');
 
@@ -39,6 +40,12 @@ export class ConfigClient {
 
   get local() {
     return this.#local !== null;
+  }
+
+  /** The phone page with this machine's token in its fragment (the page keeps it and drops it from the URL). */
+  get mobileLink(): string | null {
+    if (!this.#mobileUrl || !this.#conf?.token) return null;
+    return `${this.#mobileUrl}#token=${encodeURIComponent(this.#conf.token)}`;
   }
 
   get vaultUrl() {
@@ -79,8 +86,9 @@ export class ConfigClient {
       this.error = undefined;
       writeFileSync(this.#cachePath, JSON.stringify({ projects: this.projects, paseo: this.paseo }));
       // Older servers lack this endpoint; the vault then falls back to the default.
-      const cfg = (await this.#request('GET', '/api/client-config').catch(() => null)) as { vaultUrl?: string | null } | null;
+      const cfg = (await this.#request('GET', '/api/client-config').catch(() => null)) as { vaultUrl?: string | null; mobileUrl?: string | null } | null;
       this.#suggestedVaultUrl = cfg?.vaultUrl ?? undefined;
+      this.#mobileUrl = cfg?.mobileUrl ?? undefined;
     } catch (e) {
       this.status = 'offline';
       this.error = String(e);

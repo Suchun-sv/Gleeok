@@ -59,7 +59,12 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
         {tab === 'panes' && <PaneSettings snap={snap} />}
         {tab === 'suggestions' && <SuggestionSettings snap={snap} />}
         {tab === 'library' && <LibrarySettingsCard snap={snap} />}
-        {tab === 'planner' && <PlannerSettings snap={snap} />}
+        {tab === 'planner' && (
+          <>
+            <PlannerSettings snap={snap} />
+            <MobileCard snap={snap} />
+          </>
+        )}
         {tab === 'paseo' && <PaseoSettings snap={snap} />}
         {tab === 'sync' && <SyncSettings snap={snap} />}
         {tab === 'vault' && <VaultSettings snap={snap} />}
@@ -163,6 +168,51 @@ function SuggestionSettings({ snap }: { snap: Snapshot }) {
           恢复默认
         </button>
       </div>
+    </section>
+  );
+}
+
+/** The phone page: copy a sign-in link to open on the phone. */
+function MobileCard({ snap }: { snap: Snapshot }) {
+  const [link, setLink] = useState<string | null | undefined>(undefined);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    void gleeok.mobileLink().then(setLink);
+  }, [snap.server.status]);
+  const url = link?.split('#')[0];
+  return (
+    <section className="card">
+      <h3>手机网页版</h3>
+      {snap.server.status === 'local' ? (
+        <p className="hint">本地模式下没有手机网页版：它由同步服务器提供。</p>
+      ) : link === null ? (
+        <p className="hint">同步服务器还没设置手机网页的地址（server.env 里的 GLEEOK_MOBILE_URL）。</p>
+      ) : (
+        <>
+          <dl className="facts">
+            <dt>地址</dt>
+            <dd>{url ?? '…'}</dd>
+          </dl>
+          <div className="row">
+            <button
+              disabled={!link}
+              onClick={() =>
+                link &&
+                void gleeok.library({ op: 'copyText', text: link }).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 3000);
+                })
+              }
+            >
+              {copied ? '已复制' : '复制手机登录链接'}
+            </button>
+          </div>
+          <p className="hint">
+            把链接发到手机上（比如用隔空投送或备忘录），在 Safari 里打开，再点「分享 → 添加到主屏幕」，就能像 App
+            一样用。链接里带着同步服务器的访问令牌，只发给你自己的设备；手机需要连着 Tailscale。
+          </p>
+        </>
+      )}
     </section>
   );
 }
