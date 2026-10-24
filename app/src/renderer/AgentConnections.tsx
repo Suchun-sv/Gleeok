@@ -179,7 +179,7 @@ export function openAgentSettings() {
 }
 
 /** A robot button for a toolbar: the connections in a popover, scoped to this part of Gleeok. */
-export function AgentButton({ scope }: { scope: AgentScope }) {
+export function AgentButton({ scope, iconOnly = false }: { scope: AgentScope; iconOnly?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -197,7 +197,7 @@ export function AgentButton({ scope }: { scope: AgentScope }) {
     <div className="agent-anchor" ref={box}>
       <button className={`agent-btn ${open ? 'on' : ''}`} onClick={() => setOpen(!open)} title="交给 agent：复制连接说明或 MCP 命令">
         <Icon name="bot" size={13} />
-        Agent 连接
+        {!iconOnly && 'Agent 连接'}
       </button>
       {open && (
         <div className="agent-pop">

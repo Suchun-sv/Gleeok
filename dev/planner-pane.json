@@ -1,0 +1,18 @@
+[
+ {"evalMain":"gleeok.createProject('DS4D').then(()=>'project')"},{"wait":800},{"action":{"type":"toggleEntry"}},{"wait":500},
+ {"evalMain":"(async()=>{const d=new Date();const day=d.toISOString().slice(0,10);const y=new Date(Date.now()-86400000).toISOString().slice(0,10);const r=await gleeok.planner({op:'create',kind:'tasks',objects:[{title:'改 DS4D 讲义第 3 节',due:day,priority:3,estimate:2},{title:'回导师邮件',due:y,priority:2},{title:'读 RAG 论文',priority:1}]});const t=r.result[0];const s=new Date(Date.now()+3600000);const e=new Date(s.getTime()+5400000);await gleeok.planner({op:'create',kind:'blocks',objects:[{taskKey:t.key,start:s.toISOString(),end:e.toISOString()}]});return 'seeded'})()"},
+ {"wait":800},
+ {"capture":"1-newtab"},
+ {"evalMain":"([...document.querySelectorAll('.pane')][1].querySelectorAll('.links button')[0].click(),'open planner in pane 2')"},{"wait":1500},
+ {"evalMain":"(()=>{const p=document.querySelector('.planner.pane');return p.className+' | title: '+p.querySelector('.plan-cal-title').textContent+' | grid scrollTop: '+p.querySelector('.plan-grid-scroll').scrollTop+' / '+p.querySelector('.plan-grid-scroll').clientHeight})()"},
+ {"capture":"2-pane-stacked"},
+ {"mouseDrag":{"selector":".plan-stack-bar.open","dx":0,"dy":-90}},{"wait":400},
+ {"evalMain":"'tasks height: '+document.querySelector('.plan-stack-tasks').style.height"},
+ {"evalMain":"([...document.querySelectorAll('.plan-stack-bar button')][0].click(),'collapsed')"},{"wait":400},
+ {"capture":"3-collapsed"},
+ {"evalMain":"([...document.querySelectorAll('.plan-stack-bar button')][0].click(),'expanded')"},{"wait":400},
+ {"action":{"type":"newTab","url":"gleeok://newtab"}},{"wait":800},
+ {"evalMain":"(()=>{const b=[...document.querySelectorAll('.pane')][1].querySelectorAll('.links button');const t=[...b].find(x=>x.textContent.includes('回导师'));t.click();return 'clicked task tile'})()"},{"wait":1500},
+ {"evalMain":"document.querySelector('.plan-drawer .plan-detail-title')?.value||'no detail'"},
+ {"capture":"4-task-from-tile"}
+]

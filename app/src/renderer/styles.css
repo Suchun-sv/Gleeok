@@ -809,6 +809,10 @@ input.managed {
   color: var(--muted);
 }
 
+.newtab .links .sub.late {
+  color: var(--danger);
+}
+
 .newtab .links .hint {
   grid-column: 1 / -1;
   text-align: center;
@@ -2332,6 +2336,8 @@ input.managed {
   flex: 1;
   flex-direction: column;
   min-width: 0;
+  /* Else the day grows to its full 24 hours and a pane cuts it off instead of scrolling it. */
+  min-height: 0;
 }
 
 .plan-side {
@@ -2358,6 +2364,71 @@ input.managed {
   overflow-y: auto;
   background: var(--panel);
   box-shadow: 0 0 24px rgb(0 0 0 / 45%);
+}
+
+.plan-main.stacked .plan-cal-head {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.plan-main.stacked .plan-cal-title {
+  white-space: nowrap;
+}
+
+.plan-stack-tasks {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.plan-stack-tasks .plan-filters {
+  padding-top: 6px;
+}
+
+.plan-stack-bar {
+  position: relative;
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  min-height: 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.plan-stack-bar.open {
+  border-top: 1px solid var(--line);
+  cursor: row-resize;
+}
+
+/* The grip in the middle; the fold button sits at the right. */
+.plan-stack-bar.open::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  transform: translate(-50%, -50%);
+}
+
+.plan-stack-bar button {
+  padding: 1px 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.plan-stack-bar button:hover {
+  color: var(--text);
+}
+
+body.resizing-rows,
+body.resizing-rows * {
+  cursor: row-resize !important;
+  user-select: none;
 }
 
 .plan-switch {

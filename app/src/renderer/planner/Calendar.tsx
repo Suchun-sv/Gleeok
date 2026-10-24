@@ -29,12 +29,14 @@ export function stepAnchor(view: CalendarView, anchor: Date, dir: number): Date 
   return addDays(anchor, dir * VIEW_DAYS[view]);
 }
 
-export function viewTitle(view: CalendarView, anchor: Date): string {
+export function viewTitle(view: CalendarView, anchor: Date, short = false): string {
   if (view === 'month') return `${anchor.getFullYear()}年${anchor.getMonth() + 1}月`;
   const first = viewStart(view, anchor);
   const last = addDays(first, VIEW_DAYS[view] - 1);
   const md = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`;
-  return view === 'day' ? `${first.getFullYear()}年${md(first)} ${WEEKDAYS[first.getDay()]}` : `${md(first)} – ${md(last)}`;
+  // In a pane the year goes (unless it is not this year), so the title stays on one line.
+  const year = short && first.getFullYear() === new Date().getFullYear() ? '' : `${first.getFullYear()}年`;
+  return view === 'day' ? `${year}${md(first)} ${WEEKDAYS[first.getDay()]}` : `${md(first)} – ${md(last)}`;
 }
 
 interface Placed {
@@ -86,8 +88,13 @@ export function Calendar({
   onSelectTask,
   onError,
   extra,
+  between,
+  compact = false,
 }: {
   data: PlannerSnapshot;
+  /** Between the header and the grid (the task list, when the 日程 sits in a narrow pane). */
+  between?: React.ReactNode;
+  compact?: boolean;
   view: CalendarView;
   anchor: Date;
   /** Shown at the right end of the header. */
@@ -118,7 +125,7 @@ export function Calendar({
         <button className="icon-btn" onClick={() => onAnchor(stepAnchor(view, anchor, 1))} title="下一段">
           <Icon name="chevronRight" size={15} />
         </button>
-        <span className="plan-cal-title">{viewTitle(view, anchor)}</span>
+        <span className="plan-cal-title">{viewTitle(view, anchor, compact)}</span>
         <div className="plan-seg">
           {(
             [
@@ -135,6 +142,7 @@ export function Calendar({
         </div>
         {extra}
       </div>
+      {between}
       {view === 'month' ? (
         <Month data={data} tasks={tasks} blocks={blocks} anchor={anchor} now={now} onOpenDay={(d) => (onAnchor(d), onView('day'))} onSelectTask={onSelectTask} onError={onError} />
       ) : (
@@ -180,10 +188,21 @@ function TimeGrid({
   const [hover, setHover] = useState<{ day: number; minutes: number } | null>(null);
   const today = dayKey(now);
 
-  // Open near now (or the morning), once per view.
+  // Open near now (or the morning), once per view. A pane may lay the grid out after this runs
+  // (no height yet, nothing to scroll): then once it has one.
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (el) el.scrollTop = Math.max(0, ((days.some((d) => dayKey(d) === today) ? minutesOf(now) : 8 * 60) / 60 - 2) * HOUR);
+    if (!el) return;
+    const scroll = () => (el.scrollTop = Math.max(0, ((days.some((d) => dayKey(d) === today) ? minutesOf(now) : 8 * 60) / 60 - 2) * HOUR));
+    scroll();
+    if (el.clientHeight > 0 && el.scrollTop > 0) return;
+    const ro = new ResizeObserver(() => {
+      if (el.clientHeight === 0) return;
+      scroll();
+      ro.disconnect();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [view, dayKey(days[0])]);
 
   useEffect(() => {

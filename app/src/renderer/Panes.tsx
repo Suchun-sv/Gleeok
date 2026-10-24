@@ -2,12 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Command, PaneRects, Snapshot } from '../../../shared/src/ipc.ts';
 import { TerminalView } from './Terminal.tsx';
 import { LibraryView } from './library/LibraryView.tsx';
-import { PlannerView } from './planner/PlannerView.tsx';
+import { PlannerView, showTask } from './planner/PlannerView.tsx';
+import { dayKey, dueDay, dueLabel, hhmm, isOverdue, usePlanner } from './planner/data.ts';
 import { useLibrary } from './library/data.ts';
 import {
   NEW_TAB_URL,
   DEFAULT_SUGGESTIONS,
   LIBRARY_URL,
+  PLANNER_URL,
   isLibraryUrl,
   isPlannerUrl,
   isReaderUrl,
@@ -561,6 +563,54 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
   );
 }
 
+/** The new-tab page's way into the 日程: open it here, with what today holds (the next block, what is due). */
+function PlannerTile({ slot }: { slot: number }) {
+  const data = usePlanner();
+  const now = new Date();
+  const today = dayKey(now);
+  const open = (data?.tasks ?? []).filter((t) => !t.done && !t.deleted);
+  const due = open
+    .filter((t) => (dueDay(t) ?? '9') <= today)
+    .sort((a, b) => Number(isOverdue(b, now)) - Number(isOverdue(a, now)) || (b.priority ?? 0) - (a.priority ?? 0) || String(a.due).localeCompare(String(b.due)));
+  const titles = new Map((data?.tasks ?? []).map((t) => [t.key, t.title]));
+  // The block under way, else the next one today.
+  const next = (data?.blocks ?? [])
+    .filter((b) => dayKey(new Date(b.start)) === today && Date.parse(b.end) > now.getTime() && !(b.taskKey && !titles.has(b.taskKey)))
+    .sort((a, b) => a.start.localeCompare(b.start))[0];
+  const go = (task?: string) => {
+    if (task) showTask(task);
+    gleeok.dispatch({ type: 'navigate', slot, url: PLANNER_URL });
+  };
+  return (
+    <>
+      <h3>日程</h3>
+      <div className="links">
+        <button onClick={() => go()} title="在这一栏打开日程">
+          <img src={faviconFor(PLANNER_URL)} alt="" />
+          <span>日程</span>
+          <span className="sub">{data ? (due.length ? `今天 ${due.length} 个任务` : '今天没有待办') : ''}</span>
+        </button>
+        {next && (
+          <button onClick={() => go(next.taskKey)} title={next.taskKey ? titles.get(next.taskKey) : next.title}>
+            <img src={faviconFor(PLANNER_URL)} alt="" />
+            <span>
+              {hhmm(new Date(next.start))} {next.taskKey ? titles.get(next.taskKey) : next.title}
+            </span>
+            <span className="sub">{Date.parse(next.start) <= now.getTime() ? '进行中' : '接下来'}</span>
+          </button>
+        )}
+        {due.slice(0, next ? 2 : 3).map((t) => (
+          <button key={t.key} onClick={() => go(t.key)} title={t.title}>
+            <img src={faviconFor(PLANNER_URL)} alt="" />
+            <span>{t.title}</span>
+            <span className={`sub ${isOverdue(t, now) ? 'late' : ''}`}>{dueLabel(t)}</span>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 /** The new-tab page's way into the 文献库: open it here, or jump back into a recent read. */
 function LibraryTile({ slot }: { slot: number }) {
   const lib = useLibrary();
@@ -627,6 +677,7 @@ function NewTab({
           </button>
         ))}
       </div>
+      <PlannerTile slot={slot} />
       <LibraryTile slot={slot} />
       <h3>常用</h3>
       <div className="links">
