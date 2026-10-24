@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PlannerSnapshot } from '../../../../shared/src/ipc.ts';
 import type { PlannerTask } from '../../../../shared/src/planner.ts';
 import type { Project } from '../../../../shared/src/model.ts';
@@ -72,6 +72,9 @@ export function TaskPanel({
   const [folded, setFolded] = useState<Set<string>>(new Set());
   const [dropAt, setDropAt] = useState<{ key: string; after: boolean } | null>(null);
   const [dropGroup, setDropGroup] = useState<string | null>(null);
+  /** The task just added, to bring into view once it is in the list. */
+  const [added, setAdded] = useState<string | null>(null);
+  const list = useRef<HTMLDivElement>(null);
   const today = dayKey(new Date());
   const tomorrow = dayKey(new Date(Date.now() + 86_400_000));
   const counts = useMemo(() => pomodoroCounts(data.pomodoros), [data.pomodoros]);
@@ -106,12 +109,17 @@ export function TaskPanel({
     const all = ids
       .filter((id) => chosen.size === 0 || chosen.has(id))
       .map((id) => ({ id, name: nameOf(id), tasks: pool.filter((t) => (t.projectId ?? '') === id) }));
-    // Empty groups only where a + is wanted: chosen ones, the inbox and the current project.
+    // Empty groups only where a + is wanted: chosen ones, the inbox and the current project. They
+    // keep their place, so the list does not reshuffle when one gets its first task.
     const keepEmpty = (id: string) => filter.time !== 'done' && (chosen.has(id) || id === '' || id === currentProjectId);
-    return [...all.filter((g) => g.tasks.length), ...all.filter((g) => !g.tasks.length && keepEmpty(g.id))];
+    return all.filter((g) => g.tasks.length || keepEmpty(g.id));
   }, [data.tasks, filter, today, tomorrow, blockedToday, projects, currentProjectId]);
 
-  /** New tasks go on top of their group; due today when only today is shown. */
+  /**
+   * New tasks go on top of their group; due today when only today is shown. The details do not
+   * open (that squeezed the calendar, or covered the list in a pane): the input keeps the focus
+   * for the next one, and the new row is brought into view.
+   */
   const create = async (title: string, projectId: string) => {
     const top = Math.min(0, ...data.tasks.map((t) => t.order ?? 0)) - 1;
     try {
@@ -120,11 +128,18 @@ export function TaskPanel({
         kind: 'tasks',
         objects: [{ title, order: top, ...(filter.time === 'today' ? { due: today } : {}), ...(projectId ? { projectId } : {}) }],
       });
-      onSelect(t.key);
+      setAdded(t.key);
     } catch (e) {
       onError(e);
     }
   };
+  useEffect(() => {
+    if (!added) return;
+    const row = list.current?.querySelector(`[data-key="${added}"]`);
+    if (!row) return;
+    row.scrollIntoView({ block: 'nearest' });
+    setAdded(null);
+  }, [added, groups]);
   /** The top input: into the one project chosen, else the inbox. */
   const topProject = filter.projects.length === 1 ? filter.projects[0] : '';
 
@@ -201,7 +216,7 @@ export function TaskPanel({
         />
       )}
       <TodayFocus data={data} />
-      <div className="plan-list">
+      <div className="plan-list" ref={list}>
         {groups.every((g) => g.tasks.length === 0) && filter.time !== 'today' && filter.time !== 'all' && (
           <p className="plan-empty">{filter.time === 'trash' ? '回收站是空的' : '这里没有任务'}</p>
         )}
@@ -267,6 +282,7 @@ export function TaskPanel({
                   return (
                     <div
                       key={t.key}
+                      data-key={t.key}
                       className={`plan-task ${selected === t.key ? 'on' : ''} ${t.done ? 'done' : ''} ${dropAt?.key === t.key ? (dropAt.after ? 'drop-after' : 'drop-before') : ''}`}
                       draggable={!t.deleted}
                       onDragStart={(e) => {
