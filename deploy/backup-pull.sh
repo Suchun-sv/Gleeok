@@ -20,8 +20,10 @@ tmp=$(mktemp -d)
 mkdir "$tmp/gleeok-backup"
 out=$tmp/gleeok-backup
 sqlite3 ~/.local/share/gleeok/gleeok.db ".backup '$out/gleeok.db'"
-lib=~/.local/share/gleeok/library.db
-[ -f "$lib" ] && sqlite3 "$lib" ".backup '$out/library.db'"
+for db in library planner; do
+  f=~/.local/share/gleeok/$db.db
+  [ -f "$f" ] && sqlite3 "$f" ".backup '$out/$db.db'"
+done
 vw=~/.local/share/vaultwarden
 if [ -f "$vw/db.sqlite3" ]; then
   sqlite3 "$vw/db.sqlite3" ".backup '$out/vaultwarden.db'"

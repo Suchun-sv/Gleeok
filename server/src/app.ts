@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
 import { detectCodeServer } from './codeserver.ts';
 import { type Library, libraryRoutes } from './library.ts';
+import type { Planner } from './planner.ts';
+import { syncedRoutes } from './synced.ts';
 import { type Store, parseDaemon, parseProjectInput, parseSession } from './store.ts';
 
 export interface AppOptions {
@@ -13,6 +15,8 @@ export interface AppOptions {
   local?: boolean;
   /** The 文献库; its API lives under /api/library. */
   library?: Library;
+  /** The 日程; its API lives under /api/planner. */
+  planner?: Planner;
 }
 
 const DETECT_EVERY_MS = 10 * 60_000;
@@ -38,6 +42,7 @@ export function createApp(store: Store, opts: AppOptions = {}) {
   app.get('/api/client-config', (c) => c.json({ vaultUrl: opts.vaultUrl ?? null }));
 
   if (opts.library) app.route('/api/library', libraryRoutes(opts.library));
+  if (opts.planner) app.route('/api/planner', syncedRoutes(opts.planner));
 
   app.get('/api/projects', (c) => c.json(store.list()));
 

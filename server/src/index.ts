@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { serve } from '@hono/node-server';
 import { createApp } from './app.ts';
 import { Library } from './library.ts';
+import { Planner } from './planner.ts';
 import { Store } from './store.ts';
 
 const token = process.env.GLEEOK_TOKEN;
@@ -23,6 +24,7 @@ const app = createApp(new Store(dbPath), {
   token,
   vaultUrl: process.env.GLEEOK_VAULT_URL || undefined,
   library: new Library(libraryDir),
+  planner: new Planner(libraryDir),
 });
 
 serve({ fetch: app.fetch, hostname, port }, (info) => {
