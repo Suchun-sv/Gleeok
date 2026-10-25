@@ -1,0 +1,112 @@
+[
+ {
+  "evalMain": "(()=>{const Real=Date;const delta=new Real('2026-10-22T10:20:00').getTime()-Real.now();\nclass Shown extends Real{constructor(...a){if(a.length===0)super(Real.now()+delta);else super(...a);}static now(){return Real.now()+delta;}}\nwindow.Date=Shown;return 'clock set to '+new Date().toString().slice(0,21)})()"
+ },
+ {
+  "evalMain": "(async()=>{\n  for (const n of ['RAG 论文复现','DS4D 讲义','Gleeok 开发','毕业论文']) await gleeok.createProject(n);\n  return 'projects';\n})()"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "evalMain": "(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"
+ },
+ {
+  "wait": 300
+ },
+ {
+  "evalMain": "(async()=>{const s=await gleeok.getSnapshot();const p=s.projects.find(p=>p.name==='RAG 论文复现');gleeok.dispatch({type:'selectProject',id:p.id});return 'selected'})()"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "evalMain": "(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"
+ },
+ {
+  "evalMain": "(async()=>{\n  const s = await gleeok.getSnapshot();\n  const P = Object.fromEntries(s.projects.map(p=>[p.name,p.id]));\n  const rag = s.projects.find(p=>p.name==='RAG 论文复现');\n  const L = (label,url)=>({id:Math.random().toString(36).slice(2,10),label,url});\n  await gleeok.saveProject({...rag, links:[\n    L('RAG 论文','https://arxiv.org/abs/2005.11401'),\n    L('DPR 代码','https://github.com/facebookresearch/DPR'),\n    L('KILT 数据集','https://github.com/facebookresearch/KILT'),\n    L('实验记录','https://www.notion.so'),\n    L('论文草稿','https://www.overleaf.com/project'),\n  ]});\n  // 天气：固定一个公开城市，时钟常显\n  gleeok.dispatch({type:'setWeatherPlace', place:{name:'上海', latitude:31.2304, longitude:121.4737, detail:'上海市，中国'}});\n  gleeok.dispatch({type:'setClock', mode:'always'});\n\n  // 日程\n  const day = (n)=>{const d=new Date(); d.setDate(d.getDate()+n); return d;};\n  const key = (d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;\n  const T = (title, o={}) => ({title, ...o});\n  const tasks = [\n    T('跑通 RAG-Sequence baseline（NQ 开发集）', {due:key(day(0)), priority:3, estimate:4, projectId:P['RAG 论文复现'], subtasks:[{id:'a1',title:'下载 DPR 索引',done:true},{id:'a2',title:'配置 BART-large 生成器',done:true},{id:'a3',title:'跑 EM 评测',done:false}]}),\n    T('对比 RAG-Token 与 RAG-Sequence 的 EM', {due:key(day(1)), priority:2, estimate:3, projectId:P['RAG 论文复现']}),\n    T('读 Self-RAG，整理和 RAG 的区别', {due:key(day(2)), priority:1, estimate:2, projectId:P['RAG 论文复现']}),\n    T('写第 3 节：检索增强的动机', {due:key(day(0))+'T17:00', priority:2, estimate:2, projectId:P['DS4D 讲义']}),\n    T('做第 4 周的作业示例', {due:key(day(3)), priority:1, projectId:P['DS4D 讲义']}),\n    T('修侧边栏时钟在全屏下的位置', {due:key(day(1)), priority:1, estimate:1, projectId:P['Gleeok 开发']}),\n    T('回导师邮件：下周组会时间', {due:key(day(-1)), priority:3}),\n    T('整理相关工作表格', {due:key(day(4)), estimate:2, projectId:P['毕业论文']}),\n    T('预约体检', {}),\n  ];\n  const made = (await gleeok.planner({op:'create', kind:'tasks', objects:tasks})).result;\n  const K = Object.fromEntries(made.map(t=>[t.title,t.key]));\n  const at = (n,h,m=0)=>{const d=day(n); d.setHours(h,m,0,0); return d.toISOString();};\n  const blocks = [];\n  for (const n of [-2,-1,0,1,2]) blocks.push({title:'午饭', start:at(n,12), end:at(n,13)});\n  blocks.push(\n    {taskKey:K['跑通 RAG-Sequence baseline（NQ 开发集）'], start:at(0,9), end:at(0,11,30)},\n    {taskKey:K['写第 3 节：检索增强的动机'], start:at(0,14), end:at(0,15,30)},\n    {title:'组会', start:at(0,16), end:at(0,17)},\n    {taskKey:K['对比 RAG-Token 与 RAG-Sequence 的 EM'], start:at(1,9,30), end:at(1,11)},\n    {taskKey:K['修侧边栏时钟在全屏下的位置'], start:at(1,15), end:at(1,16)},\n    {taskKey:K['读 Self-RAG，整理和 RAG 的区别'], start:at(2,10), end:at(2,11,30)},\n    {title:'DS4D 上课', start:at(-1,10), end:at(-1,12)},\n    {title:'DS4D 上课', start:at(2,14), end:at(2,16)},\n  );\n  await gleeok.planner({op:'create', kind:'blocks', objects:blocks});\n  const pomo = [];\n  for (const [h,m] of [[9,0],[9,30],[10,5],[10,35]]) pomo.push({kind:'focus', start:at(0,h,m), end:at(0,h,m+25), completed:true, taskKey:K['跑通 RAG-Sequence baseline（NQ 开发集）'], taskTitle:'跑通 RAG-Sequence baseline（NQ 开发集）'});\n  await gleeok.planner({op:'create', kind:'pomodoros', objects:pomo});\n  return 'planner seeded';\n})()"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "evalMain": "(async()=>{\n  const lib = (op)=>gleeok.library(op).then(r=>{ if (r.error) throw new Error(r.error); return r.result; });\n  const cols = await lib({op:'create', kind:'collections', objects:[{name:'RAG'},{name:'LLM 基础'},{name:'毕业论文'}]});\n  const C = Object.fromEntries(cols.map(c=>[c.name,c.key]));\n  const A = (f,l)=>({creatorType:'author', firstName:f, lastName:l});\n  const added = await lib({op:'addFiles', paths:['/tmp/papers/rag.pdf','/tmp/papers/attention.pdf']});\n  const byTitle = (t)=>added.find(i=>String(i.title).toLowerCase().includes(t));\n  const rag = added[0], att = added[1];\n  await lib({op:'patch', kind:'items', key:rag.key, fields:{itemType:'conferencePaper', title:'Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks', creators:[A('Patrick','Lewis'),A('Ethan','Perez'),A('Aleksandra','Piktus'),A('Fabio','Petroni'),A('Vladimir','Karpukhin')], date:'2020', proceedingsTitle:'NeurIPS', url:'https://arxiv.org/abs/2005.11401', tags:[{tag:'rag'},{tag:'retrieval'}], collections:[C['RAG']], readStatus:'reading', abstractNote:'Large pre-trained language models have been shown to store factual knowledge in their parameters... We explore a general-purpose fine-tuning recipe for retrieval-augmented generation (RAG) — models which combine pre-trained parametric and non-parametric memory for language generation.'}});\n  await lib({op:'patch', kind:'items', key:att.key, fields:{itemType:'conferencePaper', title:'Attention Is All You Need', creators:[A('Ashish','Vaswani'),A('Noam','Shazeer'),A('Niki','Parmar'),A('Jakob','Uszkoreit')], date:'2017', proceedingsTitle:'NeurIPS', url:'https://arxiv.org/abs/1706.03762', tags:[{tag:'transformer'}], collections:[C['LLM 基础']], readStatus:'read'}});\n  const more = [\n    {itemType:'conferencePaper', title:'Dense Passage Retrieval for Open-Domain Question Answering', creators:[A('Vladimir','Karpukhin'),A('Barlas','Oğuz'),A('Sewon','Min')], date:'2020', proceedingsTitle:'EMNLP', tags:[{tag:'retrieval'}], collections:[C['RAG']], readStatus:'read'},\n    {itemType:'conferencePaper', title:'REALM: Retrieval-Augmented Language Model Pre-Training', creators:[A('Kelvin','Guu'),A('Kenton','Lee'),A('Zora','Tung')], date:'2020', proceedingsTitle:'ICML', tags:[{tag:'rag'}], collections:[C['RAG']]},\n    {itemType:'conferencePaper', title:'Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection', creators:[A('Akari','Asai'),A('Zeqiu','Wu'),A('Yizhong','Wang')], date:'2024', proceedingsTitle:'ICLR', tags:[{tag:'rag'}], collections:[C['RAG'], C['毕业论文']], readStatus:'unread'},\n    {itemType:'conferencePaper', title:'LoRA: Low-Rank Adaptation of Large Language Models', creators:[A('Edward J.','Hu'),A('Yelong','Shen'),A('Phillip','Wallis')], date:'2022', proceedingsTitle:'ICLR', tags:[{tag:'peft'}], collections:[C['LLM 基础']], readStatus:'read'},\n    {itemType:'preprint', title:'Lost in the Middle: How Language Models Use Long Contexts', creators:[A('Nelson F.','Liu'),A('Kevin','Lin'),A('John','Hewitt')], date:'2023', repository:'arXiv', tags:[{tag:'long-context'}], collections:[C['毕业论文']]},\n  ];\n  await lib({op:'create', kind:'items', objects:more});\n  await lib({op:'create', kind:'items', objects:[{itemType:'note', parentItem:rag.key, note:'<p>复现要点：DPR 检索 top-5，BART-large 生成；RAG-Token 在 NQ 上 EM 44.1。</p>'}]});\n  window.__rag = rag.key;\n  return 'library seeded '+added.length;\n})()"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "action": {
+   "type": "navigate",
+   "slot": 0,
+   "url": "https://www.alphaxiv.org/abs/2005.11401"
+  }
+ },
+ {
+  "action": {
+   "type": "navigate",
+   "slot": 1,
+   "url": "https://github.com/facebookresearch/DPR"
+  }
+ },
+ {
+  "evalMain": "(async()=>{const s=await gleeok.getLibrary();const a=s.items.find(i=>i.itemType==='attachment'&&s.items.find(p=>p.key===i.parentItem&&String(p.title).startsWith('Retrieval')));gleeok.dispatch({type:'openReader',attachment:a.key,slot:2});return 'reader'})()"
+ },
+ {
+  "wait": 12000
+ },
+ {
+  "capture": "01-workspace"
+ },
+ {
+  "action": {
+   "type": "focusPane",
+   "slot": 1
+  }
+ },
+ {
+  "action": {
+   "type": "newTab",
+   "url": "gleeok://newtab"
+  }
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "capture": "02-newtab"
+ },
+ {
+  "evalMain": "(localStorage.setItem('gleeok.planner.view',JSON.stringify('week')),localStorage.setItem('gleeok.planner.filter',JSON.stringify({time:'today',projects:[]})),'prefs')"
+ },
+ {
+  "action": {
+   "type": "setView",
+   "view": "planner"
+  }
+ },
+ {
+  "wait": 2000
+ },
+ {
+  "capture": "03-planner"
+ },
+ {
+  "action": {
+   "type": "setView",
+   "view": "library"
+  }
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "evalMain": "(()=>{const r=[...document.querySelectorAll('.lib-tr')].find(e=>e.textContent.includes('Retrieval-Augmented Generation'));r?.click();return r?'row selected':'no row'})()"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "capture": "04-library"
+ }
+]
