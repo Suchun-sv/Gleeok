@@ -807,6 +807,9 @@ async function runReleaseUpdate() {
   } catch (e) {
     const error = String((e as Error).message ?? e).slice(0, 300);
     log(`update: ${error}`);
+    // The next try checks again (a newer beta may have replaced the one found).
+    pendingRelease = null;
+    pendingHot = null;
     update = { ...update, step: undefined, error };
     changed();
     send({ type: 'toast', slot: state.focusedPane, text: `更新失败：${error.slice(0, 140)}`, ms: 30_000 });

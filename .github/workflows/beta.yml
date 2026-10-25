@@ -13,7 +13,8 @@ permissions:
 
 concurrency:
   group: beta
-  cancel-in-progress: true
+  # Never stop one mid-upload; a newer push waits (and replaces any other waiting one).
+  cancel-in-progress: false
 
 jobs:
   hot:
@@ -37,8 +38,11 @@ jobs:
           GLEEOK_COMMIT: ${{ github.sha }}
       - name: Bundle
         run: |
-          tar -czf ../hot.tar.gz dist vendor assets
-          node ../dev/hot-manifest.mjs ../hot.tar.gz > ../hot.json
+          # Named by commit: an archive is never replaced, so a client never finds it half-uploaded.
+          file="hot-${GITHUB_SHA::12}.tar.gz"
+          tar -czf "../$file" dist vendor assets
+          cp "../$file" ../hot.tar.gz
+          node ../dev/hot-manifest.mjs "../$file" "$file" > ../hot.json
           cat ../hot.json
       - name: Publish to the beta prerelease
         env:
@@ -48,5 +52,10 @@ jobs:
             --title "Gleeok 测试版（热更新）" \
             --notes "测试版通道的热更新包：main 上每次提交都会更新这里的 hot.tar.gz / hot.json。正式版的安装包在其他 Release 里。"
           # The archive first, then the manifest that points at it.
+          gh release upload beta ../hot-*.tar.gz --clobber
+          # hot.tar.gz for 0.1.0, which downloads that name.
           gh release upload beta ../hot.tar.gz --clobber
           gh release upload beta ../hot.json --clobber
+          # Keep the five newest archives (a client may still hold an older manifest for a while).
+          gh release view beta --json assets -q '.assets[] | select(.name | startswith("hot-")) | "\(.createdAt) \(.name)"' \
+            | sort -r | tail -n +6 | cut -d' ' -f2 | while read -r old; do gh release delete-asset beta "$old" -y; done

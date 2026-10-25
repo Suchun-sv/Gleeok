@@ -6,6 +6,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 
 const archive = process.argv[2];
+// The release asset's name (hot-<commit>.tar.gz).
+const file = process.argv[3] || 'hot.tar.gz';
 const build = JSON.parse(readFileSync('dist/build.json', 'utf8'));
 const shell = JSON.parse(readFileSync('dist/shell.json', 'utf8'));
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
@@ -18,6 +20,7 @@ console.log(
   JSON.stringify(
     {
       commit: build.commit,
+      file,
       date: build.built,
       shell: shell.key,
       sha256: createHash('sha256').update(readFileSync(archive)).digest('hex'),

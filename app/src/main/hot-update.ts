@@ -17,6 +17,8 @@ const BETA = process.env.GLEEOK_BETA_URL || 'https://github.com/Suchun-sv/Gleeok
 
 export interface HotUpdate {
   commit: string;
+  /** The archive's asset name (hot-<commit>.tar.gz); older manifests had none. */
+  file?: string;
   date: string;
   /** dist/shell.json key it needs. */
   shell: string;
@@ -78,7 +80,8 @@ export async function installHot(hot: HotUpdate, step: (text: string) => void): 
   const dir = hotDir();
   mkdirSync(dir, { recursive: true });
   step('下载测试版…');
-  const res = await fetch(`${BETA}/hot.tar.gz`, { signal: AbortSignal.timeout(10 * 60_000) });
+  const res = await fetch(`${BETA}/${hot.file ?? 'hot.tar.gz'}`, { signal: AbortSignal.timeout(10 * 60_000) });
+  if (res.status === 404) throw new Error('这一版测试版已经被更新的替换了，再点一次就会装最新的');
   if (!res.ok) throw new Error(`下载失败：HTTP ${res.status}`);
   const bytes = Buffer.from(await res.arrayBuffer());
   if (createHash('sha256').update(bytes).digest('hex') !== hot.sha256) throw new Error('下载的文件校验不对（可能刚好有新的测试版），稍后再试');
