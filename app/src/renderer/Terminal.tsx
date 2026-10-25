@@ -1,4 +1,5 @@
 import { FitAddon } from '@xterm/addon-fit';
+import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { useEffect, useRef } from 'react';
@@ -37,11 +38,14 @@ export function TerminalView({ tab, focusSeq, platform }: { tab: Tab; focusSeq: 
       // such as MesloLGS NF, draws them wider and xterm cut them in half); letters from an
       // installed Nerd Font or plain monospace; Chinese from PingFang / Noto.
       fontFamily:
-        '"Gleeok Symbols", "JetBrainsMono Nerd Font Mono", "MesloLGS NF", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", "FiraCode Nerd Font Mono", "JetBrains Mono", "SF Mono", Menlo, "Cascadia Mono", "DejaVu Sans Mono", "PingFang SC", "Noto Sans Mono CJK SC", monospace',
+        '"Gleeok Symbols", "Hack Nerd Font Mono", "Hack Nerd Font", "JetBrainsMono Nerd Font Mono", "MesloLGS NF", "MesloLGS Nerd Font Mono", "FiraCode Nerd Font Mono", "JetBrains Mono", "SF Mono", Menlo, "Cascadia Mono", "DejaVu Sans Mono", "PingFang SC", "Noto Sans Mono CJK SC", monospace',
       fontSize: 13,
       cursorBlink: true,
       scrollback: 5000,
       allowProposedApi: true,
+      // Icons wider than their cell (most Nerd Font icons) are squeezed into it; otherwise the next
+      // cell's background (powerlevel10k's segments) covers their right half. WebGL renderer only.
+      rescaleOverlappingGlyphs: true,
       theme: { background: css('--panel') || '#1e2026', foreground: css('--text') || '#d9dce3', cursor: css('--accent') || '#6aa7ff', selectionBackground: '#3a4a66' },
     });
     termRef.current = term;
@@ -50,6 +54,13 @@ export function TerminalView({ tab, focusSeq, platform }: { tab: Tab; focusSeq: 
     // Load the bundled icon font now, so a prompt's first icons do not show as boxes first.
     void document.fonts.load('13px "Gleeok Symbols"', '\uf179').catch(() => {});
     term.open(box.current!);
+    // The WebGL renderer: faster, and the one that rescales overlapping glyphs. Without WebGL (or
+    // when its context is lost) the terminal keeps the DOM renderer.
+    try {
+      const webgl = new WebglAddon();
+      webgl.onContextLoss(() => webgl.dispose());
+      term.loadAddon(webgl);
+    } catch {}
     fit.fit();
 
     const mac = platform === 'darwin';
