@@ -43,22 +43,36 @@ export interface Release {
   notes: string[];
 }
 
-/** The latest published release, if it is newer than this build. */
+/** The manifest each release carries for this platform (electron-builder writes them). */
+const MANIFEST = process.platform === 'darwin' ? 'latest-mac.yml' : process.platform === 'win32' ? 'latest.yml' : 'latest-linux.yml';
+
+/**
+ * The latest published release, if it is newer than this build. Its version comes from the
+ * release's download link (not the GitHub API, which allows 60 requests an hour per IP address,
+ * soon used up behind a university's shared address); the notes from the API, when it answers.
+ */
 export async function latestRelease(): Promise<Release | null> {
-  const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
-    headers: { accept: 'application/vnd.github+json', 'user-agent': 'Gleeok' },
-    signal: AbortSignal.timeout(15_000),
-  });
+  const res = await fetch(`https://github.com/${REPO}/releases/latest/download/${MANIFEST}`, { signal: AbortSignal.timeout(15_000) });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GitHub: HTTP ${res.status}`);
-  const r = (await res.json()) as { tag_name: string; name?: string; body?: string };
-  const version = r.tag_name.replace(/^v/, '');
-  if (!newer(version, app.getVersion())) return null;
-  const notes = (r.body ?? '')
-    .split('\n')
-    .map((l) => l.replace(/^[-*]\s+/, '').replace(/\s+by @\S+ in https:\S+$/, '').trim())
-    .filter((l) => l && !l.startsWith('#') && !l.startsWith('**Full Changelog'));
-  return { version, tag: r.tag_name, notes: notes.length ? notes : [r.name ?? `Gleeok ${version}`] };
+  const version = /^version:\s*['"]?([^'"\s]+)/m.exec(await res.text())?.[1];
+  if (!version || !newer(version, app.getVersion())) return null;
+  const tag = `v${version}`;
+  let notes: string[] = [];
+  try {
+    const api = await fetch(`https://api.github.com/repos/${REPO}/releases/tags/${tag}`, {
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'Gleeok' },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (api.ok) {
+      const body = ((await api.json()) as { body?: string }).body ?? '';
+      notes = body
+        .split('\n')
+        .map((l) => l.replace(/^[-*]\s+/, '').replace(/\s+by @\S+ in https:\S+$/, '').trim())
+        .filter((l) => l && !l.startsWith('#') && !l.startsWith('**Full Changelog'));
+    }
+  } catch {}
+  return { version, tag, notes: notes.length ? notes : [`Gleeok ${version}`] };
 }
 
 /** Download, check and install a release; resolves when the app is about to restart. */

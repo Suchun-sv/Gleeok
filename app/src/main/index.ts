@@ -721,6 +721,8 @@ function updateKind(): 'git' | 'release' | null {
   // not be possible (a Linux build that is not the AppImage), which installRelease says.
   return canSelfUpdate() ? 'git' : app.isPackaged ? 'release' : null;
 }
+/** When updates were last checked (the timer checks again after 6 h, or 30 min on beta). */
+let lastUpdateCheck = Date.now();
 /** The release, or beta hot update, found by the last check (installed builds). */
 let pendingRelease: Release | null = null;
 let pendingHot: HotUpdate | null = null;
@@ -729,11 +731,22 @@ let betaNeedsInstaller = false;
 
 /** Installed builds: a newer release first (both channels); on the beta channel, else the newest hot update. */
 async function checkReleases(): Promise<{ head: string; commits: string[] }> {
-  pendingRelease = await latestRelease();
   pendingHot = null;
+  // A release check that fails must not keep the beta from being checked.
+  let releaseError: unknown = null;
+  try {
+    pendingRelease = await latestRelease();
+  } catch (e) {
+    pendingRelease = null;
+    releaseError = e;
+    log(`update check (releases): ${String((e as Error).message ?? e)}`);
+  }
   betaNeedsInstaller = false;
   if (pendingRelease) return { head: pendingRelease.version, commits: [`版本 ${pendingRelease.version}`, ...pendingRelease.notes] };
-  if (state.updateChannel !== 'beta') return { head: '', commits: [] };
+  if (state.updateChannel !== 'beta') {
+    if (releaseError) throw releaseError;
+    return { head: '', commits: [] };
+  }
   const beta = await latestHot();
   if (!beta) return { head: '', commits: [] };
   if (!beta.compatible) {
@@ -753,14 +766,18 @@ async function checkUpdate(announceNone: boolean) {
     ({ head, commits } = kind === 'git' ? await pendingUpdates() : await checkReleases());
     update = { commits };
     changed();
+    lastUpdateCheck = Date.now();
     if (commits.length > 0) {
-      if (announceNone || (head !== updateAskedFor && !process.env.GLEEOK_DEV_SCRIPT)) void openOverlay('update-dialog');
+      // A beta hot update only lights the sidebar button; a release (or a git update) asks.
+      const quiet = commits[0].startsWith('测试版 ');
+      if (announceNone || (head !== updateAskedFor && !quiet && !process.env.GLEEOK_DEV_SCRIPT)) void openOverlay('update-dialog');
       updateAskedFor = head;
     } else if (announceNone) {
       // Asked by hand: say so in a dialog, which shows whatever the window displays (pages, library, settings).
       void openOverlay('update-dialog');
     }
   } catch (e) {
+    log(`update check: ${String((e as Error).message ?? e)}`);
     if (announceNone) send({ type: 'toast', slot: state.focusedPane, text: `检查更新失败：${String(e).slice(0, 80)}` });
   }
 }
@@ -2027,7 +2044,11 @@ app.whenReady().then(async () => {
   setTimeout(() => void checkUpdate(false), 20_000);
   // Up and running for a while: a hot update that got this far is fine (see boot.js).
   setTimeout(confirmHotBoot, 15_000);
-  setInterval(() => void checkUpdate(false), 6 * 3600_000);
+  // Every 6 hours; on the beta channel every half hour (hot updates come with each push).
+  setInterval(() => {
+    const every = state.updateChannel === 'beta' ? 30 * 60_000 : 6 * 3600_000;
+    if (Date.now() - lastUpdateCheck >= every) void checkUpdate(false);
+  }, 5 * 60_000);
   if (!state.currentProjectId && visibleProjects()[0]) state.currentProjectId = visibleProjects()[0].id;
   changed();
   // Unlock the vault right away (machines that used it before), so filling is instant later.
