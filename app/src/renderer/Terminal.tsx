@@ -32,10 +32,12 @@ export function TerminalView({ tab, focusSeq, platform }: { tab: Tab; focusSeq: 
 
   useEffect(() => {
     const term = new Terminal({
-      // An installed Nerd Font if there is one, else plain monospace; icons in prompts (starship,
-      // powerlevel10k…) then come from the bundled symbols font, Chinese from PingFang / Noto.
+      // Icons in prompts (starship, powerlevel10k…) always from the bundled symbols font, which only
+      // covers the private-use areas and draws them one cell wide (an installed non-Mono Nerd Font,
+      // such as MesloLGS NF, draws them wider and xterm cut them in half); letters from an
+      // installed Nerd Font or plain monospace; Chinese from PingFang / Noto.
       fontFamily:
-        '"JetBrainsMono Nerd Font Mono", "MesloLGS NF", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", "FiraCode Nerd Font Mono", "JetBrains Mono", "SF Mono", Menlo, "Cascadia Mono", "DejaVu Sans Mono", "Gleeok Symbols", "PingFang SC", "Noto Sans Mono CJK SC", monospace',
+        '"Gleeok Symbols", "JetBrainsMono Nerd Font Mono", "MesloLGS NF", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", "FiraCode Nerd Font Mono", "JetBrains Mono", "SF Mono", Menlo, "Cascadia Mono", "DejaVu Sans Mono", "PingFang SC", "Noto Sans Mono CJK SC", monospace',
       fontSize: 13,
       cursorBlink: true,
       scrollback: 5000,

@@ -4,6 +4,9 @@
   font-family: 'Gleeok Symbols';
   src: url('./fonts/SymbolsNerdFontMono-Regular.ttf') format('truetype');
   font-display: block;
+  /* Only the private-use areas where Nerd Fonts keep their icons: first in the terminal's font
+     list, it draws every icon one cell wide, whatever font draws the letters. */
+  unicode-range: U+E000-F8FE, U+F0000-FFFFD, U+100000-10FFFD;
 }
 
 :root {
