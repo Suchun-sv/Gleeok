@@ -136,9 +136,15 @@ export function App() {
     />
   ) : null;
 
+  // macOS draws its window buttons over the top-left corner (no title bar): room for them, and
+  // rows to drag the window by. Not in full screen, where macOS hides them.
+  const macInset = snap.platform === 'darwin' && !snap.fullscreenWindows.includes(WIN_ID);
+  const rootClass = (noSidebar: boolean) =>
+    ['app', macInset && 'mac-inset', noSidebar && 'no-sidebar', snap.state.view !== 'panes' && 'view-other'].filter(Boolean).join(' ');
+
   if (win.role === 'satellite') {
     return (
-      <div className="app">
+      <div className={rootClass(true)}>
         <main>
           {project && session ? (
             <Panes
@@ -165,7 +171,7 @@ export function App() {
   const toggle = collapsed ? <SidebarToggle platform={snap.platform} /> : null;
 
   return (
-    <div className="app">
+    <div className={rootClass(collapsed)}>
       {!collapsed && <Sidebar snap={snap} />}
       <main>
         {snap.state.view === 'settings' ? (
