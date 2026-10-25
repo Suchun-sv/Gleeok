@@ -35,6 +35,16 @@ Gleeok 基于 Electron，只能整合网页版工具，不过提供内置终端�
 
 ![文献库](docs/screenshots/04-library.png)
 
+**Agent 接入**：在 设置 → Agent 里给你的 agent（Claude Code、Codex、Paseo 里的助手……）新建一个连接，选它能管哪些（日程 / 文献库）。令牌只显示一次，三个按钮任选其一交给 agent：
+
+- **复制说明（Markdown）**：地址、令牌、规矩和接口示例，直接贴给 agent，或存成它的 skill / `CLAUDE.md`；
+- **复制 Claude Code 命令**：在终端运行一次 `claude mcp add …`，之后 agent 就有了日程和文献库的 MCP 工具；
+- **复制 Codex 配置**：追加到 `~/.codex/config.toml`。
+
+之后就可以对 agent 说「把这封邮件里的截止日期加进日程」「明天上午给我留两小时读 Self-RAG」「把这篇 arXiv 论文存进文献库的 RAG 分类」「我在 RAG 论文里高亮了什么」。agent 能新建、修改、勾选完成、放进回收站，新建的东西带它的名字（日程里的小机器人图标）；每个连接可以随时换新令牌或吊销。没有同步服务器时，Gleeok 在本机 `127.0.0.1:7421` 上为 agent 开一个只认 agent 令牌的端口。详见 [docs/agents.md](docs/agents.md)。
+
+![设置 → Agent](docs/screenshots/05-agent.png)
+
 <sub>截图用的是演示数据：公开网页、arXiv 上的论文和虚构的任务。</sub>
 
 ## 安装与运行

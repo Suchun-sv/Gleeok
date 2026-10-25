@@ -24,7 +24,7 @@
   "evalMain": "(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"
  },
  {
-  "evalMain": "(async()=>{\n  const s = await gleeok.getSnapshot();\n  const P = Object.fromEntries(s.projects.map(p=>[p.name,p.id]));\n  const rag = s.projects.find(p=>p.name==='RAG 论文复现');\n  const L = (label,url)=>({id:Math.random().toString(36).slice(2,10),label,url});\n  await gleeok.saveProject({...rag, links:[\n    L('RAG 论文','https://arxiv.org/abs/2005.11401'),\n    L('DPR 代码','https://github.com/facebookresearch/DPR'),\n    L('KILT 数据集','https://github.com/facebookresearch/KILT'),\n    L('实验记录','https://www.notion.so'),\n    L('论文草稿','https://www.overleaf.com/project'),\n  ]});\n  // 天气：固定一个公开城市，时钟常显\n  gleeok.dispatch({type:'setWeatherPlace', place:{name:'上海', latitude:31.2304, longitude:121.4737, detail:'上海市，中国'}});\n  gleeok.dispatch({type:'setClock', mode:'always'});\n\n  // 日程\n  const day = (n)=>{const d=new Date(); d.setDate(d.getDate()+n); return d;};\n  const key = (d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;\n  const T = (title, o={}) => ({title, ...o});\n  const tasks = [\n    T('跑通 RAG-Sequence baseline（NQ 开发集）', {due:key(day(0)), priority:3, estimate:4, projectId:P['RAG 论文复现'], subtasks:[{id:'a1',title:'下载 DPR 索引',done:true},{id:'a2',title:'配置 BART-large 生成器',done:true},{id:'a3',title:'跑 EM 评测',done:false}]}),\n    T('对比 RAG-Token 与 RAG-Sequence 的 EM', {due:key(day(1)), priority:2, estimate:3, projectId:P['RAG 论文复现']}),\n    T('读 Self-RAG，整理和 RAG 的区别', {due:key(day(2)), priority:1, estimate:2, projectId:P['RAG 论文复现']}),\n    T('写第 3 节：检索增强的动机', {due:key(day(0))+'T17:00', priority:2, estimate:2, projectId:P['DS4D 讲义']}),\n    T('做第 4 周的作业示例', {due:key(day(3)), priority:1, projectId:P['DS4D 讲义']}),\n    T('修侧边栏时钟在全屏下的位置', {due:key(day(1)), priority:1, estimate:1, projectId:P['Gleeok 开发']}),\n    T('回导师邮件：下周组会时间', {due:key(day(-1)), priority:3}),\n    T('整理相关工作表格', {due:key(day(4)), estimate:2, projectId:P['毕业论文']}),\n    T('预约体检', {}),\n  ];\n  const made = (await gleeok.planner({op:'create', kind:'tasks', objects:tasks})).result;\n  const K = Object.fromEntries(made.map(t=>[t.title,t.key]));\n  const at = (n,h,m=0)=>{const d=day(n); d.setHours(h,m,0,0); return d.toISOString();};\n  const blocks = [];\n  for (const n of [-2,-1,0,1,2]) blocks.push({title:'午饭', start:at(n,12), end:at(n,13)});\n  blocks.push(\n    {taskKey:K['跑通 RAG-Sequence baseline（NQ 开发集）'], start:at(0,9), end:at(0,11,30)},\n    {taskKey:K['写第 3 节：检索增强的动机'], start:at(0,14), end:at(0,15,30)},\n    {title:'组会', start:at(0,16), end:at(0,17)},\n    {taskKey:K['对比 RAG-Token 与 RAG-Sequence 的 EM'], start:at(1,9,30), end:at(1,11)},\n    {taskKey:K['修侧边栏时钟在全屏下的位置'], start:at(1,15), end:at(1,16)},\n    {taskKey:K['读 Self-RAG，整理和 RAG 的区别'], start:at(2,10), end:at(2,11,30)},\n    {title:'DS4D 上课', start:at(-1,10), end:at(-1,12)},\n    {title:'DS4D 上课', start:at(2,14), end:at(2,16)},\n  );\n  await gleeok.planner({op:'create', kind:'blocks', objects:blocks});\n  const pomo = [];\n  for (const [h,m] of [[9,0],[9,30],[10,5],[10,35]]) pomo.push({kind:'focus', start:at(0,h,m), end:at(0,h,m+25), completed:true, taskKey:K['跑通 RAG-Sequence baseline（NQ 开发集）'], taskTitle:'跑通 RAG-Sequence baseline（NQ 开发集）'});\n  await gleeok.planner({op:'create', kind:'pomodoros', objects:pomo});\n  return 'planner seeded';\n})()"
+  "evalMain": "(async()=>{\n  const s = await gleeok.getSnapshot();\n  const P = Object.fromEntries(s.projects.map(p=>[p.name,p.id]));\n  const rag = s.projects.find(p=>p.name==='RAG 论文复现');\n  const L = (label,url)=>({id:Math.random().toString(36).slice(2,10),label,url});\n  await gleeok.saveProject({...rag, links:[\n    L('RAG 论文','https://arxiv.org/abs/2005.11401'),\n    L('DPR 代码','https://github.com/facebookresearch/DPR'),\n    L('KILT 数据集','https://github.com/facebookresearch/KILT'),\n    L('实验记录','https://www.notion.so'),\n    L('论文草稿','https://www.overleaf.com/project'),\n  ]});\n  // 天气：固定一个公开城市，时钟常显\n  gleeok.dispatch({type:'setWeatherPlace', place:{name:'上海', latitude:31.2304, longitude:121.4737, detail:'上海市，中国'}});\n  gleeok.dispatch({type:'setClock', mode:'always'});\n\n  // 日程\n  const day = (n)=>{const d=new Date(); d.setDate(d.getDate()+n); return d;};\n  const key = (d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;\n  const T = (title, o={}) => ({title, ...o});\n  const tasks = [\n    T('跑通 RAG-Sequence baseline（NQ 开发集）', {due:key(day(0)), priority:3, estimate:4, projectId:P['RAG 论文复现'], subtasks:[{id:'a1',title:'下载 DPR 索引',done:true},{id:'a2',title:'配置 BART-large 生成器',done:true},{id:'a3',title:'跑 EM 评测',done:false}]}),\n    T('对比 RAG-Token 与 RAG-Sequence 的 EM', {due:key(day(1)), priority:2, estimate:3, projectId:P['RAG 论文复现']}),\n    T('读 Self-RAG，整理和 RAG 的区别', {due:key(day(2)), priority:1, estimate:2, projectId:P['RAG 论文复现']}),\n    T('写第 3 节：检索增强的动机', {due:key(day(0))+'T17:00', priority:2, estimate:2, projectId:P['DS4D 讲义']}),\n    T('做第 4 周的作业示例', {due:key(day(3)), priority:1, projectId:P['DS4D 讲义']}),\n    T('修侧边栏时钟在全屏下的位置', {due:key(day(1)), priority:1, estimate:1, projectId:P['Gleeok 开发']}),\n    T('回导师邮件：下周组会时间', {due:key(day(-1)), priority:3, createdBy:'邮件助手'}),\n    T('报名 ACL 2027 workshop', {due:key(day(3)), priority:2, createdBy:'邮件助手'}),\n    T('整理相关工作表格', {due:key(day(4)), estimate:2, projectId:P['毕业论文']}),\n    T('预约体检', {}),\n  ];\n  const made = (await gleeok.planner({op:'create', kind:'tasks', objects:tasks})).result;\n  const K = Object.fromEntries(made.map(t=>[t.title,t.key]));\n  const at = (n,h,m=0)=>{const d=day(n); d.setHours(h,m,0,0); return d.toISOString();};\n  const blocks = [];\n  for (const n of [-2,-1,0,1,2]) blocks.push({title:'午饭', start:at(n,12), end:at(n,13)});\n  blocks.push(\n    {taskKey:K['跑通 RAG-Sequence baseline（NQ 开发集）'], start:at(0,9), end:at(0,11,30)},\n    {taskKey:K['写第 3 节：检索增强的动机'], start:at(0,14), end:at(0,15,30)},\n    {title:'组会', start:at(0,16), end:at(0,17)},\n    {taskKey:K['对比 RAG-Token 与 RAG-Sequence 的 EM'], start:at(1,9,30), end:at(1,11)},\n    {taskKey:K['修侧边栏时钟在全屏下的位置'], start:at(1,15), end:at(1,16)},\n    {taskKey:K['读 Self-RAG，整理和 RAG 的区别'], start:at(2,10), end:at(2,11,30)},\n    {title:'DS4D 上课', start:at(-1,10), end:at(-1,12)},\n    {title:'DS4D 上课', start:at(2,14), end:at(2,16)},\n  );\n  await gleeok.planner({op:'create', kind:'blocks', objects:blocks});\n  const pomo = [];\n  for (const [h,m] of [[9,0],[9,30],[10,5],[10,35]]) pomo.push({kind:'focus', start:at(0,h,m), end:at(0,h,m+25), completed:true, taskKey:K['跑通 RAG-Sequence baseline（NQ 开发集）'], taskTitle:'跑通 RAG-Sequence baseline（NQ 开发集）'});\n  await gleeok.planner({op:'create', kind:'pomodoros', objects:pomo});\n  return 'planner seeded';\n})()"
  },
  {
   "wait": 500
@@ -108,5 +108,38 @@
  },
  {
   "capture": "04-library"
+ },
+ {
+  "evalMain": "gleeok.agents({op:'create',name:'读论文助手',scopes:['planner','library']}).then(r=>r.error||'agent 2')"
+ },
+ {
+  "action": {
+   "type": "setView",
+   "view": "settings"
+  }
+ },
+ {
+  "wait": 600
+ },
+ {
+  "evalMain": "([...document.querySelectorAll('.settings-nav button')].find(b=>b.textContent==='Agent').click(),'tab')"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "evalMain": "(()=>{const i=document.querySelector('input[placeholder^=\"名字\"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'邮件助手');i.dispatchEvent(new Event('input',{bubbles:true}));const lib=[...document.querySelectorAll('.card label.lib-check')].find(l=>l.textContent.includes('文献库'));const c=lib&&lib.querySelector('input');if(c&&c.checked)c.click();return 'typed'})()"
+ },
+ {
+  "wait": 300
+ },
+ {
+  "evalMain": "([...document.querySelectorAll('button')].find(b=>b.textContent==='新建连接').click(),'created')"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "capture": "05-agent"
  }
 ]
