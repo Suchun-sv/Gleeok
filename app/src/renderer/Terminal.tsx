@@ -32,10 +32,10 @@ export function TerminalView({ tab, focusSeq, platform }: { tab: Tab; focusSeq: 
 
   useEffect(() => {
     const term = new Terminal({
-      // Nerd Fonts first (prompt themes such as starship and powerlevel10k draw icons with them),
-      // then plain monospace, then Chinese.
+      // An installed Nerd Font if there is one, else plain monospace; icons in prompts (starship,
+      // powerlevel10k…) then come from the bundled symbols font, Chinese from PingFang / Noto.
       fontFamily:
-        '"JetBrainsMono Nerd Font Mono", "MesloLGS NF", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", "FiraCode Nerd Font Mono", "JetBrains Mono", "SF Mono", Menlo, "Cascadia Mono", "DejaVu Sans Mono", "Symbols Nerd Font Mono", "PingFang SC", "Noto Sans Mono CJK SC", monospace',
+        '"JetBrainsMono Nerd Font Mono", "MesloLGS NF", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", "FiraCode Nerd Font Mono", "JetBrains Mono", "SF Mono", Menlo, "Cascadia Mono", "DejaVu Sans Mono", "Gleeok Symbols", "PingFang SC", "Noto Sans Mono CJK SC", monospace',
       fontSize: 13,
       cursorBlink: true,
       scrollback: 5000,
@@ -45,6 +45,8 @@ export function TerminalView({ tab, focusSeq, platform }: { tab: Tab; focusSeq: 
     termRef.current = term;
     const fit = new FitAddon();
     term.loadAddon(fit);
+    // Load the bundled icon font now, so a prompt's first icons do not show as boxes first.
+    void document.fonts.load('13px "Gleeok Symbols"', '\uf179').catch(() => {});
     term.open(box.current!);
     fit.fit();
 

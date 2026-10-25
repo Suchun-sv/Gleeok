@@ -1,3 +1,11 @@
+/* Nerd Fonts' icons alone (MIT, fonts/SymbolsNerdFont-LICENSE): prompt themes (starship,
+   powerlevel10k…) draw the OS logo, home, git branch with them; terminals use it as a fallback. */
+@font-face {
+  font-family: 'Gleeok Symbols';
+  src: url('./fonts/SymbolsNerdFontMono-Regular.ttf') format('truetype');
+  font-display: block;
+}
+
 :root {
   --bg: #16171b;
   --panel: #1e2026;
