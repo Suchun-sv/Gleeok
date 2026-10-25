@@ -800,7 +800,9 @@ async function runReleaseUpdate() {
     changed();
   };
   try {
-    if (!pendingRelease && !pendingHot) await checkReleases();
+    // Always the newest: what the dialog showed may have been replaced since (a later beta).
+    step('检查最新版本…');
+    await checkReleases();
     if (pendingRelease) await installRelease(pendingRelease, step);
     else if (pendingHot) await installHot(pendingHot, step);
     else throw new Error('没有找到新版本');
