@@ -1,15 +1,35 @@
-import { existsSync } from 'node:fs';
+import { chmodSync, existsSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 import type { IPty } from 'node-pty';
 import { parseTerminalUrl } from '../../../shared/src/model.ts';
 
 type PtyModule = typeof import('node-pty');
 let ptyModule: PtyModule | null | undefined;
 let loadError = '';
+/**
+ * node-pty starts every terminal through its spawn-helper, which its npm package ships without the
+ * executable bit (prebuilds/<platform>-<arch>/), so a packaged build failed with "posix_spawnp
+ * failed". Set it where it is missing (the build also does, in build-hooks/vmp-sign.cjs).
+ */
+function fixSpawnHelper() {
+  if (process.platform === 'win32') return;
+  try {
+    const root = dirname(require.resolve('node-pty/package.json'));
+    for (const dir of ['build/Release', `prebuilds/${process.platform}-${process.arch}`]) {
+      const helper = join(root, dir, 'spawn-helper');
+      if (existsSync(helper) && !(statSync(helper).mode & 0o111)) chmodSync(helper, 0o755);
+    }
+  } catch {
+    // Read-only install: the build has set it already, or the terminal reports the failure.
+  }
+}
+
 /** node-pty is native; if it is missing or failed to build, terminals say so instead of crashing. */
 function pty(): PtyModule | null {
   if (ptyModule === undefined) {
     try {
+      fixSpawnHelper();
       ptyModule = require('node-pty') as PtyModule;
     } catch (e) {
       ptyModule = null;
