@@ -1975,7 +1975,32 @@ ipcMain.handle('project:refresh', async () => {
   changed();
 });
 
+/**
+ * The application menu. Electron's default one binds Close Window to Ctrl/Cmd+W and Reload to
+ * Ctrl/Cmd+R; where Gleeok lets a key through (Ctrl+W, Ctrl+R in a terminal on Linux/Windows,
+ * which belong to the shell) those closed or reloaded the whole window. Linux and Windows get no
+ * menu (it was hidden anyway); macOS keeps the app and Edit menus (copy and paste need them) and
+ * closes a window with Shift+Cmd+W, leaving Cmd+W to close the tab, as browsers do.
+ */
+function setAppMenu() {
+  if (process.platform !== 'darwin') {
+    Menu.setApplicationMenu(null);
+    return;
+  }
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      { role: 'appMenu' },
+      { role: 'editMenu' },
+      {
+        label: '窗口',
+        submenu: [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'close', accelerator: 'Shift+Command+W' }, { role: 'front' }],
+      },
+    ]),
+  );
+}
+
 app.whenReady().then(async () => {
+  setAppMenu();
   // castLabs' Electron fetches the Widevine CDM (DRM for Apple Music, Netflix…) on first run and
   // keeps it updated. Pages wait briefly for it; offline, they open without DRM.
   await Promise.race([
