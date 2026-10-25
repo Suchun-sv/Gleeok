@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { app } from 'electron';
 import type { IPty } from 'node-pty';
 import { parseTerminalUrl } from '../../../shared/src/model.ts';
 
@@ -71,6 +72,11 @@ export class Terminals {
     try {
       const env = { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' } as Record<string, string>;
       delete env.ELECTRON_RUN_AS_NODE;
+      // An app opened from the Finder or the Dock gets no locale, and a shell without one shows
+      // Chinese and symbols as escapes: UTF-8 in the system's language, unless one is set.
+      if (!/utf-?8/i.test(env.LC_ALL || env.LC_CTYPE || env.LANG || '')) {
+        env.LANG = app.getLocale().toLowerCase().startsWith('zh') ? 'zh_CN.UTF-8' : 'en_US.UTF-8';
+      }
       const proc = mod.spawn(file, args, { name: 'xterm-256color', cols, rows, cwd, env });
       t.proc = proc;
       proc.onData((data) => {

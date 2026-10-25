@@ -32,7 +32,10 @@ export function TerminalView({ tab, focusSeq, platform }: { tab: Tab; focusSeq: 
 
   useEffect(() => {
     const term = new Terminal({
-      fontFamily: '"JetBrains Mono", "Cascadia Mono", Menlo, "DejaVu Sans Mono", "Noto Sans Mono CJK SC", monospace',
+      // Nerd Fonts first (prompt themes such as starship and powerlevel10k draw icons with them),
+      // then plain monospace, then Chinese.
+      fontFamily:
+        '"JetBrainsMono Nerd Font Mono", "MesloLGS NF", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", "FiraCode Nerd Font Mono", "JetBrains Mono", "SF Mono", Menlo, "Cascadia Mono", "DejaVu Sans Mono", "Symbols Nerd Font Mono", "PingFang SC", "Noto Sans Mono CJK SC", monospace',
       fontSize: 13,
       cursorBlink: true,
       scrollback: 5000,
