@@ -72,9 +72,9 @@ export function TodayCard({ snap }: { snap: Snapshot }) {
   }, [open]);
   const w = snap.weather;
   const zones = snap.state.zones ?? [];
-  // With other places listed, here gets its clock too, so they read side by side.
-  const showClock = clockShown(snap) || zones.length > 0;
-  if (!w && !showClock) return null;
+  // 显示时钟 governs every place's time alike; without it each place is its weather and name.
+  const showClock = clockShown(snap);
+  if (!w && !showClock && !zones.length) return null;
   const toggle = (key: string) => setOpen(open === key ? null : key);
   const source = w && (!w.guessed ? '设置里选的城市' : w.source === 'system' ? '系统定位' : w.source === 'zone' ? '按时区估计' : '按 IP 估计');
   return (
@@ -98,13 +98,21 @@ export function TodayCard({ snap }: { snap: Snapshot }) {
         const zw = z.latitude !== undefined ? snap.zoneWeather[key] : undefined;
         return (
           <div className="today-place" key={z.timezone + z.name}>
-            <div className="today-clock" title={`${z.timezone}，${t.offset === '同一时间' ? '和这里同一时间' : `比这里${t.offset.startsWith('-') ? '慢' : '快'} ${t.offset.replace(/^[+-]/, '')}`}`}>
-              <span className="time">{t.time}</span>
-              <span className="date">
-                {t.monthDay} · {z.name}
-              </span>
-            </div>
-            {zw && <WeatherRow w={zw} showPlace={false} onClick={() => toggle(key)} />}
+            {!showClock && !zw && (
+              <div className="today-weather">
+                <span className="label">{t.time}</span>
+                <span className="place">{z.name}</span>
+              </div>
+            )}
+            {showClock && (
+              <div className="today-clock" title={`${z.timezone}，${t.offset === '同一时间' ? '和这里同一时间' : `比这里${t.offset.startsWith('-') ? '慢' : '快'} ${t.offset.replace(/^[+-]/, '')}`}`}>
+                <span className="time">{t.time}</span>
+                <span className="date">
+                  {t.monthDay} · {z.name}
+                </span>
+              </div>
+            )}
+            {zw && <WeatherRow w={zw} showPlace={!showClock} onClick={() => toggle(key)} />}
             {open === key && zw && <WeatherPop w={zw} source={z.detail ?? z.timezone} />}
           </div>
         );
