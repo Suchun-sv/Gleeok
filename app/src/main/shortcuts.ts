@@ -38,6 +38,8 @@ export function matchShortcut(input: Input, platform: string): Action | null {
     if (code === 'KeyA') return { type: 'togglePlanner' };
     if (code === 'KeyC') return { type: 'openCode' };
     if (code === 'KeyF') return { type: 'toggleFocusExpand' };
+    // As tmux's prefix z zooms a pane.
+    if (code === 'KeyZ') return { type: 'toggleMaximize' };
     if (code === 'KeyB') return { type: 'toggleSidebar' };
     if (code === 'KeyD') return { type: 'togglePaneWindow' };
     return null;

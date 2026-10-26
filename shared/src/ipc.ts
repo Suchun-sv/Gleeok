@@ -201,6 +201,8 @@ export type Action =
   | { type: 'setPaneWeights'; winId: string; weights: Record<number, number> }
   | { type: 'coverPages'; winId: string; active: boolean }
   | { type: 'toggleFocusExpand' }
+  /** Let one pane of the main window fill it, or bring the others back. */
+  | { type: 'toggleMaximize'; slot?: number }
   | { type: 'toggleSidebar' }
   | { type: 'setView'; view: View }
   /** The project's entry drawer (links and settings), over the current window's pages. */

@@ -262,6 +262,8 @@ export interface AppWindowState {
   layout: Layout;
   /** Main window only: project sidebar folded away. */
   sidebarCollapsed?: boolean;
+  /** Main window only: one pane filling it for now (最大化这一栏); not kept across restarts. */
+  maximized?: number;
   placement?: { displayKey: string; bounds: Rect };
 }
 
@@ -333,7 +335,8 @@ export const DEFAULT_LIBRARY_SETTINGS: LibrarySettings = { readerPane: 2, cacheG
 export const librarySettings = (s: Pick<GlobalState, 'library'>): LibrarySettings => ({ ...DEFAULT_LIBRARY_SETTINGS, ...s.library });
 
 export function visibleSlots(win: AppWindowState): number[] {
-  return win.role === 'main' ? win.slots.slice(0, Math.max(1, win.layout.visible)) : win.slots;
+  const shown = win.role === 'main' ? win.slots.slice(0, Math.max(1, win.layout.visible)) : win.slots;
+  return win.maximized !== undefined && shown.includes(win.maximized) ? [win.maximized] : shown;
 }
 
 /** URLs that differ only by trailing slashes or case count as the same link. */

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Command, PaneRects, Snapshot } from '../../../shared/src/ipc.ts';
+import { Icon } from './Icons.tsx';
 import { TerminalView } from './Terminal.tsx';
 import { LibraryView } from './library/LibraryView.tsx';
 import { PlannerView, showProjectTasks, showTask } from './planner/PlannerView.tsx';
@@ -174,11 +175,24 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
               <button onClick={() => gleeok.dispatch({ type: 'attachPane', slot })} title="合并回主窗口">
                 ⇱
               </button>
-            ) : canDetach ? (
-              <button onClick={() => gleeok.dispatch({ type: 'detachPane', slot })} title="拆到新窗口（可放到另一块屏幕）">
-                ⧉
-              </button>
-            ) : null
+            ) : (
+              <>
+                {(slots.length > 1 || win.maximized !== undefined) && (
+                  <button
+                    className={win.maximized !== undefined ? 'on' : ''}
+                    onClick={() => gleeok.dispatch({ type: 'toggleMaximize', slot })}
+                    title={`${win.maximized !== undefined ? '还原，显示所有栏' : '最大化这一栏，其他栏暂时收起'}（${snap.platform === 'darwin' ? '⌘⌥Z' : 'Ctrl+Alt+Z'}）`}
+                  >
+                    <Icon name={win.maximized !== undefined ? 'minimize' : 'maximize'} size={12} />
+                  </button>
+                )}
+                {canDetach && (
+                  <button onClick={() => gleeok.dispatch({ type: 'detachPane', slot })} title="拆到新窗口（可放到另一块屏幕）">
+                    ⧉
+                  </button>
+                )}
+              </>
+            )
           }
         />,
       ])}

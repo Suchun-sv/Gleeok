@@ -731,6 +731,14 @@ main {
   background: var(--panel-2);
 }
 
+.toolbar button.on {
+  color: var(--accent);
+}
+
+.toolbar button .icon {
+  vertical-align: -1px;
+}
+
 .toolbar input {
   flex: 1;
   min-width: 0;

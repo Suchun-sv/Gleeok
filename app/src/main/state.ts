@@ -43,6 +43,7 @@ export function loadState(path: string): GlobalState {
       const old = w.layout as typeof w.layout & { mode?: string };
       if (old.visible === undefined) old.visible = old.mode === 'two' ? 2 : 3;
       delete old.mode;
+      delete w.maximized;
     }
     for (const session of Object.values(s.sessions)) padPanes(session.panes);
     return s;

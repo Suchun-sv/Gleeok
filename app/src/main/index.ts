@@ -1218,6 +1218,9 @@ function attachPane(slot: number, opts: { closeWindow?: boolean } = {}) {
 
 /** Put keyboard focus into a pane: its page if one is loaded, otherwise the new-tab search box. */
 function focusSlot(slot: number) {
+  // Going to another pane brings the others back, as in tmux.
+  const main = mainWindowState();
+  if (main.maximized !== undefined && main.maximized !== slot && main.slots.includes(slot)) delete main.maximized;
   state.focusedPane = slot;
   changed();
   const session = currentSession();
@@ -1273,8 +1276,11 @@ function dispatch(action: Action) {
       focusSlot(action.slot);
       return;
     case 'focusPaneDelta': {
-      const i = slots.indexOf(state.focusedPane);
-      focusSlot(slots[(i + action.delta + slots.length) % slots.length]);
+      // From a maximized pane, step to its neighbour with all panes back.
+      if (mainWindowState().maximized !== undefined) delete mainWindowState().maximized;
+      const all = allVisibleSlots();
+      const i = all.indexOf(state.focusedPane);
+      focusSlot(all[(i + action.delta + all.length) % all.length]);
       return;
     }
     case 'setVisiblePanes': {
@@ -1330,6 +1336,17 @@ function dispatch(action: Action) {
     case 'coverPages':
       void coverPages(action.winId, action.active);
       return;
+    case 'toggleMaximize': {
+      const main = mainWindowState();
+      const slot = action.slot ?? state.focusedPane;
+      if (main.maximized !== undefined) delete main.maximized;
+      else if (visibleSlots(main).length > 1 && visibleSlots(main).includes(slot)) {
+        main.maximized = slot;
+        state.focusedPane = slot;
+      }
+      changed();
+      return;
+    }
     case 'toggleFocusExpand':
       mainWindowState().layout.focusExpand = !mainWindowState().layout.focusExpand;
       changed();
