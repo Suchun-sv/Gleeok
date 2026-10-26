@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { BrowserWindow, screen, type Input, type Rectangle } from 'electron';
+import { BrowserWindow, nativeTheme, screen, type Input, type Rectangle } from 'electron';
 import type { AppWindowState } from '../../../shared/src/model.ts';
 import { niriEnabled, niriFloat, niriMoveToOutput, niriOutputNames, niriOutputOf } from './niri.ts';
 
@@ -49,7 +49,7 @@ export class Shells {
     const win = new BrowserWindow({
       ...bounds,
       title: windowTitle(ws, this.#hooks.paneName),
-      backgroundColor: '#16171b',
+      backgroundColor: windowBackground(),
       // Taskbar/window icon on Linux and Windows; macOS takes the Dock icon instead.
       icon: join(__dirname, '..', 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'),
       autoHideMenuBar: true,
@@ -166,3 +166,6 @@ function initialBounds(ws: AppWindowState, over: BrowserWindow | null): Partial<
   }
   return fallback;
 }
+
+/** A window's colour before its page paints: the shell's --bg for the current theme. */
+export const windowBackground = () => (nativeTheme.shouldUseDarkColors ? '#16171b' : '#f6f7f9');

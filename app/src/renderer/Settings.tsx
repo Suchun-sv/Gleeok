@@ -20,6 +20,7 @@ import { PaseoSettings } from './PaseoSettings.tsx';
 
 const TABS = [
   { id: 'panes', label: '栏' },
+  { id: 'appearance', label: '外观' },
   { id: 'suggestions', label: '常用' },
   { id: 'today', label: '天气与时间' },
   { id: 'library', label: '文献库' },
@@ -67,6 +68,7 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
           ×
         </button>
         {tab === 'panes' && <PaneSettings snap={snap} />}
+        {tab === 'appearance' && <AppearanceSettings snap={snap} />}
         {tab === 'suggestions' && <SuggestionSettings snap={snap} />}
         {tab === 'today' && <TodaySettings snap={snap} />}
         {tab === 'library' && (
@@ -357,6 +359,24 @@ function LibrarySettingsCard({ snap }: { snap: Snapshot }) {
 }
 
 const blurOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && e.currentTarget.blur();
+
+/** Light or dark (this machine). */
+function AppearanceSettings({ snap }: { snap: Snapshot }) {
+  return (
+    <section className="card">
+      <h3>外观</h3>
+      <div className="row">
+        <span className="meta lib-setting-label">深浅模式</span>
+        <select value={snap.state.theme ?? 'system'} onChange={(e) => gleeok.dispatch({ type: 'setTheme', theme: e.target.value as 'system' | 'light' | 'dark' })}>
+          <option value="system">跟随系统</option>
+          <option value="light">浅色</option>
+          <option value="dark">深色</option>
+        </select>
+      </div>
+      <p className="hint">侧边栏、日程、文献库和终端一起切换；网页也会收到这个设置，支持深浅模式的网站（GitHub、arXiv 等）会跟着变。PDF 阅读器的配色在「文献库」里单独设置，默认跟着这里。只对这台电脑生效。</p>
+    </section>
+  );
+}
 
 /** The sidebar's weather place and clock (this machine). */
 function TodaySettings({ snap }: { snap: Snapshot }) {

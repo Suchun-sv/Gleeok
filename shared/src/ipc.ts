@@ -238,6 +238,7 @@ export type Action =
   | { type: 'setWeatherPlace'; place: WeatherPlace | 'auto' | 'off' }
   | { type: 'refreshWeather' }
   | { type: 'setClock'; mode: 'fullscreen' | 'always' | 'never' }
+  | { type: 'setTheme'; theme: 'system' | 'light' | 'dark' }
   | { type: 'setUpdateChannel'; channel: 'stable' | 'beta' }
   | { type: 'archiveProject'; id: string; archived: boolean; open?: boolean }
   | { type: 'detachPane'; slot?: number }

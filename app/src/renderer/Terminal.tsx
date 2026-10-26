@@ -22,6 +22,34 @@ function listen(tabId: string, cb: (e: TermEvent) => void) {
 }
 
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const dark = matchMedia('(prefers-color-scheme: dark)');
+/** ANSI colours readable on a light background (xterm's defaults are for a dark one); GitHub's light palette. */
+const LIGHT_ANSI = {
+  black: '#24292f',
+  red: '#cf222e',
+  green: '#116329',
+  yellow: '#4d2d00',
+  blue: '#0969da',
+  magenta: '#8250df',
+  cyan: '#1b7c83',
+  white: '#6e7781',
+  brightBlack: '#57606a',
+  brightRed: '#a40e26',
+  brightGreen: '#1a7f37',
+  brightYellow: '#633c01',
+  brightBlue: '#218bff',
+  brightMagenta: '#a475f9',
+  brightCyan: '#3192aa',
+  brightWhite: '#8c959f',
+};
+/** The terminal's colours from the shell's, for the current theme. */
+const termTheme = () => ({
+  background: css('--panel'),
+  foreground: css('--text'),
+  cursor: css('--accent'),
+  selectionBackground: dark.matches ? '#3a4a66' : '#c8d8f5',
+  ...(dark.matches ? {} : LIGHT_ANSI),
+});
 
 /**
  * A shell in a tab (xterm.js drawing, node-pty in main). The shell lives in main, keyed by the
@@ -46,7 +74,7 @@ export function TerminalView({ tab, focusSeq, platform }: { tab: Tab; focusSeq: 
       // Icons wider than their cell (most Nerd Font icons) are squeezed into it; otherwise the next
       // cell's background (powerlevel10k's segments) covers their right half. WebGL renderer only.
       rescaleOverlappingGlyphs: true,
-      theme: { background: css('--panel') || '#1e2026', foreground: css('--text') || '#d9dce3', cursor: css('--accent') || '#6aa7ff', selectionBackground: '#3a4a66' },
+      theme: termTheme(),
     });
     termRef.current = term;
     const fit = new FitAddon();
@@ -134,8 +162,11 @@ export function TerminalView({ tab, focusSeq, platform }: { tab: Tab; focusSeq: 
     const blurred = () => gleeok.termFocus(false);
     textarea?.addEventListener('focus', focused);
     textarea?.addEventListener('blur', blurred);
+    const retheme = () => (term.options.theme = termTheme());
+    dark.addEventListener('change', retheme);
 
     return () => {
+      dark.removeEventListener('change', retheme);
       ro.disconnect();
       off();
       textarea?.removeEventListener('focus', focused);

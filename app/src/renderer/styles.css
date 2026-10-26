@@ -22,6 +22,26 @@
   font: 13px/1.4 system-ui, -apple-system, 'Noto Sans CJK SC', sans-serif;
 }
 
+/* Light: Settings → 外观, or the system's choice when following it (main sets nativeTheme). */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --panel-2: #eef0f4;
+    --line: #dde1e8;
+    --text: #1f2329;
+    --muted: #6b7280;
+    --accent: #3b82f6;
+    --danger: #d64545;
+    color-scheme: light;
+  }
+
+  .toolbar .star.saved,
+  .link-row .star.on {
+    color: #d39b00;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

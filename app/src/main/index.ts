@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { freemem, hostname, totalmem, userInfo } from 'node:os';
 import { join } from 'node:path';
-import { BrowserWindow, Menu, Notification, app, clipboard, components, dialog, ipcMain, powerMonitor, screen, session, shell, type Input } from 'electron';
+import { BrowserWindow, Menu, Notification, app, clipboard, components, dialog, ipcMain, nativeTheme, powerMonitor, screen, session, shell, type Input } from 'electron';
 import { shortName } from '../../../shared/src/library-format.ts';
 import type { LibraryItem } from '../../../shared/src/library.ts';
 import type { TranslateEngine, TranslateResult } from '../../../shared/src/translate.ts';
@@ -53,7 +53,7 @@ import { matchShortcut } from './shortcuts.ts';
 import { activeTab, createSession, loadState, looksLikeUrl, newTab, normalizeUrl, saveState } from './state.ts';
 import { Terminals } from './terminal.ts';
 import { PARTITION, TabViews } from './views.ts';
-import { Shells } from './windows.ts';
+import { Shells, windowBackground } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.ts';
 import { installRelease, latestRelease, type Release } from './release-updater.ts';
 import { buildInfo, confirmHotBoot, installHot, latestHot, leaveHot, runningHot, type HotUpdate } from './hot-update.ts';
@@ -73,6 +73,8 @@ if (process.env.GLEEOK_DOWNLOADS) app.setPath('downloads', process.env.GLEEOK_DO
 const statePath = () => join(app.getPath('userData'), 'state.json');
 const config = new ConfigClient();
 let state = loadState(statePath());
+// The shell's CSS and every web page see it as prefers-color-scheme.
+nativeTheme.themeSource = state.theme ?? 'system';
 /** Reported by each window's renderer: where its pane boxes are. */
 const paneRects = new Map<string, PaneRects>();
 /** While a tab is dragged, pages are hidden (screenshots stand in) so panes can receive the drop. */
@@ -1356,6 +1358,11 @@ function dispatch(action: Action) {
       state.clock = action.mode === 'fullscreen' ? undefined : action.mode;
       changed();
       return;
+    case 'setTheme':
+      state.theme = action.theme === 'system' ? undefined : action.theme;
+      nativeTheme.themeSource = action.theme;
+      changed();
+      return;
     case 'archiveProject':
       void setArchived(action.id, action.archived, action.open);
       return;
@@ -1820,6 +1827,10 @@ const shells = new Shells({
     void config.refresh().then(changed);
     if (state.currentProjectId) void checkRemoteTabs(state.currentProjectId);
   },
+});
+// Light ↔ dark (the setting, or the system's when following it): windows repaint their backdrop.
+nativeTheme.on('updated', () => {
+  for (const [, bw] of shells.all()) if (!bw.isDestroyed()) bw.setBackgroundColor(windowBackground());
 });
 
 ipcMain.handle('snapshot:get', () => snapshot());

@@ -287,6 +287,8 @@ export interface GlobalState {
   weatherPlace?: WeatherPlace | null;
   /** When the sidebar shows a clock (unset: while the window is full screen). */
   clock?: 'fullscreen' | 'always' | 'never';
+  /** Light or dark, on this machine (unset: as the system is). Web pages follow it too. */
+  theme?: 'light' | 'dark';
   /** Installed builds: also take hot updates of every push to main (unset: releases only). */
   updateChannel?: 'beta';
 }
