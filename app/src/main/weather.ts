@@ -1,4 +1,4 @@
-import type { WeatherPlace, WeatherSnapshot } from '../../../shared/src/weather.ts';
+import { placeKey, type WeatherPlace, type WeatherSnapshot } from '../../../shared/src/weather.ts';
 import { log } from './log.ts';
 
 const REFRESH_MS = 30 * 60_000;
@@ -83,6 +83,51 @@ async function locate(system: () => Promise<{ latitude: number; longitude: numbe
   return place ? { place, source: 'zone' } : null;
 }
 
+/** A place's weather now and for the next hours and days (Open-Meteo, in the place's own time). */
+async function forecast(place: WeatherPlace): Promise<Omit<WeatherSnapshot, 'guessed'>> {
+  const params = new URLSearchParams({
+    latitude: String(place.latitude),
+    longitude: String(place.longitude),
+    current: 'temperature_2m,weather_code,is_day',
+    hourly: 'temperature_2m,weather_code,precipitation_probability',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+    timezone: 'auto',
+    forecast_days: '4',
+  });
+  const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!res.ok) throw new Error(`天气获取失败：HTTP ${res.status}`);
+  const b = (await res.json()) as {
+    utc_offset_seconds: number;
+    current: { temperature_2m: number; weather_code: number; is_day: number };
+    hourly: { time: string[]; temperature_2m: number[]; weather_code: number[]; precipitation_probability: (number | null)[] };
+    daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: (number | null)[] };
+  };
+  // Hourly times are the place's local time; the next 12 from the current hour there.
+  const placeNow = new Date(Date.now() + b.utc_offset_seconds * 1000).toISOString().slice(0, 13);
+  const first = Math.max(0, b.hourly.time.findIndex((t) => t.slice(0, 13) >= placeNow));
+  const hours = b.hourly.time.slice(first, first + 12).map((time, i) => ({
+    time: time.slice(11, 16),
+    temp: Math.round(b.hourly.temperature_2m[first + i]),
+    code: b.hourly.weather_code[first + i],
+    rain: b.hourly.precipitation_probability[first + i] ?? 0,
+  }));
+  const days = b.daily.time.map((date, i) => ({
+    date,
+    max: Math.round(b.daily.temperature_2m_max[i]),
+    min: Math.round(b.daily.temperature_2m_min[i]),
+    code: b.daily.weather_code[i],
+    rain: b.daily.precipitation_probability_max[i] ?? 0,
+  }));
+  return {
+    place: place.name,
+    current: { temp: Math.round(b.current.temperature_2m), code: b.current.weather_code, isDay: b.current.is_day === 1 },
+    today: days[0] && { max: days[0].max, min: days[0].min, rain: days[0].rain },
+    hours,
+    days,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 /**
  * The sidebar's weather: fetched from Open-Meteo (free, no key) every half hour, and again
  * when the place changes or the machine wakes up.
@@ -93,11 +138,15 @@ export class Weather {
   #guessedAt = 0;
   #timer: NodeJS.Timeout | undefined;
   #running = false;
+  /** Weather of the other places (Settings → 其他地点), by placeKey. */
+  others = new Map<string, WeatherSnapshot>();
 
   constructor(
     private hooks: {
       /** The place picked in Settings; undefined: guess; null: weather is off. */
       place(): WeatherPlace | null | undefined;
+      /** The other places in the sidebar; those with coordinates get weather too. */
+      others(): { name: string; latitude?: number; longitude?: number }[];
       /** The system's location service (a page's navigator.geolocation), or null when it has none. */
       systemLocation(): Promise<{ latitude: number; longitude: number } | null>;
       changed(): void;
@@ -111,6 +160,7 @@ export class Weather {
   }
 
   async refresh() {
+    void this.refreshOthers();
     const picked = this.hooks.place();
     if (picked === null) {
       this.snapshot = null;
@@ -128,49 +178,7 @@ export class Weather {
       }
       const place = picked ?? this.#guess?.place;
       if (!place) throw new Error('不知道在哪里：在设置里选一个城市');
-      const params = new URLSearchParams({
-        latitude: String(place.latitude),
-        longitude: String(place.longitude),
-        current: 'temperature_2m,weather_code,is_day',
-        hourly: 'temperature_2m,weather_code,precipitation_probability',
-        daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
-        timezone: 'auto',
-        forecast_days: '4',
-      });
-      const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-      if (!res.ok) throw new Error(`天气获取失败：HTTP ${res.status}`);
-      const b = (await res.json()) as {
-        utc_offset_seconds: number;
-        current: { temperature_2m: number; weather_code: number; is_day: number };
-        hourly: { time: string[]; temperature_2m: number[]; weather_code: number[]; precipitation_probability: (number | null)[] };
-        daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: (number | null)[] };
-      };
-      // Hourly times are the place's local time; the next 12 from the current hour there.
-      const placeNow = new Date(Date.now() + b.utc_offset_seconds * 1000).toISOString().slice(0, 13);
-      const first = Math.max(0, b.hourly.time.findIndex((t) => t.slice(0, 13) >= placeNow));
-      const hours = b.hourly.time.slice(first, first + 12).map((time, i) => ({
-        time: time.slice(11, 16),
-        temp: Math.round(b.hourly.temperature_2m[first + i]),
-        code: b.hourly.weather_code[first + i],
-        rain: b.hourly.precipitation_probability[first + i] ?? 0,
-      }));
-      const days = b.daily.time.map((date, i) => ({
-        date,
-        max: Math.round(b.daily.temperature_2m_max[i]),
-        min: Math.round(b.daily.temperature_2m_min[i]),
-        code: b.daily.weather_code[i],
-        rain: b.daily.precipitation_probability_max[i] ?? 0,
-      }));
-      this.snapshot = {
-        place: place.name,
-        guessed: !picked,
-        source: picked ? undefined : this.#guess?.source,
-        current: { temp: Math.round(b.current.temperature_2m), code: b.current.weather_code, isDay: b.current.is_day === 1 },
-        today: days[0] && { max: days[0].max, min: days[0].min, rain: days[0].rain },
-        hours,
-        days,
-        updatedAt: new Date().toISOString(),
-      };
+      this.snapshot = { ...(await forecast(place)), guessed: !picked, source: picked ? undefined : this.#guess?.source };
     } catch (e) {
       const error = String((e as Error).message ?? e);
       log(`weather: ${error}`);
@@ -180,6 +188,26 @@ export class Weather {
       this.#running = false;
       this.hooks.changed();
     }
+  }
+
+  /** Fetch the other places' weather (keeping a stale one, marked, when a fetch fails). */
+  async refreshOthers() {
+    const places = this.hooks.others().filter((p): p is WeatherPlace => Number.isFinite(p.latitude) && Number.isFinite(p.longitude));
+    const next = new Map<string, WeatherSnapshot>();
+    await Promise.all(
+      places.map(async (p) => {
+        const key = placeKey(p);
+        try {
+          next.set(key, { ...(await forecast(p)), guessed: false });
+        } catch (e) {
+          const error = String((e as Error).message ?? e);
+          const old = this.others.get(key);
+          next.set(key, old ? { ...old, error } : { place: p.name, guessed: false, hours: [], days: [], error });
+        }
+      }),
+    );
+    this.others = next;
+    this.hooks.changed();
   }
 
   /** The place changed in Settings, or the machine woke up (maybe somewhere else): locate and fetch again. */

@@ -482,7 +482,7 @@ function ZoneSettings({ snap }: { snap: Snapshot }) {
   };
   return (
     <section className="card">
-      <h3>其他时区</h3>
+      <h3>其他地点</h3>
       {zones.length > 0 && (
         <dl className="facts">
           {zones.map((z, i) => {
@@ -493,6 +493,7 @@ function ZoneSettings({ snap }: { snap: Snapshot }) {
                 <dd>
                   {t.time}
                   {t.day && ` ${t.day}`} <span className="meta">· {t.offset} · {z.timezone}</span>{' '}
+                  {z.latitude === undefined && <span className="meta">· 没有天气（早先加的），移除后重新添加即可 </span>}
                   <button className="link" onClick={() => set(zones.filter((_, j) => j !== i))}>
                     移除
                   </button>
@@ -502,7 +503,7 @@ function ZoneSettings({ snap }: { snap: Snapshot }) {
           })}
         </dl>
       )}
-      {zones.length < 4 && (
+      {zones.length < 3 && (
         <div className="row">
           <input value={q} placeholder="加一个城市，例如 北京 / 爱丁堡 / New York" onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} />
           <button onClick={search}>搜索</button>
@@ -516,7 +517,7 @@ function ZoneSettings({ snap }: { snap: Snapshot }) {
             <button
               key={`${p.latitude},${p.longitude}`}
               onClick={() => {
-                set([...zones, { name: p.name, timezone: p.timezone! }]);
+                set([...zones, { name: p.name, timezone: p.timezone!, latitude: p.latitude, longitude: p.longitude, detail: p.detail }]);
                 setFound(null);
                 setQ('');
               }}
@@ -526,7 +527,7 @@ function ZoneSettings({ snap }: { snap: Snapshot }) {
           ))}
         </div>
       )}
-      <p className="hint">显示在侧边栏的天气上面，最多 4 个；加了就一直显示，不管上面的时钟设置。只对这台电脑生效。</p>
+      <p className="hint">每个地点在侧边栏里和这里一样显示时间、日期和天气（点天气看预报），最多 3 个；加了就一直显示，这里的时钟也会一起显示。只对这台电脑生效。</p>
     </section>
   );
 }

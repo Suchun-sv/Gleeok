@@ -10,6 +10,9 @@ export interface WeatherPlace {
   timezone?: string;
 }
 
+/** Which weather belongs to a place: its coordinates. */
+export const placeKey = (p: { latitude?: number; longitude?: number }) => `${p.latitude?.toFixed(3)},${p.longitude?.toFixed(3)}`;
+
 export interface WeatherSnapshot {
   place: string;
   /** No place picked: this one was located (see source). */

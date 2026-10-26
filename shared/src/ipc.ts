@@ -1,4 +1,4 @@
-import type { GlobalState, LibrarySettings, Link, PomodoroSettings, Suggestion, PaseoDaemon, Project, Rect, View } from './model.ts';
+import type { GlobalState, LibrarySettings, Link, PomodoroSettings, Suggestion, PaseoDaemon, Project, Rect, View, Zone } from './model.ts';
 import type { LibraryCollection, LibraryItem, LibraryKind } from './library.ts';
 import type { TranslateEngine, TranslateSettingsInput } from './translate.ts';
 import type { AgentCreated, AgentHandoff, AgentInfo, AgentScope } from './agents.ts';
@@ -167,6 +167,8 @@ export interface Snapshot {
   build: { version: string; commit: string; built: string; hot: boolean; updates: 'git' | 'release' | null; betaNeedsInstaller: boolean };
   /** The sidebar's weather (null: turned off). */
   weather: WeatherSnapshot | null;
+  /** The other places' weather, by placeKey. */
+  zoneWeather: Record<string, WeatherSnapshot>;
   /** Windows that fill their screen (full screen, or the compositor made them so): they show a clock. */
   fullscreenWindows: string[];
   state: GlobalState;
@@ -239,7 +241,7 @@ export type Action =
   | { type: 'refreshWeather' }
   | { type: 'setClock'; mode: 'fullscreen' | 'always' | 'never' }
   | { type: 'setTheme'; theme: 'system' | 'light' | 'dark' }
-  | { type: 'setZones'; zones: { name: string; timezone: string }[] }
+  | { type: 'setZones'; zones: Zone[] }
   | { type: 'setUpdateChannel'; channel: 'stable' | 'beta' }
   | { type: 'archiveProject'; id: string; archived: boolean; open?: boolean }
   | { type: 'detachPane'; slot?: number }

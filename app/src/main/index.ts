@@ -102,6 +102,7 @@ function noteDrm() {
 /** The sidebar's weather. */
 const weather = new Weather({
   place: () => state.weatherPlace,
+  others: () => state.zones ?? [],
   // Asked in the main window's page: Chromium uses the system's location service there (macOS
   // Core Location, Windows Location; macOS asks the user once). Linux has none: null, then IP.
   systemLocation: async () => {
@@ -622,6 +623,7 @@ function snapshot(): Snapshot {
     paletteWindows: [...paletteWindows],
     crashedTabs: Object.fromEntries(crashed()),
     weather: weather.snapshot,
+    zoneWeather: Object.fromEntries(weather.others),
     drm,
     fullscreenWindows: fullscreenWindows(),
     state,
@@ -1373,7 +1375,8 @@ function dispatch(action: Action) {
       changed();
       return;
     case 'setZones':
-      state.zones = action.zones.length ? action.zones.slice(0, 4) : undefined;
+      state.zones = action.zones.length ? action.zones.slice(0, 3) : undefined;
+      void weather.refreshOthers();
       changed();
       return;
     case 'setTheme':

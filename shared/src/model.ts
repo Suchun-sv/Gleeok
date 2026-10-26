@@ -267,6 +267,15 @@ export interface AppWindowState {
 
 export type View = 'panes' | 'settings' | 'library' | 'planner';
 
+/** Another place in the sidebar: a city and its time zone (from the geocoder). */
+export interface Zone {
+  name: string;
+  timezone: string;
+  latitude?: number;
+  longitude?: number;
+  detail?: string;
+}
+
 export interface GlobalState {
   currentProjectId: string | null;
   focusedPane: number;
@@ -287,8 +296,8 @@ export interface GlobalState {
   weatherPlace?: WeatherPlace | null;
   /** When the sidebar shows a clock (unset: while the window is full screen). */
   clock?: 'fullscreen' | 'always' | 'never';
-  /** Clocks for other time zones in the sidebar, beside the weather (this machine). */
-  zones?: { name: string; timezone: string }[];
+  /** Other places in the sidebar, each with its time and weather (this machine). Entries saved before they had coordinates show the time only. */
+  zones?: Zone[];
   /** Light or dark, on this machine (unset: as the system is). Web pages follow it too. */
   theme?: 'light' | 'dark';
   /** Installed builds: also take hot updates of every push to main (unset: releases only). */
