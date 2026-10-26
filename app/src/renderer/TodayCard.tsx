@@ -18,6 +18,24 @@ function useNow() {
 
 const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
+/** The time in another zone, and how far it is from here: "14:20", "-8 小时", and "明天"/"昨天" when the day differs. */
+export function zoneTime(now: Date, timeZone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', { timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
+      .formatToParts(now)
+      .map((p) => [p.type, p.value]),
+  );
+  const there = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute);
+  const here = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+  const hours = Math.round((there - here) / 360_000) / 10;
+  const days = Math.round((Date.UTC(+parts.year, +parts.month - 1, +parts.day) - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86_400_000);
+  return {
+    time: `${parts.hour.padStart(2, '0')}:${parts.minute.padStart(2, '0')}`,
+    offset: hours === 0 ? '同一时间' : `${hours > 0 ? '+' : ''}${hours} 小时`,
+    day: days > 0 ? '明天' : days < 0 ? '昨天' : '',
+  };
+}
+
 /** Whether this window shows a clock: always, never, or (by default) while it fills the screen. */
 export function clockShown(snap: Snapshot) {
   const mode = snap.state.clock ?? 'fullscreen';
@@ -50,7 +68,9 @@ export function TodayCard({ snap }: { snap: Snapshot }) {
   }, [open]);
   const w = snap.weather;
   const showClock = clockShown(snap);
-  if (!w && !showClock) return null;
+  // Other time zones are shown whenever there are any: they were added on purpose.
+  const zones = snap.state.zones ?? [];
+  if (!w && !showClock && !zones.length) return null;
   const cur = w?.current && describeWeather(w.current.code, w.current.isDay);
   const date = `${now.getMonth() + 1}月${now.getDate()}日 ${WEEKDAYS[now.getDay()]}`;
   return (
@@ -59,6 +79,20 @@ export function TodayCard({ snap }: { snap: Snapshot }) {
         <div className="today-clock">
           <span className="time">{hhmm(now)}</span>
           <span className="date">{date}</span>
+        </div>
+      )}
+      {zones.length > 0 && (
+        <div className="today-zones">
+          {zones.map((z) => {
+            const t = zoneTime(now, z.timezone);
+            return (
+              <span key={z.timezone + z.name} title={`${z.timezone}，比这里${t.offset === '同一时间' ? '同一时间' : t.offset.replace('+', '快 ').replace('-', '慢 ')}`}>
+                <span className="name">{z.name}</span>
+                <span className="time">{t.time}</span>
+                {t.day && <span className="day">{t.day}</span>}
+              </span>
+            );
+          })}
         </div>
       )}
       {w && (
@@ -88,7 +122,7 @@ export function TodayCard({ snap }: { snap: Snapshot }) {
         <div className="weather-pop">
           <div className="weather-pop-head">
             <b>{w.place || '天气'}</b>
-            <span className="meta">{w.guessed ? '按 IP 定位' : '设置里选的城市'}</span>
+            <span className="meta">{!w.guessed ? '设置里选的城市' : w.source === 'system' ? '系统定位' : w.source === 'zone' ? '按时区估计' : '按 IP 估计'}</span>
             <button className="icon-btn" onClick={() => gleeok.dispatch({ type: 'refreshWeather' })} title="刷新">
               <Icon name="refresh" size={12} />
             </button>

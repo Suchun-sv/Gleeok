@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
 import { describeWeather, type WeatherPlace } from '../../../shared/src/weather.ts';
 import { AgentSettings, SETTINGS_TAB_KEY } from './AgentConnections.tsx';
@@ -17,6 +17,7 @@ import { TRANSLATE_TARGETS, type TranslateEngine, type TranslateResult, type Tra
 import { lib, useLibrary } from './library/data.ts';
 import { faviconFor } from './Panes.tsx';
 import { PaseoSettings } from './PaseoSettings.tsx';
+import { zoneTime } from './TodayCard.tsx';
 
 const TABS = [
   { id: 'panes', label: '栏' },
@@ -405,7 +406,7 @@ function TodaySettings({ snap }: { snap: Snapshot }) {
               ? '不显示天气'
               : place
                 ? `${place.name}${place.detail ? `（${place.detail}）` : ''}`
-                : `按 IP 自动定位${snap.weather?.place ? `：现在是 ${snap.weather.place}` : ''}`}
+                : `自动定位${snap.weather?.place ? `：现在是 ${snap.weather.place}（${{ system: '系统定位', ip: '按 IP 估计', zone: '按时区估计' }[snap.weather.source ?? 'ip']}）` : ''}`}
           </dd>
           {snap.weather?.current && (
             <>
@@ -426,7 +427,7 @@ function TodaySettings({ snap }: { snap: Snapshot }) {
           <input value={q} placeholder="搜索城市，例如 爱丁堡 / Edinburgh / 上海" onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} />
           <button onClick={search}>搜索</button>
           <button disabled={place === undefined} onClick={() => pick('auto')}>
-            按 IP 自动定位
+            自动定位
           </button>
           <button disabled={place === null} onClick={() => pick('off')}>
             不显示
@@ -444,8 +445,9 @@ function TodaySettings({ snap }: { snap: Snapshot }) {
           </div>
         )}
         <p className="hint">
-          天气数据来自 Open-Meteo（免费，不需要账号），每半小时更新。自动定位按这台电脑的 IP 地址估计所在城市（用 VPN 时可能不准），每 3
-          小时和唤醒后重新定位；选了城市就一直用它。只对这台电脑生效。
+          天气数据来自 Open-Meteo（免费，不需要账号），每半小时更新。自动定位先问系统的定位服务（macOS、Windows，按 Wi-Fi 定位，用 VPN
+          或校园网也准；macOS 第一次会问你是否允许），没有的话按 IP 地址估计（Linux，或者没允许时；用 VPN 时可能不准）。每 3
+          小时和唤醒后重新定位，按 IP 估计的半小时后再试一次系统定位；选了城市就一直用它。只对这台电脑生效。
         </p>
       </section>
       <section className="card">
@@ -460,7 +462,72 @@ function TodaySettings({ snap }: { snap: Snapshot }) {
         </div>
         <p className="hint">时钟在侧边栏的天气上面；侧边栏收起时，显示在最右边一栏标签条的右端。全屏会挡住系统的时钟，所以默认只在全屏时显示。</p>
       </section>
+      <ZoneSettings snap={snap} />
     </>
+  );
+}
+
+/** Other time zones in the sidebar: picked by city (the geocoder knows each one's zone). */
+function ZoneSettings({ snap }: { snap: Snapshot }) {
+  const zones = snap.state.zones ?? [];
+  const [q, setQ] = useState('');
+  const [found, setFound] = useState<WeatherPlace[] | null>(null);
+  const [error, setError] = useState('');
+  const now = new Date();
+  const set = (next: typeof zones) => gleeok.dispatch({ type: 'setZones', zones: next });
+  const search = () => {
+    if (!q.trim()) return;
+    setError('');
+    void gleeok.weatherSearch(q).then((r) => (r.error ? setError(r.error) : setFound((r.result ?? []).filter((p) => p.timezone))));
+  };
+  return (
+    <section className="card">
+      <h3>其他时区</h3>
+      {zones.length > 0 && (
+        <dl className="facts">
+          {zones.map((z, i) => {
+            const t = zoneTime(now, z.timezone);
+            return (
+              <Fragment key={z.timezone + z.name}>
+                <dt>{z.name}</dt>
+                <dd>
+                  {t.time}
+                  {t.day && ` ${t.day}`} <span className="meta">· {t.offset} · {z.timezone}</span>{' '}
+                  <button className="link" onClick={() => set(zones.filter((_, j) => j !== i))}>
+                    移除
+                  </button>
+                </dd>
+              </Fragment>
+            );
+          })}
+        </dl>
+      )}
+      {zones.length < 4 && (
+        <div className="row">
+          <input value={q} placeholder="加一个城市，例如 北京 / 爱丁堡 / New York" onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} />
+          <button onClick={search}>搜索</button>
+        </div>
+      )}
+      {error && <p className="hint error">{error}</p>}
+      {found && (
+        <div className="place-results">
+          {found.length === 0 && <p className="hint">没找到这个地方</p>}
+          {found.map((p) => (
+            <button
+              key={`${p.latitude},${p.longitude}`}
+              onClick={() => {
+                set([...zones, { name: p.name, timezone: p.timezone! }]);
+                setFound(null);
+                setQ('');
+              }}
+            >
+              <b>{p.name}</b> <span className="meta">{p.detail} · {p.timezone}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="hint">显示在侧边栏的天气上面，最多 4 个；加了就一直显示，不管上面的时钟设置。只对这台电脑生效。</p>
+    </section>
   );
 }
 
