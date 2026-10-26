@@ -920,7 +920,7 @@ function startPomodoro(taskKey?: string, blockKey?: string) {
 }
 
 const readerBridge = new ReaderBridge(library, {
-  authorName: () => userInfo().username,
+  authorName: () => process.env.GLEEOK_AUTHOR_NAME || userInfo().username,
   view: () => {
     const s = librarySettings(state);
     return { theme: s.readerTheme, zoom: s.readerZoom };
