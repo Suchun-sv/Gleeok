@@ -1,0 +1,165 @@
+[
+ {
+  "evalMain": "(async()=>{for (const n of ['读论文','写论文','做实验','DS4D 讲义']) await gleeok.createProject(n); return 'projects';})()"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "evalMain": "(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"
+ },
+ {
+  "wait": 300
+ },
+ {
+  "evalMain": "(document.querySelector('.drawer-backdrop')?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})),'drawer closed')"
+ },
+ {
+  "evalMain": "(async()=>{\n  const s = await gleeok.getSnapshot();\n  const P = Object.fromEntries(s.projects.map(p=>[p.name,p.id]));\n  const L = (label,url)=>({id:Math.random().toString(36).slice(2,10),label,url});\n  const links = {\n    '读论文':[L('Claude','@CHAT_READ@'),L('RAG 论文','https://arxiv.org/abs/2005.11401'),L('alphaXiv','https://www.alphaxiv.org/abs/2005.11401')],\n    '写论文':[L('ChatGPT','@CHAT_WRITE@'),L('Overleaf','@OVERLEAF@'),L('ACL 2027 投稿须知','https://acl-org.github.io/ACLPUB/')],\n    '做实验':[L('Claude','@CHAT_EXP@'),L('终端','gleeok://terminal?cwd=/tmp/rag-baseline&name=rag-baseline'),L('DPR 代码','https://github.com/facebookresearch/DPR')],\n  };\n  for (const p of s.projects) if (links[p.name]) await gleeok.saveProject({...p, links:links[p.name]});\n  gleeok.dispatch({type:'setWeatherPlace', place:{name:'上海', latitude:31.2304, longitude:121.4737, detail:'上海市，中国'}});\n  gleeok.dispatch({type:'setClock', mode:'always'});\n\n  const day = (n)=>{const d=new Date(); d.setDate(d.getDate()+n); return d;};\n  const key = (d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;\n  const T = (title, o={}) => ({title, ...o});\n  const tasks = [\n    T('跑通 RAG-Sequence baseline', {due:key(day(0)), priority:3, estimate:4, projectId:P['做实验'], subtasks:[{id:'a1',title:'下载 DPR 索引',done:true},{id:'a2',title:'配置生成器',done:true},{id:'a3',title:'跑 EM 评测',done:false}]}),\n    T('对比 RAG-Token 和 RAG-Sequence', {due:key(day(1)), priority:2, estimate:3, projectId:P['做实验']}),\n    T('精读 RAG 第 3 节', {due:key(day(0)), priority:2, estimate:2, projectId:P['读论文']}),\n    T('读 Self-RAG', {due:key(day(2)), priority:1, estimate:2, projectId:P['读论文']}),\n    T('写第 3 节：方法', {due:key(day(0))+'T17:00', priority:2, estimate:2, projectId:P['写论文']}),\n    T('补相关工作的引用', {due:key(day(1)), priority:1, projectId:P['写论文']}),\n    T('做第 4 周的作业示例', {due:key(day(3)), priority:1, projectId:P['DS4D 讲义']}),\n    T('回导师邮件：组会时间', {due:key(day(-1)), priority:3, createdBy:'邮件助手'}),\n    T('报名 ACL 2027 workshop', {due:key(day(3)), priority:2, createdBy:'邮件助手'}),\n  ];\n  const made = (await gleeok.planner({op:'create', kind:'tasks', objects:tasks})).result;\n  const K = Object.fromEntries(made.map(t=>[t.title,t.key]));\n  // Times around the moment of recording, so the day view's now line sits inside the running block.\n  const now = Date.now(), M = 60_000;\n  const rel = (a,b)=>({start:new Date(now+a*M).toISOString(), end:new Date(now+b*M).toISOString()});\n  const at = (n,h,m=0)=>{const d=day(n); d.setHours(h,m,0,0); return d.toISOString();};\n  const blocks = [\n    {taskKey:K['跑通 RAG-Sequence baseline'], ...rel(-70,80)},\n    {taskKey:K['精读 RAG 第 3 节'], ...rel(100,160)},\n    {title:'组会', ...rel(180,240)},\n    {taskKey:K['写第 3 节：方法'], ...rel(260,350)},\n    {taskKey:K['对比 RAG-Token 和 RAG-Sequence'], start:at(1,9,30), end:at(1,11)},\n    {taskKey:K['补相关工作的引用'], start:at(1,14), end:at(1,15,30)},\n    {taskKey:K['读 Self-RAG'], start:at(2,10), end:at(2,11,30)},\n    {title:'DS4D 上课', start:at(-1,10), end:at(-1,12)},\n    {title:'DS4D 上课', start:at(2,14), end:at(2,16)},\n  ];\n  await gleeok.planner({op:'create', kind:'blocks', objects:blocks});\n  const pomo = [-60,-30].map(a=>({kind:'focus', ...rel(a,a+25), completed:true, taskKey:K['跑通 RAG-Sequence baseline'], taskTitle:'跑通 RAG-Sequence baseline'}));\n  await gleeok.planner({op:'create', kind:'pomodoros', objects:pomo});\n  localStorage.setItem('gleeok.planner.view',JSON.stringify('3day'));\n  window.__baseline = K['跑通 RAG-Sequence baseline'];\n  return 'planner seeded';\n})()"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "evalMain": "(async()=>{\n  const lib = (op)=>gleeok.library(op).then(r=>{ if (r.error) throw new Error(r.error); return r.result; });\n  const cols = await lib({op:'create', kind:'collections', objects:[{name:'RAG'},{name:'LLM 基础'},{name:'毕业论文'}]});\n  const C = Object.fromEntries(cols.map(c=>[c.name,c.key]));\n  const A = (f,l)=>({creatorType:'author', firstName:f, lastName:l});\n  const added = await lib({op:'addFiles', paths:['/tmp/papers/rag.pdf','/tmp/papers/attention.pdf']});\n  const byTitle = (t)=>added.find(i=>String(i.title).toLowerCase().includes(t));\n  const rag = added[0], att = added[1];\n  await lib({op:'patch', kind:'items', key:rag.key, fields:{itemType:'conferencePaper', title:'Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks', creators:[A('Patrick','Lewis'),A('Ethan','Perez'),A('Aleksandra','Piktus'),A('Fabio','Petroni'),A('Vladimir','Karpukhin')], date:'2020', proceedingsTitle:'NeurIPS', url:'https://arxiv.org/abs/2005.11401', tags:[{tag:'rag'},{tag:'retrieval'}], collections:[C['RAG']], readStatus:'reading', abstractNote:'Large pre-trained language models have been shown to store factual knowledge in their parameters... We explore a general-purpose fine-tuning recipe for retrieval-augmented generation (RAG) — models which combine pre-trained parametric and non-parametric memory for language generation.'}});\n  await lib({op:'patch', kind:'items', key:att.key, fields:{itemType:'conferencePaper', title:'Attention Is All You Need', creators:[A('Ashish','Vaswani'),A('Noam','Shazeer'),A('Niki','Parmar'),A('Jakob','Uszkoreit')], date:'2017', proceedingsTitle:'NeurIPS', url:'https://arxiv.org/abs/1706.03762', tags:[{tag:'transformer'}], collections:[C['LLM 基础']], readStatus:'read'}});\n  const more = [\n    {itemType:'conferencePaper', title:'Dense Passage Retrieval for Open-Domain Question Answering', creators:[A('Vladimir','Karpukhin'),A('Barlas','Oğuz'),A('Sewon','Min')], date:'2020', proceedingsTitle:'EMNLP', tags:[{tag:'retrieval'}], collections:[C['RAG']], readStatus:'read'},\n    {itemType:'conferencePaper', title:'REALM: Retrieval-Augmented Language Model Pre-Training', creators:[A('Kelvin','Guu'),A('Kenton','Lee'),A('Zora','Tung')], date:'2020', proceedingsTitle:'ICML', tags:[{tag:'rag'}], collections:[C['RAG']]},\n    {itemType:'conferencePaper', title:'Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection', creators:[A('Akari','Asai'),A('Zeqiu','Wu'),A('Yizhong','Wang')], date:'2024', proceedingsTitle:'ICLR', tags:[{tag:'rag'}], collections:[C['RAG'], C['毕业论文']], readStatus:'unread'},\n    {itemType:'conferencePaper', title:'LoRA: Low-Rank Adaptation of Large Language Models', creators:[A('Edward J.','Hu'),A('Yelong','Shen'),A('Phillip','Wallis')], date:'2022', proceedingsTitle:'ICLR', tags:[{tag:'peft'}], collections:[C['LLM 基础']], readStatus:'read'},\n    {itemType:'preprint', title:'Lost in the Middle: How Language Models Use Long Contexts', creators:[A('Nelson F.','Liu'),A('Kevin','Lin'),A('John','Hewitt')], date:'2023', repository:'arXiv', tags:[{tag:'long-context'}], collections:[C['毕业论文']]},\n  ];\n  await lib({op:'create', kind:'items', objects:more});\n  await lib({op:'create', kind:'items', objects:[{itemType:'note', parentItem:rag.key, note:\"<h2>RAG 精读笔记</h2>\\n<p><strong>一句话</strong>：把预训练的检索器（DPR）和生成器（BART）接在一起端到端微调，文档作为隐变量边缘化掉。</p>\\n<h3>两种变体</h3>\\n<ul>\\n<li><strong>RAG-Sequence</strong>：整个回答共用同一批检索到的文档</li>\\n<li><strong>RAG-Token</strong>：每生成一个 token 都可以换一篇文档</li>\\n</ul>\\n<h3>训练细节</h3>\\n<ul>\\n<li>只微调 query encoder 和生成器，文档编码器和索引固定（重建索引太贵）</li>\\n<li>每个问题取 top-k 篇文档，k 取 5 或 10</li>\\n</ul>\\n<h3>想复现的点</h3>\\n<ul>\\n<li>NQ 上 RAG-Sequence 和 RAG-Token 的 EM 差距</li>\\n<li>换掉索引（hot-swap）不重训，模型知识能不能跟着更新</li>\\n</ul>\"}]});\n  window.__rag = rag.key;\n  return 'library seeded '+added.length;\n})()"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "action": {
+   "type": "navigate",
+   "slot": 0,
+   "url": "@PAIR@"
+  }
+ },
+ {
+  "wait": 10000
+ },
+ {
+  "pointer": {
+   "target": {
+    "slot": 0
+   },
+   "js": "(()=>{const e=([...document.querySelectorAll('button,[role=button]')].find(e=>e.textContent.trim()==='连接'));if(!e)return null;const r=e.getBoundingClientRect();return [Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)]})()",
+   "ms": 200,
+   "press": "click"
+  }
+ },
+ {
+  "wait": 5000
+ },
+ {
+  "evalMain": "(async()=>{const s=await gleeok.getSnapshot();gleeok.dispatch({type:'selectProject',id:s.projects.find(p=>p.name==='读论文').id});return 'sel'})()"
+ },
+ {
+  "wait": 800
+ },
+ {
+  "wait": 300
+ },
+ {
+  "action": {
+   "type": "setView",
+   "view": "settings"
+  }
+ },
+ {
+  "wait": 800
+ },
+ {
+  "evalMain": "([...document.querySelectorAll('.settings-nav button')].find(b=>b.textContent==='Paseo').click(),'tab')"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "pointer": {
+   "target": "main",
+   "to": [
+    900,
+    620
+   ],
+   "ms": 0
+  }
+ },
+ {
+  "record": {
+   "name": "clip-paseo",
+   "target": "main",
+   "fps": 8
+  }
+ },
+ {
+  "wait": 900
+ },
+ {
+  "pointer": {
+   "target": "main",
+   "js": "(()=>{const e=([...document.querySelectorAll('.paseo-table tr')].find(t=>t.querySelector('.name')?.textContent===\"rag-reproduction\")?.querySelector('input'));if(!e)return null;const r=e.getBoundingClientRect();return [Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)]})()",
+   "ms": 700,
+   "press": "click"
+  }
+ },
+ {
+  "wait": 250
+ },
+ {
+  "pointer": {
+   "target": "main",
+   "js": "(()=>{const e=([...document.querySelectorAll('.paseo-table tr')].find(t=>t.querySelector('.name')?.textContent===\"thesis\")?.querySelector('input'));if(!e)return null;const r=e.getBoundingClientRect();return [Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)]})()",
+   "ms": 400,
+   "press": "click"
+  }
+ },
+ {
+  "wait": 400
+ },
+ {
+  "pointer": {
+   "target": "main",
+   "js": "(()=>{const e=([...document.querySelectorAll('button')].find(b=>b.textContent.startsWith('导入选中的')));if(!e)return null;const r=e.getBoundingClientRect();return [Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)]})()",
+   "ms": 600,
+   "press": "click"
+  }
+ },
+ {
+  "wait": 1300
+ },
+ {
+  "pointer": {
+   "target": "main",
+   "js": "(()=>{const e=(document.querySelector('.settings-close'));if(!e)return null;const r=e.getBoundingClientRect();return [Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)]})()",
+   "ms": 700,
+   "press": "click"
+  }
+ },
+ {
+  "wait": 500
+ },
+ {
+  "pointer": {
+   "target": "main",
+   "js": "(()=>{const e=([...document.querySelectorAll('.sidebar nav *')].filter(e=>e.children.length<3&&e.textContent.trim().startsWith('rag-reproduction')).pop());if(!e)return null;const r=e.getBoundingClientRect();return [Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)]})()",
+   "ms": 700,
+   "press": "click"
+  }
+ },
+ {
+  "wait": 1300
+ },
+ {
+  "pointer": {
+   "target": "main",
+   "js": "(()=>{const e=([...document.querySelectorAll('button')].find(b=>b.textContent.includes('启动「rag-reproduction」')));if(!e)return null;const r=e.getBoundingClientRect();return [Math.round(r.x+r.width/2),Math.round(r.y+r.height/2)]})()",
+   "ms": 700,
+   "press": "click"
+  }
+ },
+ {
+  "wait": 7500
+ },
+ {
+  "stopRecord": true
+ }
+]
