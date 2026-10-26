@@ -210,7 +210,7 @@ main {
   background: var(--accent);
 }
 
-/* The sync server's state in the sidebar header (hidden in local mode). */
+/* Where projects are kept, in the sidebar header: this computer, or the sync server and its state. */
 .sync-status {
   display: inline-flex;
   align-items: center;

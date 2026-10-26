@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
 import { primaryCodeLink } from '../../../shared/src/model.ts';
 import icon from '../../assets/icon-64.png';
+import { SETTINGS_TAB_KEY } from './AgentConnections.tsx';
 import { Icon, IconButton } from './Icons.tsx';
 import { useLibrary } from './library/data.ts';
 import { dayKey, usePlanner } from './planner/data.ts';
@@ -9,6 +10,12 @@ import { PHASE_NAMES, mmss, remaining, useTick } from './planner/Pomodoro.tsx';
 import { TodayCard } from './TodayCard.tsx';
 
 const SYNC_LABELS = { ok: '已同步', offline: '离线', unconfigured: '连接中' } as const;
+
+/** Local mode's computer icon leads to Settings → 同步, where a sync server is set up. */
+function openSyncSettings() {
+  sessionStorage.setItem(SETTINGS_TAB_KEY, 'sync');
+  gleeok.dispatch({ type: 'setView', view: 'settings' });
+}
 
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
 export function SidebarToggle({ platform }: { platform: string }) {
@@ -45,8 +52,11 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
           Gleeok
         </span>
         <span className="spacer" />
-        {/* Only a sync server has a state worth showing; local mode is the quiet default. */}
-        {server.status !== 'local' && (
+        {server.status === 'local' ? (
+          <button className="sync-status local" title="本地模式" onClick={openSyncSettings}>
+            <Icon name="laptop" size={13} />
+          </button>
+        ) : (
           <button
             className={`sync-status ${server.status}`}
             title={`${server.url ?? ''}${server.error ? `\n${server.error}` : ''}\n点击重新同步`.trim()}
