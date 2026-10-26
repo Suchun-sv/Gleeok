@@ -1,7 +1,7 @@
 // Gleeok's entry point. An installed build on the beta channel may run a hot update (see
 // src/main/hot-update.ts): the code in <userData>/hot/<commit>/, when it was made for this installed
-// shell (same Electron and native modules) and did not fail to start last time. Otherwise, and
-// always when run from a checkout, the bundled dist/.
+// shell (same Electron and native modules), is newer than the bundled code and did not fail to start
+// last time. Otherwise, and always when run from a checkout, the bundled dist/.
 const { app } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -21,6 +21,19 @@ function hotMain() {
   const shell = JSON.parse(fs.readFileSync(path.join(__dirname, 'dist', 'shell.json'), 'utf8')).key;
   const main = path.join(dir, current.commit, 'dist', 'main.js');
   if (current.shell !== shell || !fs.existsSync(main)) return null;
+  // A release installed over an older hot update (same shell, so it would still fit): the
+  // installed code is the newer one, and the hot update is not used again.
+  const built = (dist) => {
+    try {
+      return Date.parse(JSON.parse(fs.readFileSync(path.join(dist, 'build.json'), 'utf8')).built) || 0;
+    } catch {
+      return 0;
+    }
+  };
+  if (built(path.dirname(main)) <= built(path.join(__dirname, 'dist'))) {
+    fs.rmSync(path.join(dir, 'current.json'), { force: true });
+    return null;
+  }
   // It started before and never said it was fine (it crashed or hung): back to the bundled code,
   // and remember not to offer this one again.
   const booting = path.join(dir, 'booting');
