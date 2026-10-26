@@ -93,6 +93,9 @@ export async function runDevScript(
     return tabId ? views.get(tabId)?.webContents : undefined;
   };
   const pointer = { target: '', x: 0, y: 0, down: false };
+  // A page that is not on screen (e.g. behind 设置) never answers capturePage: give up after 1 s.
+  const grab = (wc: Electron.WebContents) =>
+    Promise.race([wc.capturePage().catch(() => null), sleep(1000).then(() => null)]);
   let recording: { stop: boolean; done: Promise<void>; label: (text: string) => void } | null = null;
 
   const record = (name: string, target: Target, fps: number) => {
@@ -108,20 +111,22 @@ export async function runDevScript(
       while (!rec.stop) {
         const started = Date.now();
         const wc = targetWc(target);
-        const img = wc && !wc.isDestroyed() ? await wc.capturePage().catch(() => null) : null;
+        const img = wc && !wc.isDestroyed() ? await grab(wc) : null;
         if (img && !img.isEmpty()) {
           const n = String(frames.length).padStart(5, '0');
           writeFileSync(join(dir, `${n}.png`), img.toPNG());
           const layers: Layer[] = [];
           const win = target === 'main' ? getWindows().find(([id]) => id === 'main')?.[1] : undefined;
           for (const [i, view] of (win ? views.attachedIn(win) : []).entries()) {
-            const page = await view.webContents.capturePage().catch(() => null);
+            const page = await grab(view.webContents);
             if (!page || page.isEmpty()) continue;
             const b = view.getBounds();
             layers.push({ file: `${n}-v${i}.png`, x: b.x, y: b.y });
             writeFileSync(join(dir, `${n}-v${i}.png`), page.toPNG());
           }
           frames.push({ file: `${n}.png`, t: started - t0, cursor: pointer.target === key ? { x: pointer.x, y: pointer.y, down: pointer.down } : null, layers });
+          // Kept current, so a recording survives the app dying mid-way.
+          writeFileSync(join(dir, 'frames.json'), JSON.stringify({ frames, labels }));
         }
         await sleep(Math.max(0, 1000 / fps - (Date.now() - started)));
       }
