@@ -637,7 +637,7 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
   );
 
   return (
-    <div ref={root} className={`library ${mode} ${compact ? 'compact' : ''}`} onKeyDown={onRootKey}>
+    <div ref={root} className={`library lib-${mode} ${compact ? 'compact' : ''}`} onKeyDown={onRootKey}>
       {(!compact || showCollections) && <div className={compact ? 'lib-drawer left' : 'lib-col-left'}>{sidebar}</div>}
       {itemsColumn}
       {!compact && <div className="lib-col-right">{details}</div>}
