@@ -8,6 +8,8 @@ import { dayKey, usePlanner } from './planner/data.ts';
 import { PHASE_NAMES, mmss, remaining, useTick } from './planner/Pomodoro.tsx';
 import { TodayCard } from './TodayCard.tsx';
 
+const SYNC_LABELS = { ok: '已同步', offline: '离线', unconfigured: '连接中' } as const;
+
 /** Same glyph as Paseo's sidebar toggle: lucide "panel-left". */
 export function SidebarToggle({ platform }: { platform: string }) {
   const keys = platform === 'darwin' ? '⌘⌥B' : 'Ctrl+Alt+B';
@@ -43,15 +45,17 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
           Gleeok
         </span>
         <span className="spacer" />
-        <span
-          className={`dot ${server.status}`}
-          title={
-            server.status === 'local'
-              ? '本地模式：数据只存在这台电脑上（配置 ~/.config/gleeok/client.json 可连接同步服务器）'
-              : `${server.status}${server.url ? ` · ${server.url}` : ''}${server.error ? `\n${server.error}` : ''}`
-          }
-          onClick={() => void gleeok.refreshProjects()}
-        />
+        {/* Only a sync server has a state worth showing; local mode is the quiet default. */}
+        {server.status !== 'local' && (
+          <button
+            className={`sync-status ${server.status}`}
+            title={`${server.url ?? ''}${server.error ? `\n${server.error}` : ''}\n点击重新同步`.trim()}
+            onClick={() => void gleeok.refreshProjects()}
+          >
+            <Icon name={server.status === 'ok' ? 'cloud' : 'cloudOff'} size={13} />
+            {SYNC_LABELS[server.status]}
+          </button>
+        )}
         <button
           className="sidebar-toggle"
           onClick={() => gleeok.dispatch({ type: 'openPalette' })}
