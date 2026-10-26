@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gleeok · 以项目为单位的科研工作台</title>
+<meta name="description" content="把 AI 会话、论文、终端和日程放进同一个项目工作空间。切换项目时，整套工作环境一起切换。开源，支持 macOS、Windows、Linux。">
+<meta property="og:title" content="Gleeok · 以项目为单位的科研工作台">
+<meta property="og:description" content="把 AI 会话、论文、终端和日程放进同一个项目工作空间。切换项目时，整套工作环境一起切换。">
+<meta property="og:image" content="https://suchun-sv.github.io/Gleeok/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="media/icon-64.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="aurora" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="#top"><img src="media/icon-64.png" alt="" width="28" height="28">Gleeok</a>
+  <nav>
+    <a href="#features">功能</a>
+    <a href="#download">下载</a>
+    <a class="gh" href="https://github.com/Suchun-sv/Gleeok">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <a class="pill" href="https://github.com/Suchun-sv/Gleeok/releases/latest"><span class="dot"></span>{{VERSION}} 已发布 · 开源 · AGPL-3.0</a>
+    <h1>切换项目，<br><span class="grad">整套工作环境一起切换</span></h1>
+    <p class="lead">对 AI 来说，一个会话就是一个项目；人却还要在论文、Overleaf、终端和日程之间来回翻找。<br>Gleeok 以项目为单位，把它们摆进同一个分栏工作台。</p>
+    <div class="cta">
+      <a class="btn primary" id="dl-main" href="#download">下载 Gleeok</a>
+      <a class="btn ghost" href="https://github.com/Suchun-sv/Gleeok">在 GitHub 上查看源码</a>
+    </div>
+    <p class="platforms">macOS · Windows · Linux &nbsp;·&nbsp; 数据默认保存在本机</p>
+
+    <figure class="stage">
+      <div class="glow" aria-hidden="true"></div>
+      <img class="zoomable" src="media/demo.webp" width="1600" height="640" alt="演示：读论文场景的笔记栏拆到第二块屏，然后用快捷键在读论文、写论文、做实验三个场景之间切换，两块屏一起切换">
+      <figcaption>
+        <span><kbd>⌘1</kbd> 读论文</span>
+        <span><kbd>⌘2</kbd> 写论文</span>
+        <span><kbd>⌘3</kbd> 做实验</span>
+        <span><kbd>⧉</kbd> 任意一栏拆到第二块屏</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section class="heads">
+    <div class="head-card">
+      <div class="num">01</div>
+      <h3>每个项目，一套分栏</h3>
+      <p>AI 对话、主工作区、辅助资料，各占一栏，每栏有自己的标签页。项目记得每一栏开着什么。</p>
+    </div>
+    <div class="head-card">
+      <div class="num">02</div>
+      <h3>一个快捷键，全部切换</h3>
+      <p><kbd>⌘1</kbd>…<kbd>⌘9</kbd> 切项目，所有栏、所有窗口一起跟着换。旧项目不会被关掉，回来时原样还在。</p>
+    </div>
+    <div class="head-card">
+      <div class="num">03</div>
+      <h3>多屏是一等公民</h3>
+      <p>任意一栏都能拆成独立窗口放到另一块屏上，并且同样跟着项目切换；重启后回到原来的位置。</p>
+    </div>
+  </section>
+
+  <section id="features" class="feature">
+    <div class="copy">
+      <span class="tag">文献阅读</span>
+      <h2>内置 PDF 阅读器<br>高亮批注都进文献库</h2>
+      <p>基于 Zotero 的阅读器。划选文字、选一种颜色，高亮和批注同步进文献库，在侧栏点一下就跳回原文。</p>
+      <ul>
+        <li>多色高亮、批注、页面跳转</li>
+        <li>划词翻译（DeepL 或兼容 OpenAI 的接口）</li>
+        <li>阅读状态、笔记和附件都挂在条目上</li>
+      </ul>
+    </div>
+    <figure class="shot"><img class="zoomable" src="media/clip-reader.webp" width="1200" height="813" loading="lazy" alt="阅读器演示：划选一句话，选紫色高亮，侧栏多出一条批注，点击后跳转到原文"></figure>
+  </section>
+
+  <section class="feature flip">
+    <div class="copy">
+      <span class="tag">日程</span>
+      <h2>任务、时间块、番茄钟<br>按项目分组</h2>
+      <p>在日历上拖出一段时间就是一个新任务；点开正在进行的时间块开始番茄钟，侧边栏一直显示倒计时。</p>
+      <ul>
+        <li>日 / 3 日 / 周 / 月视图，拖动创建和移动</li>
+        <li>任务按项目分组，新标签页上也能看到今天的安排</li>
+        <li>手机页面随手记，和桌面端同步</li>
+      </ul>
+    </div>
+    <figure class="shot"><img class="zoomable" src="media/clip-planner.webp" width="1200" height="750" loading="lazy" alt="日程演示：在周视图里拖出一段时间并新建任务，开始番茄钟，勾掉一个任务"></figure>
+  </section>
+
+  <section class="feature">
+    <div class="copy">
+      <span class="tag">文献库</span>
+      <h2>像 Zotero 一样管论文<br>一键引用到 Overleaf</h2>
+      <p>分类、标签、阅读状态。条目信息可以从 DBLP 补全，复制 BibTeX 或 <code>\cite{}</code> 直接贴进论文。</p>
+      <ul>
+        <li>拖入 PDF 自动建条目</li>
+        <li>DBLP 补全作者、会议、DOI</li>
+        <li>可以在任意一栏里打开，也可以全屏</li>
+      </ul>
+    </div>
+    <figure class="shot"><img class="zoomable" src="media/clip-library.webp" width="1200" height="750" loading="lazy" alt="文献库演示：搜索、选中一篇论文、从 DBLP 补全信息、复制 \cite"></figure>
+  </section>
+
+  <section class="grid-wrap">
+    <h2 class="center">还有这些</h2>
+    <div class="grid">
+      <div class="card"><div class="ico">⌁</div><h3>Agent 接入</h3><p>通过 REST 或 MCP，让 Claude Code、Codex 帮你排日程、存论文。每个连接单独的令牌，随时吊销。</p></div>
+      <div class="card"><div class="ico">›_</div><h3>终端与 Paseo</h3><p>内置终端（本机或 SSH），导入 Paseo 项目，一键打开项目对应的 code-server。</p></div>
+      <div class="card"><div class="ico">⇄</div><h3>本地优先，可选同步</h3><p>默认本地存储；也可以部署自己的同步服务器，标签页在多台设备之间接力。</p></div>
+      <div class="card"><div class="ico">⚿</div><h3>密码库</h3><p>接入 Bitwarden 兼容的密码库（包括自建的 Vaultwarden），快捷键填充。</p></div>
+      <div class="card"><div class="ico">☾</div><h3>省内存的休眠</h3><p>不活跃的项目在每天的分界点自动休眠，打开时才加载。</p></div>
+      <div class="card"><div class="ico">↻</div><h3>自动更新</h3><p>正式版跟随 GitHub Releases；测试版可以热更新，不用重新安装。</p></div>
+    </div>
+  </section>
+
+  <section id="download" class="download">
+    <h2 class="center">下载</h2>
+    <p class="center sub">当前版本 <b>{{VERSION}}</b> · 安装后会自动检查更新</p>
+    <div class="dl-grid">
+      <div class="dl" data-os="mac">
+        <h3>macOS</h3>
+        <a class="btn primary" href="https://github.com/Suchun-sv/Gleeok/releases/latest/download/Gleeok-{{VNUM}}-mac-arm64.zip">Apple 芯片</a>
+        <a class="btn ghost" href="https://github.com/Suchun-sv/Gleeok/releases/latest/download/Gleeok-{{VNUM}}-mac-x64.zip">Intel</a>
+        <p class="note">解压后拖进「应用程序」。第一次打开会被拦下：到 <b>系统设置 → 隐私与安全性</b>，点「仍要打开」，只需一次。</p>
+      </div>
+      <div class="dl" data-os="win">
+        <h3>Windows</h3>
+        <a class="btn primary" href="https://github.com/Suchun-sv/Gleeok/releases/latest/download/Gleeok-{{VNUM}}-windows-x64-setup.exe">安装包 x64</a>
+        <p class="note">SmartScreen 提示时点「更多信息 → 仍要运行」。</p>
+      </div>
+      <div class="dl" data-os="linux">
+        <h3>Linux</h3>
+        <a class="btn primary" href="https://github.com/Suchun-sv/Gleeok/releases/latest/download/Gleeok-{{VNUM}}-linux-x86_64.AppImage">AppImage x86_64</a>
+        <p class="note"><code>chmod +x</code> 后直接运行。</p>
+      </div>
+    </div>
+    <p class="center src">也可以 <a href="https://github.com/Suchun-sv/Gleeok#从源码运行">从源码运行</a>：需要 Node.js 22+ 和 Git。</p>
+  </section>
+</main>
+
+<footer>
+  <img src="media/icon-64.png" alt="" width="40" height="40">
+  <p>Gleeok 是开源软件，以 <a href="https://github.com/Suchun-sv/Gleeok/blob/main/LICENSE">AGPL-3.0</a> 发布。<br>受 Paseo 启发，阅读器来自 <a href="https://github.com/zotero/reader">Zotero</a>。</p>
+  <p class="links"><a href="https://github.com/Suchun-sv/Gleeok">GitHub</a> · <a href="https://github.com/Suchun-sv/Gleeok/issues">反馈问题</a> · <a href="https://github.com/Suchun-sv/Gleeok/releases">更新记录</a></p>
+</footer>
+
+<div class="lightbox" hidden><img alt=""></div>
+<script src="main.js"></script>
+</body>
+</html>
