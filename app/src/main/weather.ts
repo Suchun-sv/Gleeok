@@ -11,16 +11,31 @@ export async function searchPlaces(name: string): Promise<WeatherPlace[]> {
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=zh&format=json`;
   const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new Error(`地点查询失败：HTTP ${res.status}`);
-  const body = (await res.json()) as { results?: { name: string; latitude: number; longitude: number; country?: string; admin1?: string }[] };
+  const body = (await res.json()) as { results?: { name: string; latitude: number; longitude: number; country?: string; admin1?: string; timezone?: string }[] };
   return (body.results ?? []).map((r) => ({
     name: r.name,
     latitude: r.latitude,
     longitude: r.longitude,
     detail: [r.admin1, r.country].filter(Boolean).join('，') || undefined,
+    timezone: r.timezone,
   }));
 }
 
 const RELOCATE_MS = 3 * 60 * 60_000;
+/** A guess by IP or time zone is tried again sooner: the system's location may answer next time. */
+const RELOCATE_ROUGH_MS = 30 * 60_000;
+
+/** The town at a point, in Chinese where OpenStreetMap has it (Nominatim, no key, a few calls a day). */
+async function placeName(at: { latitude: number; longitude: number }): Promise<string | null> {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${at.latitude}&lon=${at.longitude}&zoom=10&accept-language=zh-CN,zh,en`;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'Gleeok (https://github.com/Suchun-sv/Gleeok)' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const a = res.ok ? ((await res.json()) as { address?: Record<string, string> }).address : undefined;
+    return a ? (a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? a.state ?? null) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Where this machine's IP address is (two free services, no key), or null. */
 async function ipLocation(): Promise<{ city: string; latitude: number; longitude: number } | null> {
@@ -48,19 +63,24 @@ const km = (a: { latitude: number; longitude: number }, b: { latitude: number; l
   Math.hypot((a.latitude - b.latitude) * 111, (a.longitude - b.longitude) * 111 * Math.cos((a.latitude * Math.PI) / 180));
 
 /**
- * No place picked: where the IP address says this machine is, named in Chinese when the geocoder
- * knows a place of that name nearby; failing that, the city of the system time zone.
+ * No place picked: where the system's location service says this machine is (macOS, Windows;
+ * Wi-Fi based, so it holds behind a VPN or a campus network); failing that, where the IP address
+ * says, named in Chinese when the geocoder knows a place of that name nearby; failing that, the
+ * city of the system time zone.
  */
-async function locate(): Promise<WeatherPlace | null> {
+async function locate(system: () => Promise<{ latitude: number; longitude: number } | null>): Promise<{ place: WeatherPlace; source: 'system' | 'ip' | 'zone' } | null> {
+  const here = await system().catch(() => null);
+  if (here) return { place: { name: (await placeName(here)) ?? '当前位置', latitude: here.latitude, longitude: here.longitude }, source: 'system' };
   const ip = await ipLocation();
   if (ip) {
     const near = (await searchPlaces(ip.city).catch(() => [])).find((p) => km(p, ip) < 60);
-    return near ?? { name: ip.city, latitude: ip.latitude, longitude: ip.longitude };
+    return { place: near ?? { name: ip.city, latitude: ip.latitude, longitude: ip.longitude }, source: 'ip' };
   }
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? '';
   const city = zone.split('/').pop()?.replace(/_/g, ' ');
   if (!city || !zone.includes('/')) return null;
-  return (await searchPlaces(city))[0] ?? null;
+  const place = (await searchPlaces(city))[0];
+  return place ? { place, source: 'zone' } : null;
 }
 
 /**
@@ -69,7 +89,7 @@ async function locate(): Promise<WeatherPlace | null> {
  */
 export class Weather {
   snapshot: WeatherSnapshot | null = null;
-  #guess: WeatherPlace | null = null;
+  #guess: { place: WeatherPlace; source: 'system' | 'ip' | 'zone' } | null = null;
   #guessedAt = 0;
   #timer: NodeJS.Timeout | undefined;
   #running = false;
@@ -78,6 +98,8 @@ export class Weather {
     private hooks: {
       /** The place picked in Settings; undefined: guess; null: weather is off. */
       place(): WeatherPlace | null | undefined;
+      /** The system's location service (a page's navigator.geolocation), or null when it has none. */
+      systemLocation(): Promise<{ latitude: number; longitude: number } | null>;
       changed(): void;
     },
   ) {}
@@ -98,12 +120,13 @@ export class Weather {
     if (this.#running) return;
     this.#running = true;
     try {
-      // A laptop moves: look the IP address up again every few hours.
-      if (!picked && (!this.#guess || Date.now() - this.#guessedAt > RELOCATE_MS)) {
-        this.#guess = (await locate()) ?? this.#guess;
+      // A laptop moves: locate again every few hours (sooner after a rough guess).
+      const stale = Date.now() - this.#guessedAt > (this.#guess?.source === 'system' ? RELOCATE_MS : RELOCATE_ROUGH_MS);
+      if (!picked && (!this.#guess || stale)) {
+        this.#guess = (await locate(this.hooks.systemLocation)) ?? this.#guess;
         this.#guessedAt = Date.now();
       }
-      const place = picked ?? this.#guess;
+      const place = picked ?? this.#guess?.place;
       if (!place) throw new Error('不知道在哪里：在设置里选一个城市');
       const params = new URLSearchParams({
         latitude: String(place.latitude),
@@ -141,6 +164,7 @@ export class Weather {
       this.snapshot = {
         place: place.name,
         guessed: !picked,
+        source: picked ? undefined : this.#guess?.source,
         current: { temp: Math.round(b.current.temperature_2m), code: b.current.weather_code, isDay: b.current.is_day === 1 },
         today: days[0] && { max: days[0].max, min: days[0].min, rain: days[0].rain },
         hours,

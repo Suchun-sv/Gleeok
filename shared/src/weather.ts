@@ -6,12 +6,16 @@ export interface WeatherPlace {
   longitude: number;
   /** Country / region, to tell places with the same name apart. */
   detail?: string;
+  /** IANA time zone, e.g. Asia/Shanghai (from the geocoder). */
+  timezone?: string;
 }
 
 export interface WeatherSnapshot {
   place: string;
-  /** No place picked: this one comes from the IP address (or the time zone). */
+  /** No place picked: this one was located (see source). */
   guessed: boolean;
+  /** How a guessed place was found: the system's location service, the IP address, or the time zone. */
+  source?: 'system' | 'ip' | 'zone';
   current?: { temp: number; code: number; isDay: boolean };
   today?: { max: number; min: number; rain: number };
   /** The next hours, one per hour. */

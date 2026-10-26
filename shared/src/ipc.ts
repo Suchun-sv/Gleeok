@@ -239,6 +239,7 @@ export type Action =
   | { type: 'refreshWeather' }
   | { type: 'setClock'; mode: 'fullscreen' | 'always' | 'never' }
   | { type: 'setTheme'; theme: 'system' | 'light' | 'dark' }
+  | { type: 'setZones'; zones: { name: string; timezone: string }[] }
   | { type: 'setUpdateChannel'; channel: 'stable' | 'beta' }
   | { type: 'archiveProject'; id: string; archived: boolean; open?: boolean }
   | { type: 'detachPane'; slot?: number }

@@ -100,7 +100,21 @@ function noteDrm() {
 }
 
 /** The sidebar's weather. */
-const weather = new Weather({ place: () => state.weatherPlace, changed: () => changed() });
+const weather = new Weather({
+  place: () => state.weatherPlace,
+  // Asked in the main window's page: Chromium uses the system's location service there (macOS
+  // Core Location, Windows Location; macOS asks the user once). Linux has none: null, then IP.
+  systemLocation: async () => {
+    const wc = shells.get(mainWindowState().id)?.webContents;
+    if (!wc || wc.isDestroyed()) return null;
+    return (await wc
+      .executeJavaScript(
+        `new Promise((done) => navigator.geolocation ? navigator.geolocation.getCurrentPosition((p) => done({ latitude: p.coords.latitude, longitude: p.coords.longitude }), () => done(null), { timeout: 15000, maximumAge: 600000 }) : done(null))`,
+      )
+      .catch(() => null)) as { latitude: number; longitude: number } | null;
+  },
+  changed: () => changed(),
+});
 
 /** Windows filling their screen: full screen, or a compositor (niri) sized them to the whole display. */
 function fullscreenWindows(): string[] {
@@ -1356,6 +1370,10 @@ function dispatch(action: Action) {
       return;
     case 'setClock':
       state.clock = action.mode === 'fullscreen' ? undefined : action.mode;
+      changed();
+      return;
+    case 'setZones':
+      state.zones = action.zones.length ? action.zones.slice(0, 4) : undefined;
       changed();
       return;
     case 'setTheme':

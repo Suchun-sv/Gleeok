@@ -80,7 +80,11 @@
       "identity": null,
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "notarize": false
+      "notarize": false,
+      "extendInfo": {
+        "NSLocationUsageDescription": "Gleeok 用你的位置显示当地的天气。",
+        "NSLocationWhenInUseUsageDescription": "Gleeok 用你的位置显示当地的天气。"
+      }
     },
     "afterPack": "build-hooks/vmp-sign.cjs",
     "asar": false,
