@@ -110,11 +110,25 @@
     <figure class="shot"><img class="zoomable" src="media/clip-library.webp" width="1200" height="750" loading="lazy" alt="文献库演示：搜索、选中一篇论文、从 DBLP 补全信息、复制 \cite"></figure>
   </section>
 
+  <section class="feature flip">
+    <div class="copy">
+      <span class="tag">Paseo</span>
+      <h2>Paseo 的项目一键导入<br>agent 对话就在 AI 区</h2>
+      <p>连上你的 Paseo daemon，勾选项目导入。每个项目自动带上最近用过的 workspace 和它的终端，打开项目，agent 的对话就在左边那一栏。</p>
+      <ul>
+        <li>多台机器的 daemon 都能接入，经 Paseo 的加密中转，不用开端口</li>
+        <li>链接自动跟着最近的 workspace 走</li>
+        <li>检测到 code-server 时，一键打开项目的代码</li>
+      </ul>
+    </div>
+    <figure class="shot"><img class="zoomable" src="media/clip-paseo.webp" width="1200" height="750" loading="lazy" alt="Paseo 演示：在设置里勾选两个 Paseo 项目并导入，打开其中一个，点启动，AI 区显示这个 workspace 里 agent 的对话"></figure>
+  </section>
+
   <section class="grid-wrap">
     <h2 class="center">还有这些</h2>
     <div class="grid">
       <div class="card"><div class="ico">⌁</div><h3>Agent 接入</h3><p>通过 REST 或 MCP，让 Claude Code、Codex 帮你排日程、存论文。每个连接单独的令牌，随时吊销。</p></div>
-      <div class="card"><div class="ico">›_</div><h3>终端与 Paseo</h3><p>内置终端（本机或 SSH），导入 Paseo 项目，一键打开项目对应的 code-server。</p></div>
+      <div class="card"><div class="ico">›_</div><h3>内置终端</h3><p>本机或 SSH 的终端开在任意一栏里，项目休眠时也不会断；支持 Nerd Font 图标的提示符。</p></div>
       <div class="card"><div class="ico">⇄</div><h3>本地优先，可选同步</h3><p>默认本地存储；也可以部署自己的同步服务器，标签页在多台设备之间接力。</p></div>
       <div class="card"><div class="ico">⚿</div><h3>密码库</h3><p>接入 Bitwarden 兼容的密码库（包括自建的 Vaultwarden），快捷键填充。</p></div>
       <div class="card"><div class="ico">☾</div><h3>省内存的休眠</h3><p>不活跃的项目在每天的分界点自动休眠，打开时才加载。</p></div>
