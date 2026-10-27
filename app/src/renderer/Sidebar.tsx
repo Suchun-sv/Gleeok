@@ -11,6 +11,14 @@ import { TodayCard } from './TodayCard.tsx';
 
 const SYNC_LABELS = { ok: '已同步', offline: '离线', unconfigured: '连接中' } as const;
 
+/** The sidebar's colour during a pomodoro: tomato while focusing, green on a break. */
+function pomoMood(p: Snapshot['pomodoro']): string {
+  // A phase ended: the colour of what comes next, breathing until 开始 or 不用了.
+  if (p.awaiting) return `pomo-tint ${p.awaiting === 'focus' ? 'pomo-focus' : 'pomo-break'} pomo-awaiting`;
+  if (p.phase === 'idle') return '';
+  return `pomo-tint ${p.phase === 'focus' ? 'pomo-focus' : 'pomo-break'}${p.running ? '' : ' pomo-paused'}`;
+}
+
 /** Local mode's computer icon leads to Settings → 同步, where a sync server is set up. */
 function openSyncSettings() {
   sessionStorage.setItem(SETTINGS_TAB_KEY, 'sync');
@@ -45,7 +53,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${pomoMood(snap.pomodoro)}`}>
       <header>
         <span className="brand">
           <img src={icon} alt="" />

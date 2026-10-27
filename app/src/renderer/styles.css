@@ -112,6 +112,50 @@ main {
   flex-direction: column;
   background: var(--panel);
   border-right: 1px solid var(--line);
+  transition: background-color 0.8s ease, border-color 0.8s ease;
+}
+
+/* A pomodoro colours the whole sidebar: tomato while focusing, green on a break, fainter while
+   paused; when a phase has ended it takes the next one's colour and breathes until 开始 / 不用了. */
+.sidebar.pomo-tint {
+  --pomo: #e5484d;
+  --pomo-mix: 22%;
+  background: color-mix(in srgb, var(--pomo) var(--pomo-mix), var(--panel));
+  border-right-color: color-mix(in srgb, var(--pomo) 45%, var(--line));
+}
+
+.sidebar.pomo-break {
+  --pomo: #30a46c;
+}
+
+.sidebar.pomo-paused {
+  --pomo-mix: 9%;
+}
+
+.sidebar.pomo-awaiting {
+  animation: pomo-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes pomo-breathe {
+  50% {
+    background: color-mix(in srgb, var(--pomo) 8%, var(--panel));
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .sidebar.pomo-tint {
+    --pomo-mix: 16%;
+  }
+
+  .sidebar.pomo-paused {
+    --pomo-mix: 7%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar.pomo-awaiting {
+    animation: none;
+  }
 }
 
 .sidebar header {
