@@ -53,6 +53,7 @@ import { matchShortcut } from './shortcuts.ts';
 import { activeTab, createSession, loadState, looksLikeUrl, newTab, normalizeUrl, saveState } from './state.ts';
 import { Terminals } from './terminal.ts';
 import { PARTITION, TabViews } from './views.ts';
+import { keepTailnetDirect } from './proxy.ts';
 import { Shells, windowBackground } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.ts';
 import { installRelease, latestRelease, type Release } from './release-updater.ts';
@@ -2072,6 +2073,7 @@ app.whenReady().then(async () => {
   setupGoogleSignIn(ses);
   downloads = new Downloads(ses, changed);
   setupPermissions(ses, focusedWindow);
+  keepTailnetDirect([ses, session.defaultSession]);
 
   // After a restart nothing is loaded yet; only the project on screen resumes, the rest wait
   // for an explicit start.
