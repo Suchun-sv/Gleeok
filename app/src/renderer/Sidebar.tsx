@@ -61,13 +61,14 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         </span>
         <span className="spacer" />
         {server.status === 'local' ? (
-          <button className="sync-status local" title="本地模式" onClick={openSyncSettings}>
+          <button className="sync-status local" data-tip={'本地模式：数据只存在这台电脑上\n点击设置同步'} aria-label="本地模式" onClick={openSyncSettings}>
             <Icon name="laptop" size={13} />
           </button>
         ) : (
           <button
             className={`sync-status ${server.status}`}
-            title={`${SYNC_LABELS[server.status]}${server.url ? ` · ${server.url}` : ''}${server.error ? `\n${server.error}` : ''}\n点击重新同步`}
+            data-tip={`${SYNC_LABELS[server.status]}${server.url ? ` · ${server.url}` : ''}${server.error ? `\n${server.error}` : ''}\n点击重新同步`}
+            aria-label={SYNC_LABELS[server.status]}
             onClick={() => void gleeok.refreshProjects()}
           >
             <Icon name={server.status === 'ok' ? 'cloud' : 'cloudOff'} size={13} />

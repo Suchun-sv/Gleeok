@@ -166,7 +166,7 @@ main {
 }
 
 .sidebar header {
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -180,6 +180,37 @@ main {
   min-width: 0;
 }
 
+/* Its tooltip at once (a native title waits about a second), below the row and within the
+   sidebar's width: pages beside it are native views and would cover anything reaching over. */
+.sidebar header {
+  position: relative;
+}
+
+.sync-status[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 70;
+  top: calc(100% - 2px);
+  left: 8px;
+  right: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  text-align: left;
+  pointer-events: none;
+}
+
+.sync-status .icon {
+  flex-shrink: 0;
+}
+
 .sync-status .label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -188,9 +219,8 @@ main {
 /* macOS (no title bar): the traffic lights take the sidebar's top-left corner, or the first tab
    strip's when there is no sidebar; those rows and the tab strips' empty space drag the window. */
 .app.mac-inset .sidebar header {
-  /* What the traffic lights leave is narrow: tighter gaps, so 离线 / 连接中 fit beside the buttons. */
+  /* What the traffic lights leave is narrow, so 离线 / 连接中 fit beside the buttons. */
   padding: 5px 8px 5px 80px;
-  gap: 4px;
   -webkit-app-region: drag;
 }
 
@@ -297,7 +327,7 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 6px;
+  padding: 2px 4px;
   border: 0;
   border-radius: 6px;
   background: none;
