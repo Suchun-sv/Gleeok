@@ -59,11 +59,12 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         ) : (
           <button
             className={`sync-status ${server.status}`}
-            title={`${server.url ?? ''}${server.error ? `\n${server.error}` : ''}\n点击重新同步`.trim()}
+            title={`${SYNC_LABELS[server.status]}${server.url ? ` · ${server.url}` : ''}${server.error ? `\n${server.error}` : ''}\n点击重新同步`}
             onClick={() => void gleeok.refreshProjects()}
           >
             <Icon name={server.status === 'ok' ? 'cloud' : 'cloudOff'} size={13} />
-            {SYNC_LABELS[server.status]}
+            {/* All well is the cloud alone (the row is narrow, more so beside macOS's traffic lights); a problem says so. */}
+            {server.status !== 'ok' && <span className="label">{SYNC_LABELS[server.status]}</span>}
           </button>
         )}
         <button

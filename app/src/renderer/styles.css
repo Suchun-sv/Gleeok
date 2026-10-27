@@ -123,12 +123,30 @@ main {
 
 .sidebar header {
   gap: 8px;
+  min-width: 0;
+}
+
+/* Buttons keep their size in a narrow row; only the sync label gives way. */
+.sidebar header > * {
+  flex-shrink: 0;
+}
+
+.sidebar header > .sync-status {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.sync-status .label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* macOS (no title bar): the traffic lights take the sidebar's top-left corner, or the first tab
    strip's when there is no sidebar; those rows and the tab strips' empty space drag the window. */
 .app.mac-inset .sidebar header {
-  padding: 5px 14px 5px 80px;
+  /* What the traffic lights leave is narrow: tighter gaps, so 离线 / 连接中 fit beside the buttons. */
+  padding: 5px 8px 5px 80px;
+  gap: 4px;
   -webkit-app-region: drag;
 }
 
