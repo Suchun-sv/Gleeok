@@ -45,7 +45,7 @@ type Step =
    * Real pointer input to `target`: glide from where the pointer was to `to`, or to the [x, y] that
    * `js` returns when run in the target, then press, release or click. Recordings note the pointer.
    */
-  | { pointer: { target?: Target; to?: [number, number]; js?: string; ms?: number; press?: 'down' | 'up' | 'click' } }
+  | { pointer: { target?: Target; to?: [number, number]; js?: string; ms?: number; press?: 'down' | 'up' | 'click'; modifiers?: ('alt' | 'shift' | 'control' | 'meta')[] } }
   /** Real typing into `target`, one character at a time, then an optional key such as "Enter". */
   | { type: { target?: Target; text?: string; key?: string } };
 
@@ -146,7 +146,7 @@ export async function runDevScript(
       recording = null;
     }
     if ('pointer' in step) {
-      const { target = 'main', js, ms = 500, press } = step.pointer;
+      const { target = 'main', js, ms = 500, press, modifiers = [] } = step.pointer;
       const wc = targetWc(target);
       const to = js ? ((await wc?.executeJavaScript(js).catch(() => null)) as [number, number] | null) : step.pointer.to;
       if (!wc || !to) console.log('[devscript] pointer: no target or point', JSON.stringify(step.pointer).slice(0, 200));
@@ -158,10 +158,10 @@ export async function runDevScript(
           const t = i / n;
           const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
           Object.assign(pointer, { target: key, x: Math.round(from[0] + (to[0] - from[0]) * e), y: Math.round(from[1] + (to[1] - from[1]) * e) });
-          wc.sendInputEvent({ type: 'mouseMove', x: pointer.x, y: pointer.y, ...(pointer.down ? { button: 'left' as const, modifiers: ['leftbuttondown'] } : {}) });
+          wc.sendInputEvent({ type: 'mouseMove', x: pointer.x, y: pointer.y, modifiers: [...modifiers, ...(pointer.down ? ['leftbuttondown' as const] : [])], ...(pointer.down ? { button: 'left' as const } : {}) });
           if (n > 1) await sleep(16);
         }
-        const at = { x: pointer.x, y: pointer.y, button: 'left' as const, clickCount: 1 };
+        const at = { x: pointer.x, y: pointer.y, button: 'left' as const, clickCount: 1, modifiers };
         if (press === 'down' || press === 'click') {
           wc.sendInputEvent({ type: 'mouseDown', ...at });
           pointer.down = true;

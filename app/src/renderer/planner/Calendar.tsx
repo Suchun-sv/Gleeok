@@ -9,6 +9,9 @@ export const VIEW_DAYS: Record<Exclude<CalendarView, 'month'>, number> = { day: 
 
 /** Pixels per hour in the time grid. */
 const HOUR = 44;
+/** Px on each day's right that blocks leave free: a parallel block is dragged out there. */
+const FREE_STRIP = 14;
+const MAC = navigator.platform.startsWith('Mac');
 const SNAP = 15;
 const MINUTE = 60_000;
 
@@ -277,7 +280,8 @@ function TimeGrid({
    * with that time, or a block of its own. A plain click makes nothing (double-click still does).
    */
   const startCreate = (e: React.PointerEvent, d: Date, di: number) => {
-    if (e.button !== 0 || (e.target as HTMLElement).closest('.plan-block')) return;
+    // On a block, Alt/⌥ creates another one beside it instead of moving it.
+    if (e.button !== 0 || ((e.target as HTMLElement).closest('.plan-block') && !e.altKey)) return;
     const y0 = e.clientY;
     const anchor = Math.floor(pointAt(e.clientX, e.clientY).minutes / SNAP) * SNAP;
     let range: { from: number; to: number } | null = null;
@@ -409,13 +413,14 @@ function TimeGrid({
                         style={{
                           top: (p.top / 60) * HOUR,
                           height: Math.max(14, ((p.bottom - p.top) / 60) * HOUR - 2),
-                          left: `calc(${(p.col / p.cols) * 100}% + 2px)`,
-                          width: `calc(${100 / p.cols}% - 4px)`,
+                          // A strip on the right stays free, to drag out a block in parallel.
+                          left: `calc((100% - ${FREE_STRIP}px) * ${p.col / p.cols} + 2px)`,
+                          width: `calc((100% - ${FREE_STRIP}px) / ${p.cols} - 4px)`,
                           borderLeftColor: t ? PRIORITY_COLORS[t.priority ?? 0] : undefined,
                         }}
-                        onPointerDown={(e) => startDrag(e, p.block, 'move')}
+                        onPointerDown={(e) => !e.altKey && startDrag(e, p.block, 'move')}
                         onDoubleClick={(e) => e.stopPropagation()}
-                        title={`${blockTitle(p.block, tasks)}  ${hhmm(s)}–${hhmm(new Date(p.block.end))}`}
+                        title={`${blockTitle(p.block, tasks)}  ${hhmm(s)}–${hhmm(new Date(p.block.end))}\n按住 ${MAC ? '⌥' : 'Alt'} 拖动：在这段时间再建一个`}
                       >
                         <span className="plan-block-name">{blockTitle(p.block, tasks)}</span>
                         {!short && (
