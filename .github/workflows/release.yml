@@ -75,11 +75,10 @@ jobs:
         run: |
           v=$(node -p "JSON.parse(require('fs').readFileSync('node_modules/koffi/package.json', 'utf8')).version")
           other=$([ "$(uname -m)" = arm64 ] && echo x64 || echo arm64)
-          tgz=$(npm pack "@koromix/koffi-darwin-$other@$v" --silent)
-          mkdir -p "node_modules/@koromix/koffi-darwin-$other"
-          tar -xzf "$tgz" -C "node_modules/@koromix/koffi-darwin-$other" --strip-components=1
-          rm "$tgz"
-          ls node_modules/@koromix
+          dir="node_modules/@koromix/koffi-darwin-$other"
+          mkdir -p "$dir"
+          curl -fsSL "https://registry.npmjs.org/@koromix/koffi-darwin-$other/-/koffi-darwin-$other-$v.tgz" | tar -xz -C "$dir" --strip-components=1
+          ls -R node_modules/@koromix | grep '\.node$'
       - run: npm run build
 
       - name: Code-signing certificate (macOS)
