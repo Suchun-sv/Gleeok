@@ -73,7 +73,7 @@ jobs:
       - name: koffi for the other Mac architecture
         if: runner.os == 'macOS'
         run: |
-          v=$(node -p "require('koffi/package.json').version")
+          v=$(node -p "JSON.parse(require('fs').readFileSync('node_modules/koffi/package.json', 'utf8')).version")
           other=$([ "$(uname -m)" = arm64 ] && echo x64 || echo arm64)
           tgz=$(npm pack "@koromix/koffi-darwin-$other@$v" --silent)
           mkdir -p "node_modules/@koromix/koffi-darwin-$other"
