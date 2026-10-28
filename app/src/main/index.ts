@@ -54,6 +54,7 @@ import { activeTab, createSession, loadState, looksLikeUrl, newTab, normalizeUrl
 import { Terminals } from './terminal.ts';
 import { PARTITION, TabViews } from './views.ts';
 import { keepTailnetDirect } from './proxy.ts';
+import { canMovePointer, movePointer } from './pointer.ts';
 import { Shells, windowBackground } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.ts';
 import { installRelease, latestRelease, type Release } from './release-updater.ts';
@@ -212,6 +213,51 @@ function allVisibleSlots(): number[] {
   return openWindows()
     .flatMap((w) => visibleSlots(w))
     .sort((a, b) => a - b);
+}
+
+/** Every pane on screen, counting a maximized pane's hidden neighbours too (for pane numbers). */
+function allShownSlots(): number[] {
+  return openWindows()
+    .flatMap((w) => visibleSlots({ ...w, maximized: undefined }))
+    .sort((a, b) => a - b);
+}
+
+/** Where the pointer last was in each pane (fractions of its box): 鼠标跟随焦点 goes back there. */
+const pointerInPane = new Map<number, { fx: number; fy: number }>();
+
+function paneOnScreen(slot: number): Rect | null {
+  const ws = windowOfSlot(slot);
+  const bw = ws && shells.get(ws.id);
+  const r = ws && paneRects.get(ws.id)?.[slot];
+  if (!bw || bw.isDestroyed() || !r) return null;
+  const c = bw.getContentBounds();
+  return { x: c.x + r.x, y: c.y + r.y, width: r.width, height: r.height };
+}
+
+/**
+ * A shortcut picked this pane: take the pointer along (Settings → 栏, on unless turned off; macOS
+ * and Windows only), to where it last was in that pane, else its middle. Called before the focus
+ * moves; when that changes the layout (a maximized pane gives way) it waits for the new boxes.
+ */
+function pointerTo(slot: number) {
+  if (state.pointerFollows === false || !canMovePointer) return;
+  const at = screen.getCursorScreenPoint();
+  const inside = (r: Rect) => at.x >= r.x && at.x < r.x + r.width && at.y >= r.y && at.y < r.y + r.height;
+  for (const s of allVisibleSlots()) {
+    const r = paneOnScreen(s);
+    if (!r || !inside(r)) continue;
+    pointerInPane.set(s, { fx: (at.x - r.x) / r.width, fy: (at.y - r.y) / r.height });
+    if (s === slot) return;
+  }
+  const relayout = !allVisibleSlots().includes(slot);
+  const go = () => {
+    const r = paneOnScreen(slot);
+    if (!r) return;
+    const f = pointerInPane.get(slot) ?? { fx: 0.5, fy: 0.5 };
+    movePointer(Math.round(r.x + f.fx * r.width), Math.round(r.y + f.fy * r.height));
+  };
+  if (relayout) setTimeout(go, 250);
+  else go();
 }
 
 function windowOfSlot(slot: number): AppWindowState | null {
@@ -1277,13 +1323,27 @@ function dispatch(action: Action) {
       focusSlot(action.slot);
       return;
     case 'focusPaneDelta': {
-      // From a maximized pane, step to its neighbour with all panes back.
-      if (mainWindowState().maximized !== undefined) delete mainWindowState().maximized;
-      const all = allVisibleSlots();
+      // From a maximized pane, step to its neighbour with all panes back (focusSlot does that).
+      const all = allShownSlots();
       const i = all.indexOf(state.focusedPane);
-      focusSlot(all[(i + action.delta + all.length) % all.length]);
+      const to = all[(i + action.delta + all.length) % all.length];
+      if (action.follow) pointerTo(to);
+      if (mainWindowState().maximized !== undefined) delete mainWindowState().maximized;
+      focusSlot(to);
       return;
     }
+    case 'focusPaneIndex': {
+      // Numbers count every pane on screen, a maximized one's hidden neighbours too.
+      const to = allShownSlots()[action.index];
+      if (to === undefined) return;
+      if (action.follow) pointerTo(to);
+      focusSlot(to);
+      return;
+    }
+    case 'setPointerFollows':
+      state.pointerFollows = action.on ? undefined : false;
+      changed();
+      return;
     case 'setVisiblePanes': {
       const main = mainWindowState();
       const want = Math.min(Math.max(1, action.count), state.paneNames.length);

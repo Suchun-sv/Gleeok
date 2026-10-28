@@ -132,7 +132,6 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
               <button className="kebab" onClick={menu} title="更多操作">
                 ⋯
               </button>
-              {i < 9 && <kbd>{i + 1}</kbd>}
             </div>
           );
         })}

@@ -6,7 +6,7 @@ import { build } from 'esbuild';
 import { build as viteBuild } from 'vite';
 
 // Loaded at run time from node_modules, never bundled: a hot update has to find the same ones.
-const external = ['electron', '@bitwarden/cli', 'node-pty', 'electron-updater'];
+const external = ['electron', '@bitwarden/cli', 'node-pty', 'electron-updater', 'koffi'];
 
 await build({
   entryPoints: { main: 'src/main/index.ts', preload: 'src/preload/index.ts', 'page-preload': 'src/preload/page.ts' },

@@ -104,6 +104,7 @@ function PaneSettings({ snap }: { snap: Snapshot }) {
   const setCount = (n: number) =>
     save(Array.from({ length: n }, (_, i) => (i < saved.length ? saved[i] : (DEFAULT_PANE_NAMES[i] ?? ''))));
   return (
+    <>
     <section className="card">
       <h3>栏</h3>
       <div className="row">
@@ -133,6 +134,33 @@ function PaneSettings({ snap }: { snap: Snapshot }) {
         栏名显示在每栏标签条的最左边，也用在右键菜单、命令面板和拆出去的窗口标题里（{draft.map((_, i) => paneName(draft, i)).join(' / ')}）。
         减少栏数时，多出来那几栏的标签页会保留，再加回来就还在。拖动两栏之间的分隔线可以调宽度，双击分隔线恢复等宽。
         主窗口显示其中几栏用标签条右侧的布局按钮切换（{snap.platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+'}Shift+数字）。
+      </p>
+    </section>
+    <PaneFocusSettings snap={snap} />
+    </>
+  );
+}
+
+/** Pane shortcuts, and whether the pointer goes along (this machine). */
+function PaneFocusSettings({ snap }: { snap: Snapshot }) {
+  const mac = snap.platform === 'darwin';
+  const possible = mac || snap.platform === 'win32';
+  return (
+    <section className="card">
+      <h3>切换栏</h3>
+      <label className="lib-check">
+        <input
+          type="checkbox"
+          disabled={!possible}
+          checked={possible && snap.state.pointerFollows !== false}
+          onChange={(e) => gleeok.dispatch({ type: 'setPointerFollows', on: e.target.checked })}
+        />
+        鼠标跟随焦点：用快捷键切到一栏时，指针也移过去
+      </label>
+      <p className="hint">
+        {mac ? '⌘1 / ⌘2 / ⌘3…' : 'Ctrl+Alt+1 / 2 / 3…'} 跳到第几栏（拆到其他窗口的栏接着往后数），{mac ? '⌘⌥← / →' : 'Ctrl+Alt+← / →'}{' '}
+        切到左右一栏。指针回到你上次在那一栏里的位置，第一次去的栏放在中间；用鼠标点击切栏时指针不动。
+        {possible ? '' : ' Linux（Wayland）不允许程序移动指针，这里用不了。'}只对这台电脑生效。
       </p>
     </section>
   );

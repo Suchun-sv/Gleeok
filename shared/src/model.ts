@@ -300,6 +300,8 @@ export interface GlobalState {
   clock?: 'fullscreen' | 'always' | 'never';
   /** Other places in the sidebar, each with its time and weather (this machine). Entries saved before they had coordinates show the time only. */
   zones?: Zone[];
+  /** Panes picked with a shortcut take the mouse pointer along (unset: on, where possible). */
+  pointerFollows?: boolean;
   /** Light or dark, on this machine (unset: as the system is). Web pages follow it too. */
   theme?: 'light' | 'dark';
   /** Installed builds: also take hot updates of every push to main (unset: releases only). */

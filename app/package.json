@@ -107,7 +107,8 @@
     "esbuild": true,
     "electron-winstaller": false,
     "core-js": false,
-    "node-pty": true
+    "node-pty": true,
+    "koffi": true
   },
   "dependencies": {
     "@bitwarden/cli": "^2026.10.0",
@@ -117,6 +118,7 @@
     "@xterm/xterm": "^6.0.0",
     "electron-updater": "^6.8.11",
     "hono": "^4.13.13",
+    "koffi": "^3.3.4",
     "node-pty": "^1.1.0"
   },
   "license": "AGPL-3.0-only"

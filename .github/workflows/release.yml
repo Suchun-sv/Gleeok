@@ -68,6 +68,18 @@ jobs:
         run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
 
       - run: npm ci --no-fund --no-audit
+      # koffi (鼠标跟随焦点) ships each platform's binary as an optional package and npm installs
+      # only this machine's; the Mac runner builds both architectures, so the other one is added.
+      - name: koffi for the other Mac architecture
+        if: runner.os == 'macOS'
+        run: |
+          v=$(node -p "require('koffi/package.json').version")
+          other=$([ "$(uname -m)" = arm64 ] && echo x64 || echo arm64)
+          tgz=$(npm pack "@koromix/koffi-darwin-$other@$v" --silent)
+          mkdir -p "node_modules/@koromix/koffi-darwin-$other"
+          tar -xzf "$tgz" -C "node_modules/@koromix/koffi-darwin-$other" --strip-components=1
+          rm "$tgz"
+          ls node_modules/@koromix
       - run: npm run build
 
       - name: Code-signing certificate (macOS)

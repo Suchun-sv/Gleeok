@@ -3,10 +3,10 @@ import type { Action } from '../../../shared/src/ipc.ts';
 
 /**
  * App-level keys use one prefix (Ctrl+Alt on Linux, Cmd+Opt on macOS) so they don't collide
- * with web apps. Tab keys follow ordinary browser conventions. Project switching on macOS is
- * Cmd+1..9 / Cmd+[ ]; on Linux Super belongs to the compositor (niri binds Mod+1..9 and
- * Mod+[ ]), so it stays on the prefix. Matching uses `code`, because with Opt held macOS
- * reports a composed character in `key`.
+ * with web apps. Tab keys follow ordinary browser conventions. Panes by number are Cmd+1..9 on
+ * macOS; on Linux Super belongs to the compositor (niri binds Mod+1..9 and Mod+[ ]), so there
+ * they are prefix+1..9. Projects step with Cmd+[ ] (macOS) or prefix+↑↓ (Linux). Matching uses
+ * `code`, because with Opt held macOS reports a composed character in `key`.
  */
 export function matchShortcut(input: Input, platform: string): Action | null {
   if (input.type !== 'keyDown') return null;
@@ -17,7 +17,7 @@ export function matchShortcut(input: Input, platform: string): Action | null {
 
   const digit = /^Digit([1-9])$/.exec(code);
   if (mac && primary && !input.shift) {
-    if (digit) return { type: 'selectProjectIndex', index: Number(digit[1]) - 1 };
+    if (digit) return { type: 'focusPaneIndex', index: Number(digit[1]) - 1, follow: true };
     if (code === 'BracketLeft') return { type: 'selectProjectDelta', delta: -1 };
     if (code === 'BracketRight') return { type: 'selectProjectDelta', delta: 1 };
   }
@@ -28,11 +28,11 @@ export function matchShortcut(input: Input, platform: string): Action | null {
     }
     if (mac && code === 'BracketLeft') return { type: 'history', op: 'back' };
     if (mac && code === 'BracketRight') return { type: 'history', op: 'forward' };
-    if (!mac && digit) return { type: 'selectProjectIndex', index: Number(digit[1]) - 1 };
+    if (!mac && digit) return { type: 'focusPaneIndex', index: Number(digit[1]) - 1, follow: true };
     if (!mac && (code === 'ArrowUp' || code === 'KeyK')) return { type: 'selectProjectDelta', delta: -1 };
     if (!mac && (code === 'ArrowDown' || code === 'KeyJ')) return { type: 'selectProjectDelta', delta: 1 };
-    if (code === 'ArrowLeft' || code === 'KeyH') return { type: 'focusPaneDelta', delta: -1 };
-    if (code === 'ArrowRight' || code === 'KeyL') return { type: 'focusPaneDelta', delta: 1 };
+    if (code === 'ArrowLeft' || code === 'KeyH') return { type: 'focusPaneDelta', delta: -1, follow: true };
+    if (code === 'ArrowRight' || code === 'KeyL') return { type: 'focusPaneDelta', delta: 1, follow: true };
     if (code === 'KeyE') return { type: 'toggleEntry' };
     if (code === 'KeyP') return { type: 'toggleLibrary' };
     if (code === 'KeyA') return { type: 'togglePlanner' };

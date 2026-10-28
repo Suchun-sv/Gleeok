@@ -183,7 +183,11 @@ export type Action =
   | { type: 'selectProjectIndex'; index: number }
   | { type: 'selectProjectDelta'; delta: number }
   | { type: 'focusPane'; slot: number }
-  | { type: 'focusPaneDelta'; delta: number }
+  /** follow: the mouse pointer goes along (a shortcut did it; 鼠标跟随焦点). */
+  | { type: 'focusPaneDelta'; delta: number; follow?: boolean }
+  /** The N-th pane on screen (main window first, then the others), 0-based. */
+  | { type: 'focusPaneIndex'; index: number; follow?: boolean }
+  | { type: 'setPointerFollows'; on: boolean }
   | { type: 'newTab'; slot?: number; url?: string }
   | { type: 'closeTab'; slot?: number; tabId?: string }
   | { type: 'activateTab'; slot: number; tabId: string }
