@@ -36,7 +36,7 @@ def font(name, size, index=0):
 
 TITLE = font('Noto Sans CJK SC:bold', 30, index=2)
 SUB = font('Noto Sans CJK SC', 17, index=2)
-KEY = font('DejaVu Sans:bold', 30)
+KEY = font('Noto Sans CJK SC:bold', 28, index=2)
 
 
 def load(name):
@@ -195,11 +195,11 @@ for i in range(26):  # the pane flies to the second screen
     t = i / 25
     timeline.append(dict(left=('mix', 'k1gap', 'k2', ease((t - 0.6) / 0.2)), right='wall', scene='k1', fly=(t, False)))
 hold(40, 'k2', 's2', 'k2')
-switch('2', '3', '⌘ 2')
+switch('2', '3', '→ 写论文')
 hold(22, 'k3', 's3', 'k3')
-switch('3', '4', '⌘ 3')
+switch('3', '4', '→ 做实验')
 hold(22, 'k4', 's4', 'k4')
-switch('4', '2', '⌘ 1')
+switch('4', '2', '→ 读论文')
 hold(10, 'k2', 's2', 'k2')
 sat_btn = to_canvas(RIGHT, SW - 20, 48)
 from_cur = (RIGHT[0] + MW * 0.5, RIGHT[1] + MH * 0.55)
