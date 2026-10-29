@@ -8,5 +8,7 @@ Description=Push Paseo project catalog to Gleeok
 
 [Service]
 Type=oneshot
+# A run that hangs is ended, so the timer's next run still comes.
+TimeoutStartSec=90
 EnvironmentFile=%h/.config/gleeok/paseo-sync.env
 ExecStart=/usr/bin/env node %h/github/gleeok/paseo-sync/sync.mjs

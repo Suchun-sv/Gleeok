@@ -87,3 +87,6 @@ const res = await fetch(new URL(`/api/paseo/daemons/${status.serverId}`, gleeok.
 });
 if (!res.ok) throw new Error(`gleeok server: ${res.status} ${await res.text()}`);
 console.log(`${status.hostname} (${status.serverId}): ${catalog.length} projects synced`, await res.json());
+// The Paseo client can leave a socket open after close(); a run that never ends keeps the timer
+// from starting the next one (the catalog went 2 days stale on 2026-10-27).
+process.exit(0);
