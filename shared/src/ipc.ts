@@ -272,7 +272,11 @@ export type Action =
   /** Open a project's code link (its primary one by default), reusing a tab already showing it. */
   | { type: 'openCode'; projectId?: string; linkId?: string }
   | { type: 'codeMenu'; projectId: string }
-  | { type: 'setPrimaryCode'; projectId: string; linkId: string };
+  | { type: 'setPrimaryCode'; projectId: string; linkId: string }
+  /** Show or hide the 代码侧边栏 (split mode); turn split mode on or off; its width after a drag. */
+  | { type: 'toggleCodeSide' }
+  | { type: 'setCodeSplit'; on: boolean }
+  | { type: 'setCodeSideWidth'; width: number };
 
 /** Commands main sends to the shell renderer for things only the DOM can do. */
 export type Command =

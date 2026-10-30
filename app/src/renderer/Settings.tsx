@@ -27,6 +27,7 @@ const TABS = [
   { id: 'library', label: '文献库' },
   { id: 'planner', label: '日程' },
   { id: 'agent', label: 'Agent' },
+  { id: 'code', label: '代码' },
   { id: 'paseo', label: 'Paseo' },
   { id: 'sync', label: '同步' },
   { id: 'vault', label: '密码库' },
@@ -85,6 +86,7 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
           </>
         )}
         {tab === 'agent' && <AgentSettings />}
+        {tab === 'code' && <CodeSettings snap={snap} />}
         {tab === 'paseo' && <PaseoSettings snap={snap} />}
         {tab === 'sync' && <SyncSettings snap={snap} />}
         {tab === 'vault' && <VaultSettings snap={snap} />}
@@ -137,6 +139,57 @@ function PaneSettings({ snap }: { snap: Snapshot }) {
       </p>
     </section>
     <PaneFocusSettings snap={snap} />
+    </>
+  );
+}
+
+const CODE_SETTINGS_JSON = `"workbench.secondarySideBar.forceMaximized": true,
+"workbench.startupEditor": "none",
+"window.commandCenter": false,
+"workbench.layoutControl.enabled": false`;
+const CODE_KEYBINDINGS_JSON = `{ "key": "ctrl+alt+shift+f7", "command": "workbench.action.newEmptyEditorWindow" },
+{ "key": "ctrl+alt+shift+f9", "command": "workbench.action.moveEditorToLastGroup" },
+{ "key": "ctrl+alt+shift+f4", "command": "workbench.action.maximizeAuxiliaryBar" }`;
+
+/** 代码侧边栏: split mode, and what the code-server needs for it. */
+function CodeSettings({ snap }: { snap: Snapshot }) {
+  const mac = snap.platform === 'darwin';
+  const [copied, setCopied] = useState('');
+  const copy = (what: string, text: string) => {
+    gleeok.clipboardWrite(text);
+    setCopied(what);
+    setTimeout(() => setCopied(''), 1500);
+  };
+  return (
+    <>
+      <section className="card">
+        <h3>代码侧边栏</h3>
+        <label className="lib-check">
+          <input type="checkbox" checked={!!snap.state.codeSplit} onChange={(e) => gleeok.dispatch({ type: 'setCodeSplit', on: e.target.checked })} />
+          拆分模式：code-server 的资源管理器放在右侧的代码侧边栏，编辑器占最右边一栏
+        </label>
+        <p className="hint">
+          打开后，{mac ? '⌘⌥C' : 'Ctrl+Alt+C'} 或项目旁的 {'</>'} 打开 / 收起代码侧边栏；在侧边栏里点文件，就在最右边那一栏的编辑器里打开。两边是同一个
+          VS Code。侧边栏的宽度拖动它左边的分隔线调整。关闭拆分模式时，{'</>'} 照旧在草稿区打开 code-server。只对这台电脑生效。
+        </p>
+      </section>
+      <section className="card">
+        <h3>code-server 要做的一次性设置</h3>
+        <p className="hint">在 code-server 里（用到的每台 code-server 各做一次）：</p>
+        <ol className="code-setup">
+          <li>
+            按 ⌘⇧P / Ctrl+Shift+P，运行「Preferences: Open User Settings (JSON)」，把下面几行加进去：
+            <pre>{CODE_SETTINGS_JSON}</pre>
+            <button onClick={() => copy('settings', CODE_SETTINGS_JSON)}>{copied === 'settings' ? '已复制' : '复制'}</button>
+          </li>
+          <li>
+            运行「Preferences: Open Keyboard Shortcuts (JSON)」，把下面三行加进方括号里（Gleeok 靠按这几个键来拆分和移动编辑器）：
+            <pre>{CODE_KEYBINDINGS_JSON}</pre>
+            <button onClick={() => copy('keys', CODE_KEYBINDINGS_JSON)}>{copied === 'keys' ? '已复制' : '复制'}</button>
+          </li>
+          <li>把左侧活动栏里的「资源管理器」「搜索」「源代码管理」图标，拖到右边的辅助侧边栏（Secondary Side Bar）里。VS Code 会记住。</li>
+        </ol>
+      </section>
     </>
   );
 }

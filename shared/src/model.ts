@@ -100,6 +100,9 @@ export function primaryCodeLink(p: Pick<Project, 'links'>): Link | undefined {
 }
 /** Code-server pages open in 草稿区. */
 export const CODE_PANE = 1;
+/** In reported pane rects, the 代码侧边栏's box (the main window's right edge). */
+export const CODE_SIDE_SLOT = 99;
+export const CODE_SIDE_WIDTH = 300;
 
 /** The server-managed links a Paseo project should carry, in order. */
 export function managedPaseoLinks(
@@ -302,6 +305,13 @@ export interface GlobalState {
   zones?: Zone[];
   /** Panes picked with a shortcut take the mouse pointer along (unset: on, where possible). */
   pointerFollows?: boolean;
+  /**
+   * 代码侧边栏 (Settings → 代码): a project's code-server split into a sidebar on the right (its
+   * views) and the rightmost pane (its editors). Off: the 代码 button opens code-server in a tab.
+   */
+  codeSplit?: boolean;
+  /** The 代码侧边栏 is showing, and how wide it is (px). */
+  codeSide?: { open: boolean; width?: number };
   /** Light or dark, on this machine (unset: as the system is). Web pages follow it too. */
   theme?: 'light' | 'dark';
   /** Installed builds: also take hot updates of every push to main (unset: releases only). */

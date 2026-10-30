@@ -20,6 +20,9 @@ import {
   sameUrl,
   shortTitle,
   visibleSlots,
+  CODE_SIDE_SLOT,
+  CODE_SIDE_WIDTH,
+  primaryCodeLink,
   type AppWindowState,
   type Link,
   type Pane,
@@ -60,6 +63,13 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
   const main = snap.state.windows.find((w) => w.role === 'main')!;
   const slots = visibleSlots(win);
   const { focusRatio } = main.layout;
+  // 代码侧边栏 (split mode): code-server's views on the right, its editors in the rightmost pane.
+  const codeShown =
+    win.role === 'main' && !!snap.state.codeSplit && !!snap.state.codeSide?.open && session.lifecycle === 'live' && !!primaryCodeLink(project);
+  const editorSlot = codeShown ? slots.at(-1) : undefined;
+  const sideBox = useRef<HTMLDivElement>(null);
+  const [sideLive, setSideLive] = useState<number | null>(null);
+  const sideWidth = sideLive ?? snap.state.codeSide?.width ?? CODE_SIDE_WIDTH;
   // Once a pane lives in its own window, the panes left in the main window split it evenly.
   const focusExpand = main.layout.focusExpand && !snap.state.windows.some((w) => w.role === 'satellite');
   // A slot can be detached while the main window still shows at least one other pane.
@@ -108,14 +118,42 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
     el.addEventListener('lostpointercapture', end);
   }
 
+  /** Drag the line between the panes and the 代码侧边栏 (pages are screenshots meanwhile). */
+  function startSideResize(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    gleeok.dispatch({ type: 'coverPages', winId: win.id, active: true });
+    const startX = e.clientX;
+    const start = sideWidth;
+    let latest = start;
+    const move = (ev: PointerEvent) => {
+      if (ev.buttons === 0) return end();
+      latest = Math.min(Math.max(start + startX - ev.clientX, 200), 800);
+      setSideLive(latest);
+    };
+    const end = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', end);
+      el.removeEventListener('lostpointercapture', end);
+      gleeok.dispatch({ type: 'setCodeSideWidth', width: latest });
+      gleeok.dispatch({ type: 'coverPages', winId: win.id, active: false });
+      setTimeout(() => setSideLive(null), 300);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', end);
+    el.addEventListener('lostpointercapture', end);
+  }
+
   function measure() {
     const rects: PaneRects = {};
-    for (const slot of slots) {
-      const r = boxes.current.get(slot)?.getBoundingClientRect();
-      rects[slot] = r
-        ? { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }
-        : null;
-    }
+    const rectOf = (el: Element | null | undefined) => {
+      const r = el?.getBoundingClientRect();
+      return r ? { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) } : null;
+    };
+    for (const slot of slots) rects[slot] = rectOf(boxes.current.get(slot));
+    if (codeShown) rects[CODE_SIDE_SLOT] = rectOf(sideBox.current);
     const json = JSON.stringify(rects);
     if (json !== lastSent.current) {
       lastSent.current = json;
@@ -127,6 +165,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
   useEffect(() => {
     const ro = new ResizeObserver(measure);
     for (const el of boxes.current.values()) ro.observe(el);
+    if (sideBox.current) ro.observe(sideBox.current);
     window.addEventListener('resize', measure);
     return () => {
       ro.disconnect();
@@ -134,7 +173,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
       gleeok.reportPaneRects(win.id, {});
       lastSent.current = '';
     };
-  }, [slots.join(',')]);
+  }, [slots.join(','), codeShown]);
 
   return (
     <div className="panes">
@@ -150,6 +189,18 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
             title="拖动调整宽度，双击恢复等宽"
           />
         ),
+        slot === editorSlot ? (
+          <CodeEditorPane
+            key={slot}
+            name={paneName(names, slot)}
+            projectName={project.name}
+            focused={snap.state.focusedPane === slot}
+            grow={weightOf(slot) * focusOf(slot)}
+            boxRef={(el) => (el ? boxes.current.set(slot, el) : boxes.current.delete(slot))}
+            leading={i === 0 ? leading : null}
+            trailing={i === slots.length - 1 ? trailing : null}
+          />
+        ) : (
         <PaneView
           platform={snap.platform}
           name={paneName(names, slot)}
@@ -194,9 +245,45 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
               </>
             )
           }
-        />,
+        />
+        ),
       ])}
+      {codeShown && [
+        <div key="code-divider" className="pane-divider" onPointerDown={startSideResize} title="拖动调整代码侧边栏的宽度" />,
+        <div key="code-side" ref={sideBox} className="code-side" style={{ width: sideWidth }} />,
+      ]}
     </div>
+  );
+}
+
+/**
+ * The rightmost pane while the 代码侧边栏 is open: VS Code's editors (a native view main puts in
+ * the box), under a plain strip with the pane's name, the layout buttons and a close button.
+ */
+function CodeEditorPane(props: {
+  name: string;
+  projectName: string;
+  focused: boolean;
+  grow: number;
+  boxRef: (el: HTMLDivElement | null) => void;
+  leading?: React.ReactNode;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <section className={`pane code-editor ${props.focused ? 'focused' : ''}`} style={{ flexGrow: props.grow }}>
+      <div className="tabs">
+        {props.leading && <div className="tabs-leading">{props.leading}</div>}
+        <span className="pane-name">{props.name}</span>
+        <span className="code-editor-label">
+          <Icon name="code" size={12} /> 代码 · {props.projectName}
+        </span>
+        <button className="tab-add" onClick={() => gleeok.dispatch({ type: 'toggleCodeSide' })} title="收起代码侧边栏，这一栏回到网页">
+          ×
+        </button>
+        {props.trailing && <div className="tabs-trailing">{props.trailing}</div>}
+      </div>
+      <div className="content" ref={props.boxRef} />
+    </section>
   );
 }
 

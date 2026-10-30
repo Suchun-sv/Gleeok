@@ -12,7 +12,7 @@ import { siteOf as hostOf } from './log.ts';
 export const PARTITION = 'persist:gleeok';
 
 /** Preload for web pages (see preload/page.ts); also given to popups they open. */
-const PAGE_PRELOAD = join(__dirname, 'page-preload.js');
+export const PAGE_PRELOAD = join(__dirname, 'page-preload.js');
 
 export interface ViewHooks {
   onUpdate(tabId: string, patch: { url?: string; title?: string; favicon?: string }): void;

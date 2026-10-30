@@ -3811,3 +3811,46 @@ input.plan-pop-title {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* 代码侧边栏: an empty box on the right where main lays code-server's views; and the rightmost
+   pane, whose box holds VS Code's editors. */
+.code-side {
+  flex: none;
+  min-width: 0;
+  background: var(--panel);
+}
+
+.pane.code-editor .code-editor-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pane.code-editor .tabs .tab-add {
+  margin-left: auto;
+}
+
+.code-setup {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+  color: var(--text);
+}
+
+.code-setup pre {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

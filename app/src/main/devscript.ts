@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { app, clipboard, type BrowserWindow } from 'electron';
+import { WebContentsView, app, clipboard, type BrowserWindow } from 'electron';
 import type { Action, Snapshot } from '../../../shared/src/ipc.ts';
 import type { GlobalState } from '../../../shared/src/model.ts';
 import type { TabViews } from './views.ts';
@@ -46,6 +46,12 @@ type Step =
    * `js` returns when run in the target, then press, release or click. Recordings note the pointer.
    */
   | { pointer: { target?: Target; to?: [number, number]; js?: string; ms?: number; press?: 'down' | 'up' | 'click'; modifiers?: ('alt' | 'shift' | 'control' | 'meta')[] } }
+  /** The current project's 代码侧边栏 page: run JS in it, press Ctrl+Alt+Shift+<key>, or type (then Enter). */
+  | { codeEval: string }
+  | { codeHot: string }
+  | { codeType: string }
+  /** Click in the 代码侧边栏 page where `js` (run there) says: [x, y]. */
+  | { codeClick: string }
   /** Real typing into `target`, one character at a time, then an optional key such as "Enter". */
   | { type: { target?: Target; text?: string; key?: string } };
 
@@ -58,6 +64,8 @@ export interface DevHooks {
   /** A real key press in the focused page (trusted input), e.g. "Enter". */
   pressKey(key: string): Promise<void>;
   crashPage(): void;
+  /** The current project's 代码侧边栏 page, if one is open. */
+  codeSide(): Electron.WebContents | null;
 }
 
 /**
@@ -86,6 +94,8 @@ export async function runDevScript(
     ) as Action;
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  // Every page laid over a window, tabs or not (the 代码侧边栏's views too), bottom first.
+  const pagesIn = (win: BrowserWindow) => win.contentView.children.filter((v): v is WebContentsView => v instanceof WebContentsView);
   const targetWc = (t: Target = 'main') => {
     if (t === 'main') return getWindows().find(([id]) => id === 'main')?.[1].webContents;
     const s = getState();
@@ -117,7 +127,7 @@ export async function runDevScript(
           writeFileSync(join(dir, `${n}.png`), img.toPNG());
           const layers: Layer[] = [];
           const win = target === 'main' ? getWindows().find(([id]) => id === 'main')?.[1] : undefined;
-          for (const [i, view] of (win ? views.attachedIn(win) : []).entries()) {
+          for (const [i, view] of (win ? pagesIn(win) : []).entries()) {
             const page = await grab(view.webContents);
             if (!page || page.isEmpty()) continue;
             const b = view.getBounds();
@@ -140,6 +150,32 @@ export async function runDevScript(
     if ('action' in step) dispatch(resolve(step.action));
     if ('record' in step) recording = record(step.record.name, step.record.target ?? 'main', step.record.fps ?? 15);
     if ('label' in step) recording?.label(step.label);
+    if ('codeEval' in step) console.log('[devscript] code eval ->', String(await hooks.codeSide()?.executeJavaScript(step.codeEval).catch((e) => `failed: ${e}`)).slice(0, 800));
+    if ('codeHot' in step) {
+      const wc = hooks.codeSide();
+      const modifiers: ('control' | 'alt' | 'shift')[] = ['control', 'alt', 'shift'];
+      wc?.sendInputEvent({ type: 'keyDown', keyCode: step.codeHot, modifiers });
+      wc?.sendInputEvent({ type: 'keyUp', keyCode: step.codeHot, modifiers });
+      if (!wc) console.log('[devscript] codeHot: no 代码侧边栏');
+    }
+    if ('codeClick' in step) {
+      const wc = hooks.codeSide();
+      const at = (await wc?.executeJavaScript(step.codeClick).catch(() => null)) as [number, number] | null;
+      if (wc && at) {
+        wc.sendInputEvent({ type: 'mouseDown', x: at[0], y: at[1], button: 'left', clickCount: 1 });
+        wc.sendInputEvent({ type: 'mouseUp', x: at[0], y: at[1], button: 'left', clickCount: 1 });
+      } else console.log('[devscript] codeClick: nothing to click');
+    }
+    if ('codeType' in step) {
+      const wc = hooks.codeSide();
+      for (const ch of step.codeType) {
+        wc?.sendInputEvent({ type: 'char', keyCode: ch });
+        await sleep(30);
+      }
+      await sleep(500);
+      wc?.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+      wc?.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
+    }
     if ('stopRecord' in step && recording) {
       recording.stop = true;
       await recording.done;
@@ -252,7 +288,7 @@ export async function runDevScript(
         const name = `${step.capture}__${winId}`;
         const layers = [{ file: `${name}-shell.png`, x: 0, y: 0 }];
         writeFileSync(join(out, layers[0].file), (await win.webContents.capturePage()).toPNG());
-        for (const [i, view] of views.attachedIn(win).entries()) {
+        for (const [i, view] of pagesIn(win).entries()) {
           const b = view.getBounds();
           const file = `${name}-v${i}.png`;
           writeFileSync(join(out, file), (await view.webContents.capturePage()).toPNG());
