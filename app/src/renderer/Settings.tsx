@@ -152,6 +152,8 @@ const CODE_KEYBINDINGS_JSON = `{ "key": "ctrl+alt+shift+f7", "command": "workben
 { "key": "ctrl+alt+shift+f4", "command": "workbench.action.maximizeAuxiliaryBar" },
 { "key": "ctrl+alt+shift+f8", "command": "workbench.action.keepEditor" }`;
 
+const CODE_HIDE_ACTIVITY_BAR = `"workbench.activityBar.location": "hidden"`;
+
 /** 代码侧边栏: split mode, and what the code-server needs for it. */
 function CodeSettings({ snap }: { snap: Snapshot }) {
   const mac = snap.platform === 'darwin';
@@ -188,7 +190,16 @@ function CodeSettings({ snap }: { snap: Snapshot }) {
             <pre>{CODE_KEYBINDINGS_JSON}</pre>
             <button onClick={() => copy('keys', CODE_KEYBINDINGS_JSON)}>{copied === 'keys' ? '已复制' : '复制'}</button>
           </li>
-          <li>把左侧活动栏里的「资源管理器」「搜索」「源代码管理」图标，拖到右边的辅助侧边栏（Secondary Side Bar）里。VS Code 会记住。</li>
+          <li>
+            把左侧活动栏里的「资源管理器」「搜索」「源代码管理」图标，拖到右边辅助侧边栏（Secondary Side Bar）顶部的标签旁边。VS Code
+            会记住。新版 VS Code 在辅助侧边栏里默认放着 Chat，用不到可以右键它的标签隐藏。
+          </li>
+          <li>
+            （可选，做完上一步再做）隐藏活动栏，代码侧边栏里就只剩这几个视图。在用户设置里再加一行：
+            <pre>{CODE_HIDE_ACTIVITY_BAR}</pre>
+            <button onClick={() => copy('activity', CODE_HIDE_ACTIVITY_BAR)}>{copied === 'activity' ? '已复制' : '复制'}</button>
+            <span className="hint"> 要找回活动栏：⌘⇧P 运行「View: Toggle Activity Bar Visibility」，或删掉这一行。</span>
+          </li>
         </ol>
       </section>
     </>
