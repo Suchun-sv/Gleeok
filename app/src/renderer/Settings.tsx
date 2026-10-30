@@ -149,7 +149,8 @@ const CODE_SETTINGS_JSON = `"workbench.secondarySideBar.forceMaximized": true,
 "workbench.layoutControl.enabled": false`;
 const CODE_KEYBINDINGS_JSON = `{ "key": "ctrl+alt+shift+f7", "command": "workbench.action.newEmptyEditorWindow" },
 { "key": "ctrl+alt+shift+f9", "command": "workbench.action.moveEditorToLastGroup" },
-{ "key": "ctrl+alt+shift+f4", "command": "workbench.action.maximizeAuxiliaryBar" }`;
+{ "key": "ctrl+alt+shift+f4", "command": "workbench.action.maximizeAuxiliaryBar" },
+{ "key": "ctrl+alt+shift+f8", "command": "workbench.action.keepEditor" }`;
 
 /** 代码侧边栏: split mode, and what the code-server needs for it. */
 function CodeSettings({ snap }: { snap: Snapshot }) {
@@ -183,7 +184,7 @@ function CodeSettings({ snap }: { snap: Snapshot }) {
             <button onClick={() => copy('settings', CODE_SETTINGS_JSON)}>{copied === 'settings' ? '已复制' : '复制'}</button>
           </li>
           <li>
-            运行「Preferences: Open Keyboard Shortcuts (JSON)」，把下面三行加进方括号里（Gleeok 靠按这几个键来拆分和移动编辑器）：
+            运行「Preferences: Open Keyboard Shortcuts (JSON)」，把下面几行加进方括号里（Gleeok 靠按这几个键来拆分、移动和固定编辑器）：
             <pre>{CODE_KEYBINDINGS_JSON}</pre>
             <button onClick={() => copy('keys', CODE_KEYBINDINGS_JSON)}>{copied === 'keys' ? '已复制' : '复制'}</button>
           </li>

@@ -14,11 +14,13 @@ import { PAGE_PRELOAD, PARTITION } from './views.ts';
  *   ctrl+alt+shift+f7 → workbench.action.newEmptyEditorWindow
  *   ctrl+alt+shift+f9 → workbench.action.moveEditorToLastGroup
  *   ctrl+alt+shift+f4 → workbench.action.maximizeAuxiliaryBar
+ *   ctrl+alt+shift+f8 → workbench.action.keepEditor
  * and Explorer / Search / Source Control dragged into the secondary side bar once.
  */
 
-/** The page announces an editor opened in its own area (see WATCH). */
+/** The page announces an editor opened in its own area, or a double click to pin one (see WATCH). */
 const MOVE_SIGNAL = '[gleeok-code] move';
+const PIN_SIGNAL = '[gleeok-code] pin';
 
 /** Injected into the workbench page: say when its own editor area gets an editor. */
 const WATCH = `(() => {
@@ -31,6 +33,17 @@ const WATCH = `(() => {
     if (part && part.querySelector('.tabs-container .tab, .editor-instance')) console.log(${JSON.stringify(MOVE_SIGNAL)});
   };
   new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(check); } }).observe(document.body, { childList: true, subtree: true });
+  // A double click opens a file pinned, which makes VS Code give the page's own editor area room
+  // for a frame or two (the views shrink and spring back). The first click already opened it as
+  // a preview and it went to the pane; the double click is kept from VS Code and Gleeok pins the
+  // editor there instead (keepEditor), with the views never moving.
+  document.addEventListener('dblclick', (e) => {
+    const row = e.target instanceof Element && e.target.closest('.monaco-list-row');
+    if (!row || !row.closest('.part.auxiliarybar, .part.sidebar')) return;
+    e.stopPropagation();
+    e.preventDefault();
+    console.log(${JSON.stringify(PIN_SIGNAL)});
+  }, true);
   return 'watching';
 })()`;
 
@@ -67,6 +80,12 @@ export class CodeSurfaces {
   sideOf(projectId: string) {
     const s = this.#byProject.get(projectId);
     return s && !s.side.webContents.isDestroyed() ? s.side.webContents : null;
+  }
+
+  /** A project's editor window (for dev scripts). */
+  editorOf(projectId: string) {
+    const e = this.#byProject.get(projectId)?.editor;
+    return e && !e.webContents.isDestroyed() ? e.webContents : null;
   }
 
   /** The surface of a project, made (and its page loaded) on first use. */
@@ -108,6 +127,8 @@ export class CodeSurfaces {
     wc.on('console-message', (e) => {
       const message = (e as unknown as { message?: string }).message ?? '';
       if (message === MOVE_SIGNAL) this.#moveToEditor(s);
+      // After the move the pane's group is active: pinning there keeps the tab.
+      if (message === PIN_SIGNAL) setTimeout(() => s.editor && this.#key(s.editor.webContents, 'F8'), 120);
     });
     wc.on('did-finish-load', () => {
       void wc.executeJavaScript(WATCH).catch(() => {});

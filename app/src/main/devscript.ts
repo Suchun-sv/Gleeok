@@ -48,6 +48,8 @@ type Step =
   | { pointer: { target?: Target; to?: [number, number]; js?: string; ms?: number; press?: 'down' | 'up' | 'click'; modifiers?: ('alt' | 'shift' | 'control' | 'meta')[] } }
   /** The current project's 代码侧边栏 page: run JS in it, press Ctrl+Alt+Shift+<key>, or type (then Enter). */
   | { codeEval: string }
+  /** Run JS in the 代码侧边栏's editor window (the pane), if it is there. */
+  | { codeEditorEval: string }
   | { codeHot: string }
   | { codeType: string }
   /** Click in the 代码侧边栏 page where `js` (run there) says: [x, y]. */
@@ -64,8 +66,9 @@ export interface DevHooks {
   /** A real key press in the focused page (trusted input), e.g. "Enter". */
   pressKey(key: string): Promise<void>;
   crashPage(): void;
-  /** The current project's 代码侧边栏 page, if one is open. */
+  /** The current project's 代码侧边栏 page, and its editor window, if open. */
   codeSide(): Electron.WebContents | null;
+  codeEditor(): Electron.WebContents | null;
 }
 
 /**
@@ -151,6 +154,7 @@ export async function runDevScript(
     if ('record' in step) recording = record(step.record.name, step.record.target ?? 'main', step.record.fps ?? 15);
     if ('label' in step) recording?.label(step.label);
     if ('codeEval' in step) console.log('[devscript] code eval ->', String(await hooks.codeSide()?.executeJavaScript(step.codeEval).catch((e) => `failed: ${e}`)).slice(0, 800));
+    if ('codeEditorEval' in step) console.log('[devscript] editor eval ->', String(await hooks.codeEditor()?.executeJavaScript(step.codeEditorEval).catch((e) => `failed: ${e}`)).slice(0, 800));
     if ('codeHot' in step) {
       const wc = hooks.codeSide();
       const modifiers: ('control' | 'alt' | 'shift')[] = ['control', 'alt', 'shift'];
@@ -160,10 +164,13 @@ export async function runDevScript(
     }
     if ('codeClick' in step) {
       const wc = hooks.codeSide();
-      const at = (await wc?.executeJavaScript(step.codeClick).catch(() => null)) as [number, number] | null;
+      // [x, y], or [x, y, 2] for a double click.
+      const at = (await wc?.executeJavaScript(step.codeClick).catch(() => null)) as [number, number, number?] | null;
       if (wc && at) {
-        wc.sendInputEvent({ type: 'mouseDown', x: at[0], y: at[1], button: 'left', clickCount: 1 });
-        wc.sendInputEvent({ type: 'mouseUp', x: at[0], y: at[1], button: 'left', clickCount: 1 });
+        for (let n = 1; n <= (at[2] ?? 1); n++) {
+          wc.sendInputEvent({ type: 'mouseDown', x: at[0], y: at[1], button: 'left', clickCount: n });
+          wc.sendInputEvent({ type: 'mouseUp', x: at[0], y: at[1], button: 'left', clickCount: n });
+        }
       } else console.log('[devscript] codeClick: nothing to click');
     }
     if ('codeType' in step) {

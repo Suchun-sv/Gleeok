@@ -2251,6 +2251,7 @@ app.whenReady().then(async () => {
       },
       crashPage: () => focusedPage()?.wc.forcefullyCrashRenderer(),
       codeSide: () => (state.currentProjectId ? codeSurfaces.sideOf(state.currentProjectId) : null),
+      codeEditor: () => (state.currentProjectId ? codeSurfaces.editorOf(state.currentProjectId) : null),
       pressKey: async (key) => {
         const page = focusedPage();
         if (!page) return;
