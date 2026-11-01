@@ -101,6 +101,38 @@ export function primaryCodeLink(p: Pick<Project, 'links'>): Link | undefined {
 /** Code-server pages open in 草稿区. */
 export const CODE_PANE = 1;
 
+/** The same code-server page: same server, same folder (or workspace), whatever else the URL carries. */
+export function sameCodePage(tabUrl: string, linkUrl: string) {
+  try {
+    const a = new URL(tabUrl);
+    const b = new URL(linkUrl);
+    const key = (u: URL) => u.searchParams.get('folder') ?? u.searchParams.get('workspace') ?? u.pathname.replace(/\/+$/, '');
+    return a.origin === b.origin && key(a) === key(b);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The code link a tab shows, if it shows one: such a tab is a 代码栏 (app mode: no address bar,
+ * keys to VS Code). A project may have several, one folder each.
+ */
+export function codeLinkOf(p: Pick<Project, 'links'>, tabUrl: string): Link | undefined {
+  return codeLinks(p).find((l) => sameCodePage(tabUrl, l.url));
+}
+
+/** What a code tab is called: its link's name, else the folder's. */
+export function codeTabLabel(link: Link): string {
+  if (link.label.trim() && !/^代码( · .*)?$/.test(link.label.trim())) return link.label.trim();
+  try {
+    const u = new URL(link.url);
+    const dir = (u.searchParams.get('folder') ?? u.searchParams.get('workspace') ?? '').replace(/\/+$/, '');
+    return dir.split('/').pop() || link.label || '代码';
+  } catch {
+    return link.label || '代码';
+  }
+}
+
 /** The server-managed links a Paseo project should carry, in order. */
 export function managedPaseoLinks(
   daemon: Pick<PaseoDaemon, 'serverId' | 'webBase' | 'hostname' | 'codeServer'>,

@@ -30,6 +30,8 @@ import {
   isTerminalUrl,
   readerUrl,
   primaryCodeLink,
+  sameCodePage,
+  codeLinkOf,
   terminalTitle,
   sameUrl,
   shortTitle,
@@ -55,6 +57,7 @@ import { Terminals } from './terminal.ts';
 import { PARTITION, TabViews } from './views.ts';
 import { keepTailnetDirect } from './proxy.ts';
 import { canMovePointer, movePointer } from './pointer.ts';
+import { ARM, CodeLogins, fill, isSignInPage, typedPassword } from './code-login.ts';
 import { Shells, windowBackground } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.ts';
 import { installRelease, latestRelease, type Release } from './release-updater.ts';
@@ -149,10 +152,72 @@ function reviveTab(tabId: string) {
   changed();
 }
 
+// ---- 代码栏: code-server sign-in, done for the user once a password is kept ----
+
+let codeLoginsStore: CodeLogins | null = null;
+const codeLogins = () => (codeLoginsStore ??= new CodeLogins(app.getPath('userData')));
+/** Code tabs whose sign-in page Gleeok submitted (a second sign-in page there means it was refused). */
+const signInTried = new Set<string>();
+/** A password typed on a code tab's sign-in page, kept once the page lets the user in. */
+const signInTyped = new Map<string, { origin: string; password: string }>();
+
+/** The origin of the project's code-server a tab is on, if it is on one. */
+function codeOrigin(tabId: string, url: string): string | null {
+  const hit = findTab(tabId);
+  const project = hit && config.projects.find((p) => p.id === hit.session.projectId);
+  if (!project) return null;
+  try {
+    const origin = new URL(url).origin;
+    return codeLinks(project).some((l) => new URL(l.url).origin === origin) ? origin : null;
+  } catch {
+    return null;
+  }
+}
+
+function codeSignInLoaded(tabId: string, wc: Electron.WebContents) {
+  const url = wc.getURL();
+  if (!isSignInPage(url)) return;
+  const origin = codeOrigin(tabId, url);
+  if (!origin) return;
+  const kept = codeLogins().get(origin);
+  if (kept && !signInTried.has(tabId)) {
+    signInTried.add(tabId);
+    void wc.executeJavaScript(fill(kept)).catch(() => {});
+    return;
+  }
+  if (kept) {
+    codeLogins().forget(origin);
+    log(`code-server sign-in: the kept password for ${siteOf(origin)} was refused; asking again`);
+  }
+  signInTried.delete(tabId);
+  void wc.executeJavaScript(ARM).catch(() => {});
+}
+
+/** The tab left a sign-in page: what the user typed there worked, so it is kept. */
+function codeSignInLeft(tabId: string, url: string) {
+  if (isSignInPage(url)) return;
+  signInTried.delete(tabId);
+  const typed = signInTyped.get(tabId);
+  if (!typed) return;
+  signInTyped.delete(tabId);
+  if (codeOrigin(tabId, url) !== typed.origin) return;
+  const hit = findTab(tabId);
+  const kept = codeLogins().keep(typed.origin, typed.password);
+  if (hit) send({ type: 'toast', slot: hit.slot, text: kept ? '已记住这个 code-server 的密码，以后自动登录' : '这台电脑没有可用的钥匙串，code-server 密码不能记住' });
+}
+
 const views = new TabViews({
+  onLoaded: codeSignInLoaded,
+  onConsole(tabId, message) {
+    const password = typedPassword(message);
+    const url = password && views.get(tabId)?.webContents.getURL();
+    const origin = url && codeOrigin(tabId, url);
+    if (password && origin) signInTyped.set(tabId, { origin, password });
+  },
   onUpdate(tabId, patch) {
     const hit = findTab(tabId);
     if (!hit) return;
+    if (patch.url) codeSignInLeft(tabId, patch.url);
     // Loading a page reports its URL too; only an actual change of address counts for sync.
     const moved = patch.url !== undefined && !sameUrl(patch.url, hit.tab.url);
     Object.assign(hit.tab, patch);
@@ -169,7 +234,17 @@ const views = new TabViews({
       changed();
     }
   },
-  onInput: handleInput,
+  onInput(input, tabId) {
+    // A 代码栏 is VS Code's: every key goes to it, except the ones that pick a pane (⌘1–9, or
+    // prefix+1–9 on Linux), so the keyboard can still leave it.
+    const hit = findTab(tabId);
+    const project = hit && config.projects.find((p) => p.id === hit.session.projectId);
+    if (hit && project && codeLinkOf(project, hit.tab.url)) {
+      const action = matchShortcut(input, process.platform);
+      if (action?.type !== 'focusPaneIndex') return false;
+    }
+    return handleInput(input);
+  },
   onOpenTab(tabId, url) {
     const hit = findTab(tabId);
     if (hit) openTab(hit.session, hit.slot, url);
@@ -2208,9 +2283,13 @@ app.whenReady().then(async () => {
       pressKey: async (key) => {
         const page = focusedPage();
         if (!page) return;
-        page.wc.sendInputEvent({ type: 'keyDown', keyCode: key });
-        page.wc.sendInputEvent({ type: 'char', keyCode: key === 'Enter' ? '\r' : key });
-        page.wc.sendInputEvent({ type: 'keyUp', keyCode: key });
+        // "Enter", or a chord such as "control+shift+P".
+        const parts = key.split('+');
+        const keyCode = parts.pop()!;
+        const modifiers = parts as ('control' | 'shift' | 'alt' | 'meta')[];
+        page.wc.sendInputEvent({ type: 'keyDown', keyCode, modifiers });
+        if (!modifiers.length) page.wc.sendInputEvent({ type: 'char', keyCode: keyCode === 'Enter' ? '\r' : keyCode });
+        page.wc.sendInputEvent({ type: 'keyUp', keyCode, modifiers });
       },
       evalPage: async (js) => {
         const session = currentSession();
@@ -2248,13 +2327,3 @@ app.on('window-all-closed', () => app.quit());
 app.on('child-process-gone', (_e, d) => log(`${d.type} process gone: reason=${d.reason} exitCode=${d.exitCode}${d.name ? ` name=${d.name}` : ''}`));
 
 /** Same editor page: same origin and the same folder/workspace (code-server keeps `?folder=` in its URL). */
-function sameCodePage(tabUrl: string, linkUrl: string) {
-  try {
-    const a = new URL(tabUrl);
-    const b = new URL(linkUrl);
-    const key = (u: URL) => u.searchParams.get('folder') ?? u.searchParams.get('workspace') ?? u.pathname.replace(/\/+$/, '');
-    return a.origin === b.origin && key(a) === key(b);
-  } catch {
-    return false;
-  }
-}

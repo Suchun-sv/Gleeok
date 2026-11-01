@@ -20,6 +20,8 @@ import {
   sameUrl,
   shortTitle,
   visibleSlots,
+  codeLinkOf,
+  codeTabLabel,
   type AppWindowState,
   type Link,
   type Pane,
@@ -248,6 +250,7 @@ function PaneView(props: PaneProps) {
   const paste = usePasteTracker();
   const [saveOpen, setSaveOpen] = useState(false);
   const savedLink = isNew ? undefined : project.links.find((l) => sameUrl(l.url, tab.url));
+  const codeLink = codeLinkOf(project, tab.url);
 
   useEffect(() => setDraft(isNew ? '' : tab.url), [tab.id, tab.url]);
   useEffect(() => {
@@ -313,13 +316,15 @@ function PaneView(props: PaneProps) {
         {leading && <div className="tabs-leading">{leading}</div>}
         <span className="pane-name">{name}</span>
         {pane.tabs.map((t) => (
-          <TabButton key={t.id} tab={t} slot={slot} active={t.id === tab.id} />
+          <TabButton key={t.id} tab={t} slot={slot} active={t.id === tab.id} code={codeLinkOf(project, t.url)} />
         ))}
         <button className="tab-add" onClick={() => gleeok.dispatch({ type: 'newTab', slot })} title="新标签页">
           +
         </button>
         {trailing && <div className="tabs-trailing">{trailing}</div>}
       </div>
+      {/* A 代码栏 is VS Code alone: no address bar. */}
+      {!codeLink && (
       <div className="toolbar">
         <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew || isTerm || isLib || isPlanner}>
           ‹
@@ -378,6 +383,7 @@ function PaneView(props: PaneProps) {
         )}
         {windowButton}
       </div>
+      )}
       {saveOpen && !isNew && (
         <SaveBar
           key={tab.id}
@@ -541,7 +547,7 @@ function usePasteTracker() {
   };
 }
 
-function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: boolean }) {
+function TabButton({ tab, slot, active, code }: { tab: Tab; slot: number; active: boolean; code?: Link }) {
   return (
     <div
       className={`tab ${active ? 'active' : ''}`}
@@ -557,14 +563,16 @@ function TabButton({ tab, slot, active }: { tab: Tab; slot: number; active: bool
       onAuxClick={(e) => e.button === 1 && gleeok.dispatch({ type: 'closeTab', slot, tabId: tab.id })}
       title={`${tab.title}\n${tab.url}`}
     >
-      {tab.favicon ? (
+      {code ? (
+        <Icon name="code" size={13} className="fav code" />
+      ) : tab.favicon ? (
         <img src={tab.favicon} alt="" />
       ) : isTerminalUrl(tab.url) || isReaderUrl(tab.url) || isLibraryUrl(tab.url) || isPlannerUrl(tab.url) ? (
         <img src={faviconFor(tab.url)} alt="" />
       ) : (
         <span className="fav" />
       )}
-      <span className="title">{tab.title || tab.url}</span>
+      <span className="title">{code ? `代码 · ${codeTabLabel(code)}` : tab.title || tab.url}</span>
       <button
         className="close"
         onClick={(e) => {

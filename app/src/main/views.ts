@@ -17,10 +17,15 @@ const PAGE_PRELOAD = join(__dirname, 'page-preload.js');
 export interface ViewHooks {
   onUpdate(tabId: string, patch: { url?: string; title?: string; favicon?: string }): void;
   onFocus(tabId: string): void;
-  onInput(input: Input): boolean;
+  /** A key in a page, before the page sees it; true: Gleeok took it. */
+  onInput(input: Input, tabId: string): boolean;
   onOpenTab(tabId: string, url: string): void;
   onContextMenu(tabId: string, wc: WebContents, params: ContextMenuParams): void;
   onFound(tabId: string, active: number, total: number): void;
+  /** A page finished loading (its main frame). */
+  onLoaded(tabId: string, wc: WebContents): void;
+  /** A page wrote to its console (only Gleeok's own injected scripts' messages matter). */
+  onConsole(tabId: string, message: string): void;
   /** The page's process died (crash, out of memory, killed): it stays white until rebuilt. */
   onGone(tabId: string, reason: string, exitCode: number): void;
   log(message: string): void;
@@ -62,11 +67,13 @@ export class TabViews {
     wc.on('page-favicon-updated', (_e, icons) => icons[0] && this.#hooks.onUpdate(tabId, { favicon: icons[0] }));
     wc.on('focus', () => this.#hooks.onFocus(tabId));
     wc.on('before-input-event', (e, input) => {
-      if (this.#hooks.onInput(input)) e.preventDefault();
+      if (this.#hooks.onInput(input, tabId)) e.preventDefault();
     });
     wc.on('context-menu', (_e, params) => this.#hooks.onContextMenu(tabId, wc, params));
     wc.on('found-in-page', (_e, r) => r.finalUpdate && this.#hooks.onFound(tabId, r.activeMatchOrdinal, r.matches));
     wc.on('render-process-gone', (_e, d) => this.#hooks.onGone(tabId, d.reason, d.exitCode));
+    wc.on('did-finish-load', () => this.#hooks.onLoaded(tabId, wc));
+    wc.on('console-message', (e) => this.#hooks.onConsole(tabId, (e as unknown as { message?: string }).message ?? ''));
     wc.on('unresponsive', () => this.#hooks.log(`page unresponsive: ${hostOf(wc.getURL())}`));
     wc.on('responsive', () => this.#hooks.log(`page responsive again: ${hostOf(wc.getURL())}`));
     wc.on('did-fail-load', (_e, code, description, failedUrl, isMainFrame) => {
