@@ -760,6 +760,18 @@ main {
   border-top-color: var(--accent);
 }
 
+/* A 代码栏's hidden tab strip: a thin line (blue when the pane has focus) that brings it back. */
+.pane-peek {
+  flex: none;
+  height: 4px;
+  background: var(--line);
+  cursor: pointer;
+}
+
+.pane.focused .pane-peek {
+  background: var(--accent);
+}
+
 .tab {
   display: flex;
   align-items: center;

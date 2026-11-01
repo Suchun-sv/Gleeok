@@ -251,6 +251,18 @@ function PaneView(props: PaneProps) {
   const [saveOpen, setSaveOpen] = useState(false);
   const savedLink = isNew ? undefined : project.links.find((l) => sameUrl(l.url, tab.url));
   const codeLink = codeLinkOf(project, tab.url);
+  const stripHidden = !!codeLink && !leading;
+  const [stripShown, setStripShown] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showStrip = () => {
+    clearTimeout(hideTimer.current);
+    setStripShown(true);
+  };
+  const hideStripSoon = () => {
+    clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setStripShown(false), 1000);
+  };
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
 
   useEffect(() => setDraft(isNew ? '' : tab.url), [tab.id, tab.url]);
   useEffect(() => {
@@ -312,7 +324,13 @@ function PaneView(props: PaneProps) {
       onMouseDown={focusMe}
       {...dropProps}
     >
-      <div className="tabs">
+      {/* A 代码栏 hides its tab strip too: a thin line stays, and the strip slides in while the
+          pointer is at the pane's top (it pushes VS Code down; nothing can lie over a page). On
+          macOS the first pane's strip holds the traffic lights, so there it stays. */}
+      {stripHidden && !stripShown ? (
+        <div className="pane-peek" onMouseEnter={showStrip} title="标签" />
+      ) : (
+      <div className="tabs" onMouseEnter={stripHidden ? showStrip : undefined} onMouseLeave={stripHidden ? hideStripSoon : undefined}>
         {leading && <div className="tabs-leading">{leading}</div>}
         <span className="pane-name">{name}</span>
         {pane.tabs.map((t) => (
@@ -323,6 +341,7 @@ function PaneView(props: PaneProps) {
         </button>
         {trailing && <div className="tabs-trailing">{trailing}</div>}
       </div>
+      )}
       {/* A 代码栏 is VS Code alone: no address bar. */}
       {!codeLink && (
       <div className="toolbar">
