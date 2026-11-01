@@ -764,9 +764,10 @@ main {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 0;
-  max-width: 200px;
-  flex: 0 1 auto;
+  /* One width for every tab, as browsers do; when they do not fit, they all narrow alike. */
+  flex: 0 1 180px;
+  min-width: 48px;
+  max-width: 180px;
   padding: 0 6px 0 10px;
   color: var(--muted);
   cursor: default;
@@ -786,6 +787,8 @@ main {
 }
 
 .tab .title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
