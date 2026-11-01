@@ -30,7 +30,6 @@ import {
   isTerminalUrl,
   readerUrl,
   primaryCodeLink,
-  CODE_SIDE_SLOT,
   terminalTitle,
   sameUrl,
   shortTitle,
@@ -56,7 +55,6 @@ import { Terminals } from './terminal.ts';
 import { PARTITION, TabViews } from './views.ts';
 import { keepTailnetDirect } from './proxy.ts';
 import { canMovePointer, movePointer } from './pointer.ts';
-import { CodeSurfaces } from './code.ts';
 import { Shells, windowBackground } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.ts';
 import { installRelease, latestRelease, type Release } from './release-updater.ts';
@@ -505,21 +503,6 @@ function dayStart(now = new Date()): number {
   return d.getTime();
 }
 
-/** 代码侧边栏: each project's code-server, split into the right sidebar and the rightmost pane. */
-const codeSurfaces = new CodeSurfaces({
-  onInput: (input) => handleInput(input),
-  openLink: (url) => dispatch({ type: 'openLink', url, newTab: true }),
-  log,
-});
-
-/** What the 代码侧边栏 shows now, if it shows: split mode on, open, the panes up, a project with a code link. */
-function codeSideShown(): { projectId: string; url: string } | null {
-  if (!state.codeSplit || !state.codeSide?.open || state.view !== 'panes') return null;
-  const project = config.projects.find((p) => p.id === state.currentProjectId);
-  const link = project && primaryCodeLink(project);
-  return project && link ? { projectId: project.id, url: link.url } : null;
-}
-
 function isLive(session: ProjectSession) {
   return session.panes.some((p) => p.tabs.some((t) => views.has(t.id)));
 }
@@ -529,7 +512,6 @@ function hibernate(projectId: string) {
   const session = state.sessions[projectId];
   if (!session) return;
   for (const pane of session.panes) for (const t of pane.tabs) views.destroy(t.id);
-  codeSurfaces.destroy(projectId);
   session.lifecycle = 'hibernated';
   memory.delete(projectId);
   changed();
@@ -557,7 +539,6 @@ async function setArchived(id: string, archived: boolean, open = false) {
 }
 
 async function deleteProject(id: string) {
-  codeSurfaces.destroy(id);
   await config.remove(id);
   for (const pane of state.sessions[id]?.panes ?? []) for (const t of pane.tabs) views.destroy(t.id);
   delete state.sessions[id];
@@ -707,13 +688,9 @@ function syncViews() {
     const desired = new Map<string, { url: string; bounds: Rect }>();
     // The entry/import pages replace the panes in the main window only; satellites keep showing pages.
     const hidden = tabDragging || paletteWindows.has(ws.id);
-    const rects = paneRects.get(ws.id) ?? {};
-    // The 代码侧边栏 takes the main window's rightmost pane for its editors.
-    const code = ws.role === 'main' && session?.lifecycle === 'live' && !hidden ? codeSideShown() : null;
-    const editorSlot = code ? visibleSlots(ws).at(-1) : undefined;
     if (session?.lifecycle === 'live' && !hidden && (ws.role !== 'main' || state.view === 'panes')) {
+      const rects = paneRects.get(ws.id) ?? {};
       for (const slot of visibleSlots(ws)) {
-        if (slot === editorSlot) continue;
         const tab = activeTab(session!.panes[slot]);
         const rect = rects[slot];
         // A dead page is taken off, so the pane can say so (and offer to reload) instead of white.
@@ -721,7 +698,6 @@ function syncViews() {
       }
     }
     views.sync(bw, desired);
-    if (ws.role === 'main') codeSurfaces.show(bw, code?.projectId ?? null, code?.url ?? null, rects[CODE_SIDE_SLOT] ?? null, editorSlot === undefined ? null : (rects[editorSlot] ?? null));
   }
   // A terminal lives as long as some tab shows it, hibernated or not.
   const termTabs = new Set<string>();
@@ -1364,18 +1340,6 @@ function dispatch(action: Action) {
       focusSlot(to);
       return;
     }
-    case 'toggleCodeSide':
-      state.codeSide = { ...state.codeSide, open: !state.codeSide?.open };
-      changed();
-      return;
-    case 'setCodeSplit':
-      state.codeSplit = action.on || undefined;
-      changed();
-      return;
-    case 'setCodeSideWidth':
-      state.codeSide = { open: state.codeSide?.open ?? false, width: Math.round(Math.min(Math.max(action.width, 200), 800)) };
-      changed();
-      return;
     case 'setPointerFollows':
       state.pointerFollows = action.on ? undefined : false;
       changed();
@@ -1591,15 +1555,6 @@ function dispatch(action: Action) {
       const link = action.linkId ? project.links.find((l) => l.id === action.linkId) : primaryCodeLink(project);
       if (!link) {
         send({ type: 'toast', slot: state.focusedPane, text: `「${project.name}」还没有代码链接：可以在项目设置里添加` });
-        return;
-      }
-      // Split mode: the 代码侧边栏 instead of a tab (the same key closes it again).
-      if (state.codeSplit && !action.linkId) {
-        const showing = state.codeSide?.open && state.currentProjectId === project.id && state.view === 'panes';
-        if (state.currentProjectId !== project.id) dispatch({ type: 'selectProject', id: project.id });
-        state.view = 'panes';
-        state.codeSide = { ...state.codeSide, open: !showing };
-        changed();
         return;
       }
       if (state.currentProjectId !== project.id) dispatch({ type: 'selectProject', id: project.id });
@@ -2250,8 +2205,6 @@ app.whenReady().then(async () => {
         return page ? readPage(page.wc) : null;
       },
       crashPage: () => focusedPage()?.wc.forcefullyCrashRenderer(),
-      codeSide: () => (state.currentProjectId ? codeSurfaces.sideOf(state.currentProjectId) : null),
-      codeEditor: () => (state.currentProjectId ? codeSurfaces.editorOf(state.currentProjectId) : null),
       pressKey: async (key) => {
         const page = focusedPage();
         if (!page) return;
