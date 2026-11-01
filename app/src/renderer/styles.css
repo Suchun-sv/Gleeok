@@ -3826,3 +3826,12 @@ input.plan-pop-title {
   color: var(--muted);
   font-size: 12px;
 }
+
+.tabs .code-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: auto;
+  padding: 0 8px;
+  font-size: 11px;
+}

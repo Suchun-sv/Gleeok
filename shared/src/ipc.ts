@@ -270,8 +270,8 @@ export type Action =
   | { type: 'vaultCopy'; id: string; what: 'url' | 'username' | 'password'; index?: number }
   | { type: 'closePalette'; winId: string }
   /** Open a project's code link (its primary one by default), reusing a tab already showing it. */
-  | { type: 'openCode'; projectId?: string; linkId?: string }
-  | { type: 'codeMenu'; projectId: string }
+  | { type: 'openCode'; projectId?: string; linkId?: string; /** the pane to open it in (default: 草稿区) */ slot?: number }
+  | { type: 'codeMenu'; projectId: string; /** a code pane's 切换文件夹: open the pick there */ slot?: number }
   | { type: 'setPrimaryCode'; projectId: string; linkId: string };
 
 /** Commands main sends to the shell renderer for things only the DOM can do. */

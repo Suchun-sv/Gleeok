@@ -121,16 +121,29 @@ export function codeLinkOf(p: Pick<Project, 'links'>, tabUrl: string): Link | un
   return codeLinks(p).find((l) => sameCodePage(tabUrl, l.url));
 }
 
-/** What a code tab is called: its link's name, else the folder's. */
-export function codeTabLabel(link: Link): string {
-  if (link.label.trim() && !/^代码( · .*)?$/.test(link.label.trim())) return link.label.trim();
+/** The machine a code link's code-server runs on: the first part of its host name (an IP as is). */
+export function codeHost(link: Link): string {
   try {
-    const u = new URL(link.url);
-    const dir = (u.searchParams.get('folder') ?? u.searchParams.get('workspace') ?? '').replace(/\/+$/, '');
-    return dir.split('/').pop() || link.label || '代码';
+    const host = new URL(link.url).hostname;
+    return /^[\d.]+$|^\[/.test(host) ? host : host.split('.')[0];
   } catch {
-    return link.label || '代码';
+    return '';
   }
+}
+
+/** What a code tab is called: folder@machine, or the link's own name@machine. */
+export function codeTabLabel(link: Link): string {
+  let name = link.label.trim();
+  if (!name || /^代码( · .*)?$/.test(name)) {
+    try {
+      const u = new URL(link.url);
+      name = (u.searchParams.get('folder') ?? u.searchParams.get('workspace') ?? '').replace(/\/+$/, '').split('/').pop() || '代码';
+    } catch {
+      name = '代码';
+    }
+  }
+  const host = codeHost(link);
+  return host ? `${name}@${host}` : name;
 }
 
 /** The server-managed links a Paseo project should carry, in order. */

@@ -336,6 +336,11 @@ function PaneView(props: PaneProps) {
         {pane.tabs.map((t) => (
           <TabButton key={t.id} tab={t} slot={slot} active={t.id === tab.id} code={codeLinkOf(project, t.url)} />
         ))}
+        {codeLink && (
+          <button className="tab-add code-switch" onClick={() => gleeok.dispatch({ type: 'codeMenu', projectId: project.id, slot })} title="切换文件夹：这个项目的所有代码文件夹">
+            <Icon name="folder" size={13} /> ▾
+          </button>
+        )}
         <button className="tab-add" onClick={() => gleeok.dispatch({ type: 'newTab', slot })} title="新标签页">
           +
         </button>
@@ -591,7 +596,7 @@ function TabButton({ tab, slot, active, code }: { tab: Tab; slot: number; active
       ) : (
         <span className="fav" />
       )}
-      <span className="title">{code ? `代码 · ${codeTabLabel(code)}` : tab.title || tab.url}</span>
+      <span className="title">{code ? codeTabLabel(code) : tab.title || tab.url}</span>
       <button
         className="close"
         onClick={(e) => {

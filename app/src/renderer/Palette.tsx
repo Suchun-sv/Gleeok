@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Action, LibrarySnapshot, Snapshot } from '../../../shared/src/ipc.ts';
-import { LIBRARY_URL, NEW_TAB_URL, PLANNER_URL, codeLinks, isCodeLink, paneName, primaryCodeLink, type Project } from '../../../shared/src/model.ts';
+import { LIBRARY_URL, NEW_TAB_URL, PLANNER_URL, codeLinks, codeTabLabel, isCodeLink, paneName, primaryCodeLink, type Project } from '../../../shared/src/model.ts';
 import { faviconFor } from './Panes.tsx';
 import { creatorsShort, isRegular, publicationOf, useLibrary, yearOf } from './library/data.ts';
 
@@ -151,7 +151,7 @@ function buildItems(snap: Snapshot): Item[] {
         items.push({
           id: `code:${p.id}:${l.id}`,
           group: p === current ? '代码' : `代码 · ${p.name}`,
-          title: `${l === primary ? '★ ' : ''}${l.label || l.url}`,
+          title: `${l === primary ? '★ ' : ''}${codeTabLabel(l)}`,
           detail: l.url,
           icon: l.icon ?? faviconFor(l.url),
           run: [{ type: 'openCode', projectId: p.id, linkId: l.id }],

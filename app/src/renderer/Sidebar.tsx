@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
-import { primaryCodeLink } from '../../../shared/src/model.ts';
+import { codeTabLabel, primaryCodeLink } from '../../../shared/src/model.ts';
 import icon from '../../assets/icon-64.png';
 import { SETTINGS_TAB_KEY } from './AgentConnections.tsx';
 import { Icon, IconButton } from './Icons.tsx';
@@ -124,7 +124,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
                     e.stopPropagation();
                     gleeok.dispatch({ type: 'codeMenu', projectId: p.id });
                   }}
-                  title={`在草稿区打开代码：${code.label || code.url}（${mod}C）\n右键：其他代码链接、设为主要`}
+                  title={`在草稿区打开代码：${codeTabLabel(code)}（${mod}C）\n右键：其他代码文件夹、设为主要`}
                 >
                   {'</>'}
                 </button>

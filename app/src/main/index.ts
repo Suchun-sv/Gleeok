@@ -32,6 +32,7 @@ import {
   primaryCodeLink,
   sameCodePage,
   codeLinkOf,
+  codeTabLabel,
   terminalTitle,
   sameUrl,
   shortTitle,
@@ -1648,7 +1649,8 @@ function dispatch(action: Action) {
         return;
       }
       const visible = allVisibleSlots();
-      dispatch({ type: 'openLink', url: link.url, slot: visible.includes(CODE_PANE) ? CODE_PANE : state.focusedPane, newTab: true });
+      const slot = action.slot !== undefined && visible.includes(action.slot) ? action.slot : visible.includes(CODE_PANE) ? CODE_PANE : state.focusedPane;
+      dispatch({ type: 'openLink', url: link.url, slot, newTab: true });
       return;
     }
     case 'codeMenu': {
@@ -1656,11 +1658,11 @@ function dispatch(action: Action) {
       if (!project) return;
       const links = codeLinks(project);
       const primary = primaryCodeLink(project);
-      const name = (l: (typeof links)[number]) => l.label || l.url;
+      const name = (l: (typeof links)[number]) => codeTabLabel(l);
       Menu.buildFromTemplate([
         ...links.map((l) => ({
-          label: `${l === primary ? '★ ' : ''}打开 ${name(l)}`,
-          click: () => dispatch({ type: 'openCode', projectId: project.id, linkId: l.id }),
+          label: `${l === primary ? '★ ' : ''}${name(l)}`,
+          click: () => dispatch({ type: 'openCode', projectId: project.id, linkId: l.id, slot: action.slot }),
         })),
         ...(links.length > 1
           ? [
@@ -1675,7 +1677,7 @@ function dispatch(action: Action) {
           : []),
         { type: 'separator' },
         {
-          label: '编辑代码链接…',
+          label: '添加或编辑文件夹…',
           click: () => {
             dispatch({ type: 'selectProject', id: project.id });
             dispatch({ type: 'toggleEntry' });
