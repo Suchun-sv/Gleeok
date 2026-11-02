@@ -807,18 +807,22 @@ async function sendPageImages(ws: AppWindowState) {
   // and capturing a page that is not on any window never finishes (the dialog never came).
   const onScreen = new Set(views.attachedIn(shell));
   const images: Record<number, string> = {};
-  for (const slot of session?.lifecycle === 'live' ? visibleSlots(ws) : []) {
-    const view = views.get(activeTab(session!.panes[slot]).id);
-    if (!view || !onScreen.has(view) || view.webContents.isDestroyed() || view.webContents.isCrashed()) continue;
-    // A hung page may never hand over a picture, or fail: its pane just goes without a stand-in.
-    try {
-      const image = await Promise.race([view.webContents.capturePage(), new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000))]);
-      if (image) images[slot] = image.toDataURL();
-      else log(`screenshot timed out: ${siteOf(view.webContents.getURL())}`);
-    } catch (e) {
-      log(`screenshot failed: ${siteOf(view.webContents.getURL())} ${(e as Error).message}`);
-    }
-  }
+  // All panes at once (one after another, a slow page held the others up): until the pages are
+  // gone, a drag that wanders over one is lost to it.
+  await Promise.all(
+    (session?.lifecycle === 'live' ? visibleSlots(ws) : []).map(async (slot) => {
+      const view = views.get(activeTab(session!.panes[slot]).id);
+      if (!view || !onScreen.has(view) || view.webContents.isDestroyed() || view.webContents.isCrashed()) return;
+      // A hung page may never hand over a picture, or fail: its pane just goes without a stand-in.
+      try {
+        const image = await Promise.race([view.webContents.capturePage(), new Promise<null>((resolve) => setTimeout(() => resolve(null), 600))]);
+        if (image) images[slot] = image.toDataURL();
+        else log(`screenshot timed out: ${siteOf(view.webContents.getURL())}`);
+      } catch (e) {
+        log(`screenshot failed: ${siteOf(view.webContents.getURL())} ${(e as Error).message}`);
+      }
+    }),
+  );
   // Wait until the window has painted them (beneath the pages); hiding the pages before that
   // flashes the empty panes for a frame.
   const shown = new Promise<void>((resolve) => {
@@ -1255,9 +1259,29 @@ async function vaultSaveDialog() {
   } satisfies VaultDialog);
 }
 
+/**
+ * Screenshots taken when a tab is pressed, before it is dragged (the 'tabDragPrepare' action):
+ * by the time the drag starts they are usually painted, and the pages can go at once.
+ */
+let dragImagesAt = 0;
+let dragImagesTaking: Promise<void> | null = null;
+
+function prepareTabDrag() {
+  if (tabDragging || dragImagesTaking || Date.now() - dragImagesAt < 500) return;
+  dragImagesTaking = Promise.all(openWindows().map(sendPageImages))
+    .then(() => {
+      dragImagesAt = Date.now();
+    })
+    .finally(() => {
+      dragImagesTaking = null;
+    });
+}
+
 async function startTabDrag() {
   const token = ++dragToken;
-  await Promise.all(openWindows().map(sendPageImages));
+  if (dragImagesTaking) await dragImagesTaking;
+  // The renderer keeps unused screenshots for 1.5 s.
+  else if (Date.now() - dragImagesAt > 1200) await Promise.all(openWindows().map(sendPageImages));
   if (token !== dragToken) return; // the drag already ended
   tabDragging = true;
   changed();
@@ -1540,6 +1564,9 @@ function dispatch(action: Action) {
       return;
     case 'archiveProject':
       void setArchived(action.id, action.archived, action.open);
+      return;
+    case 'tabDragPrepare':
+      prepareTabDrag();
       return;
     case 'tabDrag':
       if (action.active) void startTabDrag();

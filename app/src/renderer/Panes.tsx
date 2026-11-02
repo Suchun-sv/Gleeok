@@ -583,6 +583,7 @@ function TabButton({ tab, slot, active, code }: { tab: Tab; slot: number; active
         gleeok.dispatch({ type: 'tabDrag', active: true });
       }}
       onDragEnd={() => gleeok.dispatch({ type: 'tabDrag', active: false })}
+      onMouseDown={(e) => e.button === 0 && gleeok.dispatch({ type: 'tabDragPrepare' })}
       onClick={() => gleeok.dispatch({ type: 'activateTab', slot, tabId: tab.id })}
       onAuxClick={(e) => e.button === 1 && gleeok.dispatch({ type: 'closeTab', slot, tabId: tab.id })}
       title={`${tab.title}\n${tab.url}`}

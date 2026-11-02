@@ -1,0 +1,19 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 7000 },
+  { "evalMain": "(() => { window.__t0 = 0; window.__seen = 0; const tick = () => { if (window.__t0 && !window.__seen && document.querySelector('.drop-zone')) window.__seen = performance.now() - window.__t0; requestAnimationFrame(tick); }; tick(); return 'armed ' + document.querySelectorAll('.pane').length + ' panes'; })()" },
+  { "action": { "type": "tabDragPrepare" } },
+  { "wait": 300 },
+  { "evalMain": "(() => { window.__t0 = performance.now(); return 'go'; })()" },
+  { "action": { "type": "tabDrag", "active": true } },
+  { "wait": 1500 },
+  { "evalMain": "'prepared: drop zones after ' + Math.round(window.__seen) + ' ms'" },
+  { "capture": "prepared" },
+  { "action": { "type": "tabDrag", "active": false } },
+  { "wait": 2500 },
+  { "evalMain": "(() => { window.__seen = 0; window.__t0 = performance.now(); return 'go'; })()" },
+  { "action": { "type": "tabDrag", "active": true } },
+  { "wait": 2000 },
+  { "evalMain": "'cold: drop zones after ' + Math.round(window.__seen) + ' ms'" },
+  { "action": { "type": "tabDrag", "active": false } }
+]

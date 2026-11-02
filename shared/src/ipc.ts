@@ -256,6 +256,8 @@ export type Action =
   | { type: 'removeLink'; projectId: string; linkId: string }
   | { type: 'upsertLink'; projectId: string; link: Link; slot: number }
   | { type: 'openSaveLink'; slot?: number }
+  /** A tab was pressed: it may be dragged next, so screenshots of the pages are taken now. */
+  | { type: 'tabDragPrepare' }
   | { type: 'tabDrag'; active: boolean }
   | { type: 'openPalette' }
   | { type: 'checkUpdate' }
