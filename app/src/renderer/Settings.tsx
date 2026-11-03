@@ -4,6 +4,9 @@ import { describeWeather, type WeatherPlace } from '../../../shared/src/weather.
 import { AgentSettings, SETTINGS_TAB_KEY } from './AgentConnections.tsx';
 import {
   DEFAULT_PANE_NAMES,
+  codeHost,
+  codeServers,
+  type CodeTunnel,
   DEFAULT_SUGGESTIONS,
   MAX_PANES,
   librarySettings,
@@ -28,6 +31,7 @@ const TABS = [
   { id: 'planner', label: '日程' },
   { id: 'agent', label: 'Agent' },
   { id: 'paseo', label: 'Paseo' },
+  { id: 'code', label: '代码' },
   { id: 'sync', label: '同步' },
   { id: 'vault', label: '密码库' },
   { id: 'about', label: '关于' },
@@ -86,6 +90,7 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
         )}
         {tab === 'agent' && <AgentSettings />}
         {tab === 'paseo' && <PaseoSettings snap={snap} />}
+        {tab === 'code' && <CodeTunnelSettings snap={snap} />}
         {tab === 'sync' && <SyncSettings snap={snap} />}
         {tab === 'vault' && <VaultSettings snap={snap} />}
         {tab === 'about' && <About snap={snap} />}
@@ -653,6 +658,80 @@ function KeyInput({ saved, placeholder, onSave }: { saved: string | null; placeh
       <input type="password" value={draft} placeholder={saved ? `已保存（${saved}），输入新的替换` : placeholder} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={blurOnEnter} />
       {saved && <button onClick={() => onSave('')}>清除</button>}
     </>
+  );
+}
+
+/** code-servers opened over SSH from this machine: one row per code-server the code links use. */
+function CodeTunnelSettings({ snap }: { snap: Snapshot }) {
+  const tunnels = snap.state.codeTunnels ?? [];
+  const servers = codeServers([...snap.projects, ...snap.archivedProjects]);
+  // A tunnel whose code-server no project uses any more still shows, so it can be turned off.
+  for (const t of tunnels) if (!servers.some((s) => s.origin === t.origin)) servers.push({ origin: t.origin, link: { id: t.origin, label: '', url: t.origin } });
+  return (
+    <section className="card">
+      <h3>通过 SSH 打开 code-server</h3>
+      <p className="hint">
+        打开后，这个 code-server 的代码栏改从这台电脑的 localhost 打开，Gleeok 用系统的 ssh 自动把端口转发过去（~/.ssh/config 里的别名、密钥、ProxyJump 都能用），
+        不经过 Tailscale 中转或 Cloudflare，也不会提示"不安全"。需要用密钥或 ssh-agent 登录，不能用密码。
+        远端端口填 code-server 自己在那台机器上监听的端口（默认 8080），不是 tailscale serve 或 Cloudflare 对外的端口。只对这台电脑生效，链接本身不变。
+      </p>
+      {servers.length === 0 && <p className="hint">还没有项目登记 code-server 链接。</p>}
+      {servers.map(({ origin, link }) => (
+        <TunnelRow key={origin} origin={origin} host={codeHost(link) || origin} tunnel={tunnels.find((t) => t.origin === origin)} status={snap.codeTunnels[origin]} />
+      ))}
+    </section>
+  );
+}
+
+function TunnelRow({ origin, host, tunnel, status }: { origin: string; host: string; tunnel?: CodeTunnel; status?: Snapshot['codeTunnels'][string] }) {
+  // Over https something else (tailscale serve, Cloudflare, a proxy) usually stands in front of
+  // code-server, on a port of its own: then code-server's own default.
+  const defaultPort = () => {
+    const u = new URL(origin);
+    return (u.protocol === 'http:' && Number(u.port)) || 8080;
+  };
+  const [ssh, setSsh] = useState(tunnel?.ssh ?? host);
+  const [port, setPort] = useState(String(tunnel?.remotePort ?? defaultPort()));
+  useEffect(() => {
+    setSsh(tunnel?.ssh ?? host);
+    setPort(String(tunnel?.remotePort ?? defaultPort()));
+  }, [tunnel?.ssh, tunnel?.remotePort]);
+  const save = () => {
+    const remotePort = Number(port);
+    if (!ssh.trim() || !(remotePort > 0 && remotePort < 65536)) return;
+    if (tunnel && tunnel.ssh === ssh.trim() && tunnel.remotePort === remotePort) return;
+    gleeok.dispatch({ type: 'setCodeTunnel', origin, tunnel: { ssh: ssh.trim(), remotePort } });
+  };
+  const state = status?.state ?? 'off';
+  const label = tunnel
+    ? { off: '用到时连接', connecting: '正在连接…', up: `已连接 · localhost:${tunnel.localPort}`, failed: '连不上' }[state]
+    : '';
+  return (
+    <div className="tunnel-row">
+      <label className="lib-check">
+        <input
+          type="checkbox"
+          checked={!!tunnel}
+          onChange={(e) =>
+            gleeok.dispatch({ type: 'setCodeTunnel', origin, tunnel: e.target.checked ? { ssh: ssh.trim() || host, remotePort: Number(port) || defaultPort() } : null })
+          }
+        />
+        <b>{host}</b> <code>{origin}</code>
+      </label>
+      {tunnel && (
+        <div className="row">
+          <span className="meta">ssh</span>
+          <input value={ssh} placeholder="主机别名或 user@host" onChange={(e) => setSsh(e.target.value)} onBlur={save} onKeyDown={blurOnEnter} />
+          <span className="meta">远端端口</span>
+          <input className="port" value={port} inputMode="numeric" onChange={(e) => setPort(e.target.value.replace(/\D/g, ''))} onBlur={save} onKeyDown={blurOnEnter} />
+          <span>
+            <span className={`dot ${state === 'up' ? 'ok' : state === 'failed' ? 'offline' : ''}`} /> {label}
+          </span>
+          {state === 'failed' && <button onClick={() => gleeok.dispatch({ type: 'retryCodeTunnel', origin })}>重试</button>}
+        </div>
+      )}
+      {tunnel && status?.state === 'failed' && <p className="hint error">{status.error}</p>}
+    </div>
   );
 }
 

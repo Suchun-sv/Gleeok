@@ -26,6 +26,15 @@ export interface ViewHooks {
   onLoaded(tabId: string, wc: WebContents): void;
   /** A page wrote to its console (only Gleeok's own injected scripts' messages matter). */
   onConsole(tabId: string, message: string): void;
+  /** A page failed to load (its main frame), at the address the page had (see toPage). */
+  onLoadFailed(tabId: string, code: number): void;
+  /**
+   * The address a tab's page is loaded from, given the one the tab is known by (a code-server
+   * on an SSH tunnel is loaded from localhost); fromPage is the way back, null for a page that
+   * stands in while waiting (its address is not the tab's).
+   */
+  toPage(tabId: string, url: string): string;
+  fromPage(url: string): string | null;
   /** The page's process died (crash, out of memory, killed): it stays white until rebuilt. */
   onGone(tabId: string, reason: string, exitCode: number): void;
   log(message: string): void;
@@ -62,8 +71,12 @@ export class TabViews {
     view = new WebContentsView({ webPreferences: { partition: PARTITION, sandbox: true, preload: PAGE_PRELOAD } });
     const wc = view.webContents;
     wc.on('page-title-updated', (_e, title) => this.#hooks.onUpdate(tabId, { title }));
-    wc.on('did-navigate', (_e, u) => this.#hooks.onUpdate(tabId, { url: u }));
-    wc.on('did-navigate-in-page', (_e, u, isMainFrame) => isMainFrame && this.#hooks.onUpdate(tabId, { url: u }));
+    const navigated = (u: string) => {
+      const url = this.#hooks.fromPage(u);
+      if (url !== null) this.#hooks.onUpdate(tabId, { url });
+    };
+    wc.on('did-navigate', (_e, u) => navigated(u));
+    wc.on('did-navigate-in-page', (_e, u, isMainFrame) => isMainFrame && navigated(u));
     wc.on('page-favicon-updated', (_e, icons) => icons[0] && this.#hooks.onUpdate(tabId, { favicon: icons[0] }));
     wc.on('focus', () => this.#hooks.onFocus(tabId));
     wc.on('before-input-event', (e, input) => {
@@ -78,7 +91,10 @@ export class TabViews {
     wc.on('responsive', () => this.#hooks.log(`page responsive again: ${hostOf(wc.getURL())}`));
     wc.on('did-fail-load', (_e, code, description, failedUrl, isMainFrame) => {
       // -3 is a navigation that was replaced by another one: not a failure.
-      if (isMainFrame && code !== -3) this.#hooks.log(`load failed: ${hostOf(failedUrl)} ${code} ${description}`);
+      if (isMainFrame && code !== -3) {
+        this.#hooks.log(`load failed: ${hostOf(failedUrl)} ${code} ${description}`);
+        this.#hooks.onLoadFailed(tabId, code);
+      }
     });
     wc.setWindowOpenHandler(({ url: target, disposition }) => {
       // Scripted popups (OAuth sign-in and the like) need a real window so window.opener keeps
@@ -94,11 +110,11 @@ export class TabViews {
           },
         };
       }
-      this.#hooks.onOpenTab(tabId, target);
+      this.#hooks.onOpenTab(tabId, this.#hooks.fromPage(target) ?? target);
       return { action: 'deny' };
     });
     this.#views.set(tabId, view);
-    wc.loadURL(url).catch(() => {});
+    wc.loadURL(this.#hooks.toPage(tabId, url)).catch(() => {});
     return view;
   }
 

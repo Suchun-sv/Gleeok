@@ -1,4 +1,4 @@
-import type { GlobalState, LibrarySettings, Link, PomodoroSettings, Suggestion, PaseoDaemon, Project, Rect, View, Zone } from './model.ts';
+import type { GlobalState, LibrarySettings, Link, PomodoroSettings, Suggestion, PaseoDaemon, Project, Rect, TunnelStatus, View, Zone } from './model.ts';
 import type { LibraryCollection, LibraryItem, LibraryKind } from './library.ts';
 import type { TranslateEngine, TranslateSettingsInput } from './translate.ts';
 import type { AgentCreated, AgentHandoff, AgentInfo, AgentScope } from './agents.ts';
@@ -154,6 +154,8 @@ export interface Snapshot {
   paletteWindows: string[];
   /** Tabs whose page process died (tab id → reason: oom, crashed, killed…). */
   crashedTabs: Record<string, string>;
+  /** SSH tunnels to code-servers started since launch, by the origin they stand in for. */
+  codeTunnels: Record<string, TunnelStatus>;
   /**
    * DRM: the Widevine CDM's version (null: not there yet), and on macOS whether this checkout's
    * Electron has the production VMP signature (deploy/macos-vmp-sign.sh); n/a elsewhere.
@@ -188,6 +190,9 @@ export type Action =
   /** The N-th pane on screen (main window first, then the others), 0-based. */
   | { type: 'focusPaneIndex'; index: number; follow?: boolean }
   | { type: 'setPointerFollows'; on: boolean }
+  /** Open a code-server (by its links' origin) over SSH, or no longer (null). This machine only. */
+  | { type: 'setCodeTunnel'; origin: string; tunnel: { ssh: string; remotePort: number } | null }
+  | { type: 'retryCodeTunnel'; origin: string }
   | { type: 'newTab'; slot?: number; url?: string }
   | { type: 'closeTab'; slot?: number; tabId?: string }
   | { type: 'activateTab'; slot: number; tabId: string }

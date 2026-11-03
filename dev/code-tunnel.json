@@ -1,0 +1,23 @@
+[
+  {"action": {"type": "selectProject", "id": "$project:0"}},
+  {"wait": 6000},
+  {"action": {"type": "setCodeTunnel", "origin": "$codeOrigin:0", "tunnel": {"ssh": "real-nonexistent.invalid", "remotePort": 18443}}},
+  {"action": {"type": "openCode", "projectId": "$project:0"}},
+  {"wait": 3000},
+  {"evalPage": "document.title + ' | ' + document.body.innerText.replace(/\\s+/g, ' ')"},
+  {"capture": "failed"},
+  {"action": {"type": "setCodeTunnel", "origin": "$codeOrigin:0", "tunnel": {"ssh": "good-host", "remotePort": 18443}}},
+  {"wait": 500},
+  {"evalPage": "'while connecting: ' + document.title"},
+  {"wait": 4000},
+  {"evalPage": "'up: ' + location.href + ' | ' + document.title"},
+  {"evalMain": "'tab: ' + [...document.querySelectorAll('.tab')].map(t => t.getAttribute('title') || t.textContent).join(' / ')"},
+  {"capture": "up"},
+  {"action": {"type": "setView", "view": "settings"}},
+  {"wait": 300},
+  {"evalMain": "[...document.querySelectorAll('.settings-nav button')].find(b => b.textContent === '代码').click(), 'ok'"},
+  {"wait": 500},
+  {"capture": "settings"},
+  {"action": {"type": "setView", "view": "panes"}},
+  {"action": {"type": "setView", "view": "panes"}}
+]

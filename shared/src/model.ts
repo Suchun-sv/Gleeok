@@ -349,8 +349,40 @@ export interface GlobalState {
   pointerFollows?: boolean;
   /** Light or dark, on this machine (unset: as the system is). Web pages follow it too. */
   theme?: 'light' | 'dark';
+  /** code-servers this machine reaches over an SSH tunnel (设置 → 代码), by their links' origin. */
+  codeTunnels?: CodeTunnel[];
   /** Installed builds: also take hot updates of every push to main (unset: releases only). */
   updateChannel?: 'beta';
+}
+
+/**
+ * A code-server opened over SSH: its pages load from http://localhost:localPort here, forwarded
+ * by `ssh <ssh>` to 127.0.0.1:remotePort over there. Links keep the real address (origin).
+ */
+export interface CodeTunnel {
+  origin: string;
+  /** Host for ssh: an alias in ~/.ssh/config, or user@host. */
+  ssh: string;
+  remotePort: number;
+  /** Fixed per code-server, so its pages keep one origin (sign-in, VS Code's own state). */
+  localPort: number;
+}
+
+export type TunnelStatus = { state: 'off' | 'connecting' | 'up' } | { state: 'failed'; error: string };
+
+/** The code-servers the projects' code links point at (origin → a link on it), for 设置 → 代码. */
+export function codeServers(projects: Pick<Project, 'links'>[]): { origin: string; link: Link }[] {
+  const out = new Map<string, Link>();
+  for (const p of projects)
+    for (const l of codeLinks(p)) {
+      try {
+        const origin = new URL(l.url).origin;
+        if (!out.has(origin)) out.set(origin, l);
+      } catch {
+        // not a URL: nothing to tunnel
+      }
+    }
+  return [...out].map(([origin, link]) => ({ origin, link }));
 }
 
 export interface LibrarySettings {

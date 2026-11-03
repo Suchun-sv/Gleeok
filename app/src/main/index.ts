@@ -44,6 +44,7 @@ import {
   type Project,
   type ProjectSession,
   type Rect,
+  type TunnelStatus,
 } from '../../../shared/src/model.ts';
 import { setupGoogleSignIn } from './compat.ts';
 import { ConfigClient } from './config.ts';
@@ -59,6 +60,7 @@ import { PARTITION, TabViews } from './views.ts';
 import { keepTailnetDirect } from './proxy.ts';
 import { canMovePointer, movePointer } from './pointer.ts';
 import { ARM, CodeLogins, fill, isSignInPage, typedPassword } from './code-login.ts';
+import { Tunnels, freePort, modelUrl, pageUrl, tunnelOrigin } from './tunnel.ts';
 import { Shells, windowBackground } from './windows.ts';
 import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.ts';
 import { installRelease, latestRelease, type Release } from './release-updater.ts';
@@ -176,7 +178,7 @@ function codeOrigin(tabId: string, url: string): string | null {
 }
 
 function codeSignInLoaded(tabId: string, wc: Electron.WebContents) {
-  const url = wc.getURL();
+  const url = modelUrl(wc.getURL(), state.codeTunnels ?? []);
   if (!isSignInPage(url)) return;
   const origin = codeOrigin(tabId, url);
   if (!origin) return;
@@ -207,11 +209,118 @@ function codeSignInLeft(tabId: string, url: string) {
   if (hit) send({ type: 'toast', slot: hit.slot, text: kept ? '已记住这个 code-server 的密码，以后自动登录' : '这台电脑没有可用的钥匙串，code-server 密码不能记住' });
 }
 
+// ── code-servers over SSH (设置 → 代码) ─────────────────────────────────────────
+
+const tunnels = new Tunnels({ log, onStatus: tunnelStatus });
+/** Tabs showing the 正在连接 page, waiting for their code-server's tunnel: tab id → its address. */
+const tunnelWaiting = new Map<string, string>();
+/** Tabs whose page failed to load from a tunnel (it was down): loaded again once it is up. */
+const tunnelFailed = new Set<string>();
+/** What a page standing in for a code-server, while its tunnel comes up, starts with. */
+const WAITING_PAGE = 'data:text/html;charset=utf-8,' + encodeURIComponent('<!--gleeok-tunnel-->');
+
+const tunnelOf = (url: string) => {
+  try {
+    const origin = new URL(url).origin;
+    return state.codeTunnels?.find((t) => t.origin === origin);
+  } catch {
+    return undefined;
+  }
+};
+
+function waitingPage(ssh: string, error?: string) {
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  const body = error
+    ? `<p>通过 SSH 连不上 <b>${esc(ssh)}</b>：</p><pre>${esc(error)}</pre><p class="m">会自动重试。主机别名、端口在 设置 → 代码 里改。</p>`
+    : `<p>正在通过 SSH 连接 <b>${esc(ssh)}</b>…</p>`;
+  return (
+    WAITING_PAGE +
+    encodeURIComponent(
+      `<!doctype html><title>${error ? 'SSH 连不上' : '正在连接'} · ${esc(ssh)}</title><meta name="color-scheme" content="light dark">` +
+        `<style>body{font:14px system-ui,sans-serif;display:grid;place-items:center;height:90vh;margin:0;padding:0 32px}div{max-width:560px}pre{white-space:pre-wrap;opacity:.8}.m{opacity:.6}</style><div>${body}</div>`,
+    )
+  );
+}
+
+/** The page a tab loads for its address: a code-server on a tunnel from localhost, or the wait page. */
+function toPage(tabId: string, url: string) {
+  tunnelWaiting.delete(tabId);
+  tunnelFailed.delete(tabId);
+  const t = tunnelOf(url);
+  if (!t) return url;
+  tunnels.want(t);
+  const status = tunnels.status(t.origin);
+  if (status?.state === 'up') return pageUrl(url, [t]);
+  tunnelWaiting.set(tabId, url);
+  return waitingPage(t.ssh, status?.state === 'failed' ? status.error : undefined);
+}
+
+function tunnelStatus(origin: string, status: TunnelStatus) {
+  for (const [tabId, url] of [...tunnelWaiting]) {
+    if (tunnelOf(url)?.origin !== origin) continue;
+    const wc = views.get(tabId)?.webContents;
+    if (!wc || wc.isDestroyed()) {
+      tunnelWaiting.delete(tabId);
+      continue;
+    }
+    if (status.state === 'up' || status.state === 'failed') void wc.loadURL(toPage(tabId, url)).catch(() => {});
+  }
+  if (status.state === 'up') {
+    const t = state.codeTunnels?.find((x) => x.origin === origin);
+    for (const tabId of [...tunnelFailed]) {
+      const wc = views.get(tabId)?.webContents;
+      tunnelFailed.delete(tabId);
+      if (t && wc && !wc.isDestroyed() && wc.getURL().startsWith(tunnelOrigin(t))) wc.reload();
+    }
+  }
+  changed();
+}
+
+/** Every loaded tab on a code-server, loaded again (it went onto or off a tunnel). */
+function reloadCodeServer(origin: string) {
+  for (const session of Object.values(state.sessions))
+    for (const pane of session.panes)
+      for (const tab of pane.tabs) {
+        const wc = views.get(tab.id)?.webContents;
+        let on = false;
+        try {
+          on = new URL(tab.url).origin === origin;
+        } catch {
+          // not a web address
+        }
+        if (on && wc && !wc.isDestroyed()) void wc.loadURL(toPage(tab.id, tab.url)).catch(() => {});
+      }
+}
+
+async function setCodeTunnel(origin: string, set: { ssh: string; remotePort: number } | null) {
+  const list = state.codeTunnels ?? [];
+  const old = list.find((t) => t.origin === origin);
+  if (!set) {
+    if (!old) return;
+    state.codeTunnels = list.filter((t) => t !== old);
+    if (!state.codeTunnels.length) state.codeTunnels = undefined;
+  } else {
+    const localPort = old?.localPort ?? (await freePort(18600, list.map((t) => t.localPort)));
+    const next = { origin, ssh: set.ssh.trim(), remotePort: set.remotePort, localPort };
+    state.codeTunnels = old ? list.map((t) => (t === old ? next : t)) : [...list, next];
+  }
+  tunnels.update(state.codeTunnels ?? []);
+  reloadCodeServer(origin);
+  changed();
+}
+
 const views = new TabViews({
   onLoaded: codeSignInLoaded,
+  toPage,
+  fromPage: (url) => (url.startsWith(WAITING_PAGE) ? null : modelUrl(url, state.codeTunnels ?? [])),
+  onLoadFailed(tabId) {
+    const url = views.get(tabId)?.webContents.getURL() ?? '';
+    if ((state.codeTunnels ?? []).some((t) => url.startsWith(tunnelOrigin(t)))) tunnelFailed.add(tabId);
+  },
   onConsole(tabId, message) {
     const password = typedPassword(message);
-    const url = password && views.get(tabId)?.webContents.getURL();
+    const page = password && views.get(tabId)?.webContents.getURL();
+    const url = page && modelUrl(page, state.codeTunnels ?? []);
     const origin = url && codeOrigin(tabId, url);
     if (password && origin) signInTyped.set(tabId, { origin, password });
   },
@@ -745,6 +854,7 @@ function snapshot(): Snapshot {
     },
     paletteWindows: [...paletteWindows],
     crashedTabs: Object.fromEntries(crashed()),
+    codeTunnels: tunnels.statuses,
     weather: weather.snapshot,
     zoneWeather: Object.fromEntries(weather.others),
     drm,
@@ -1440,6 +1550,12 @@ function dispatch(action: Action) {
       focusSlot(to);
       return;
     }
+    case 'setCodeTunnel':
+      void setCodeTunnel(action.origin, action.tunnel).catch((e: unknown) => log(`code tunnel: ${String(e)}`));
+      return;
+    case 'retryCodeTunnel':
+      tunnels.retry(action.origin);
+      return;
     case 'setPointerFollows':
       state.pointerFollows = action.on ? undefined : false;
       changed();
@@ -1930,7 +2046,7 @@ function dispatch(action: Action) {
         startPendingLink(tab.id, session.projectId, slot, url);
       }
       const view = views.get(tab.id);
-      if (view) view.webContents.loadURL(url).catch(() => {});
+      if (view) view.webContents.loadURL(toPage(tab.id, url)).catch(() => {});
       else {
         tab.url = url;
         tabsChanged(session);
@@ -2350,6 +2466,7 @@ app.on('before-quit', () => {
 app.on('will-quit', () => {
   saveState(statePath(), state);
   terminals.killAll();
+  tunnels.stopAll();
 });
 app.on('window-all-closed', () => app.quit());
 // The GPU process and the like: when one dies every page may turn white at once.

@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, clipboard, type BrowserWindow } from 'electron';
 import type { Action, Snapshot } from '../../../shared/src/ipc.ts';
-import type { GlobalState } from '../../../shared/src/model.ts';
+import { primaryCodeLink, type GlobalState } from '../../../shared/src/model.ts';
 import type { TabViews } from './views.ts';
 
 /** Where real input goes and what a recording captures: the main window, or the page in a pane. */
@@ -79,10 +79,17 @@ export async function runDevScript(
   mkdirSync(out, { recursive: true });
   const steps = JSON.parse(readFileSync(scriptPath, 'utf8')) as Step[];
 
-  // "$project:N" in an action stands for the N-th project in the sidebar, so scripts work on any data.
+  // "$project:N" in an action stands for the N-th project in the sidebar, so scripts work on any
+  // data; "$codeOrigin:N" for the origin of that project's code-server.
+  const codeOrigin = (n: number) => {
+    const url = primaryCodeLink(getSnapshot().projects[n] ?? { links: [] })?.url;
+    return url ? new URL(url).origin : '';
+  };
   const resolve = (action: Action): Action =>
     JSON.parse(
-      JSON.stringify(action).replace(/"\$project:(\d+)"/g, (_m, n) => JSON.stringify(getSnapshot().projects[Number(n)]?.id ?? '')),
+      JSON.stringify(action)
+        .replace(/"\$project:(\d+)"/g, (_m, n) => JSON.stringify(getSnapshot().projects[Number(n)]?.id ?? ''))
+        .replace(/"\$codeOrigin:(\d+)"/g, (_m, n) => JSON.stringify(codeOrigin(Number(n)))),
     ) as Action;
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
