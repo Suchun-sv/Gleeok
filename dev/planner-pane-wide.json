@@ -1,0 +1,11 @@
+[
+  { "action": { "type": "setTheme", "theme": "light" } },
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 5000 },
+  { "action": { "type": "setVisiblePanes", "count": 2 } },
+  { "action": { "type": "setPaneWeights", "winId": "main", "weights": { "0": 1, "1": 1.75 } } },
+  { "action": { "type": "navigate", "slot": 1, "url": "gleeok://planner" } },
+  { "wait": 3000 },
+  { "evalMain": "(() => { const p = document.querySelector(\".pane[data-slot='1'] .planner\"); const r = (s) => { const e = p.querySelector(s); if (!e) return s + ' none'; const b = e.getBoundingClientRect(); return s + ' ' + [b.x, b.y, b.width, b.height].map(Math.round).join(','); }; return 'planner ' + p.className + ' ' + Math.round(p.getBoundingClientRect().width) + ' | ' + ['.plan-main', '.plan-side', '.plan-grid-scroll'].map(r).join(' | ') + ' | display ' + getComputedStyle(p).display + ' ' + getComputedStyle(p).flexDirection; })()" },
+  { "capture": "planner-wide" }
+]

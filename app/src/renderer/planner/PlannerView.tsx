@@ -140,7 +140,7 @@ export function PlannerView({ mode, projects, currentProjectId }: { mode: 'full'
   );
 
   return (
-    <div ref={root} className={`planner ${mode} ${compact ? 'compact' : ''}`}>
+    <div ref={root} className={`planner plan-${mode} ${compact ? 'compact' : ''}`}>
       {compact ? (
         <div className="plan-main stacked">
           {calendar(
