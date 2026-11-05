@@ -1,0 +1,10 @@
+[
+  {"action": {"type": "selectProject", "id": "$project:0"}},
+  {"wait": 5000},
+  {"action": {"type": "navigate", "slot": 0, "url": "gleeok://planner"}},
+  {"wait": 3000},
+  {"evalMain": "[...document.querySelectorAll(\".pane[data-slot='0'] button\")].find(b => b.textContent.trim() === '周')?.click(), 'week'"},
+  {"wait": 1000},
+  {"evalMain": "(() => { const pane = document.querySelector(\".pane[data-slot='0']\"); const box = (e) => Math.round(e.getBoundingClientRect().x) + '+' + Math.round(e.getBoundingClientRect().width); return 'heads ' + [...pane.querySelectorAll('.plan-day-head')].map(box).join(' ') + ' | cols ' + [...pane.querySelectorAll('.plan-col')].map(box).join(' '); })()"},
+  {"capture": "planner-week"}
+]

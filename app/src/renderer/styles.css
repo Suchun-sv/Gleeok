@@ -2931,6 +2931,9 @@ body.resizing-rows * {
 .plan-days-head {
   display: grid;
   border-bottom: 1px solid var(--line);
+  /* Leaves room for the grid's scrollbar below, so the day columns line up with it. */
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
 }
 
 .plan-day-head {
@@ -2984,6 +2987,7 @@ body.resizing-rows * {
 .plan-grid-scroll {
   flex: 1;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .plan-grid {
