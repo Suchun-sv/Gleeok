@@ -577,7 +577,8 @@ function hostOf(url: string) {
  * lies under it; a few pixels of movement make it a drag, less is a click.
  */
 function startTabDrag(e: React.PointerEvent<HTMLDivElement>, tab: Tab, slot: number, label: string) {
-  if (e.button !== 0) return;
+  // Not from the tab's × : capturing the pointer would take its click from it.
+  if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
   const el = e.currentTarget;
   el.setPointerCapture(e.pointerId);
   gleeok.dispatch({ type: 'tabDragPrepare' });
