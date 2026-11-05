@@ -264,6 +264,8 @@ export type Action =
   /** A tab was pressed: it may be dragged next, so screenshots of the pages are taken now. */
   | { type: 'tabDragPrepare' }
   | { type: 'tabDrag'; active: boolean }
+  /** A dragged tab let go outside its own window: the pane under that screen point takes it. */
+  | { type: 'dropTabAt'; tabId: string; x: number; y: number }
   | { type: 'openPalette' }
   | { type: 'checkUpdate' }
   | { type: 'selfUpdate' }

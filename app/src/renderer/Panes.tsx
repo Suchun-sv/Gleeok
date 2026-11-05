@@ -245,7 +245,6 @@ function PaneView(props: PaneProps) {
   const [draft, setDraft] = useState(isNew ? '' : tab.url);
   const findInput = useRef<HTMLInputElement>(null);
   const [find, setFind] = useState<{ text: string; result: string } | null>(null);
-  const [dropTarget, setDropTarget] = useState(false);
   const [toast, setToast] = useState<Extract<Command, { type: 'toast' }> | null>(null);
   const paste = usePasteTracker();
   const [saveOpen, setSaveOpen] = useState(false);
@@ -298,36 +297,19 @@ function PaneView(props: PaneProps) {
     gleeok.dispatch({ type: 'focusPane', slot });
   }
 
-  const dropProps = {
-    onDragOver: (e: React.DragEvent) => {
-      if (!e.dataTransfer.types.includes(TAB_MIME)) return;
-      e.preventDefault();
-      setDropTarget(true);
-    },
-    onDragLeave: (e: React.DragEvent) => {
-      // Moving between children also fires dragleave; only count actually leaving the pane.
-      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropTarget(false);
-    },
-    onDrop: (e: React.DragEvent) => {
-      setDropTarget(false);
-      const tabId = e.dataTransfer.getData(TAB_MIME);
-      if (tabId) gleeok.dispatch({ type: 'moveTab', tabId, toSlot: slot });
-    },
-  };
-
   const focusMe = () => !focused && gleeok.dispatch({ type: 'focusPane', slot });
 
   return (
     <section
-      className={`pane ${focused ? 'focused' : ''} ${dropTarget ? 'drop-target' : ''}`}
+      className={`pane ${focused ? 'focused' : ''}`}
+      data-slot={slot}
       style={{ flexGrow: grow }}
       onMouseDown={focusMe}
-      {...dropProps}
     >
       {/* A 代码栏 hides its tab strip too: a thin line stays, and the strip slides in while the
           pointer is at the pane's top (it pushes VS Code down; nothing can lie over a page). On
           macOS the first pane's strip holds the traffic lights, so there it stays. */}
-      {stripHidden && !stripShown ? (
+      {stripHidden && !stripShown && !dragging ? (
         <div className="pane-peek" onMouseEnter={showStrip} title="标签" />
       ) : (
       <div className="tabs" onMouseEnter={stripHidden ? showStrip : undefined} onMouseLeave={stripHidden ? hideStripSoon : undefined}>
@@ -552,7 +534,77 @@ function hostOf(url: string) {
   }
 }
 
-const TAB_MIME = 'application/x-gleeok-tab';
+/**
+ * Drag a tab to another pane. Not HTML drag and drop: pages are views of their own above the
+ * shell, and one the pointer crosses before main has hidden them takes the drag (and the drop).
+ * The pointer is captured instead, as for the dividers, so the shell keeps every move whatever
+ * lies under it; a few pixels of movement make it a drag, less is a click.
+ */
+function startTabDrag(e: React.PointerEvent<HTMLDivElement>, tab: Tab, slot: number, label: string) {
+  if (e.button !== 0) return;
+  const el = e.currentTarget;
+  el.setPointerCapture(e.pointerId);
+  gleeok.dispatch({ type: 'tabDragPrepare' });
+  const x0 = e.clientX;
+  const y0 = e.clientY;
+  let ghost: HTMLDivElement | null = null;
+  let over: HTMLElement | null = null;
+  const target = (x: number, y: number) => {
+    const pane = document.elementFromPoint(x, y)?.closest<HTMLElement>('.pane[data-slot]') ?? null;
+    return pane && Number(pane.dataset.slot) !== slot ? pane : null;
+  };
+  const mark = (pane: HTMLElement | null) => {
+    if (pane === over) return;
+    over?.classList.remove('drop-target');
+    pane?.classList.add('drop-target');
+    over = pane;
+  };
+  const move = (ev: PointerEvent) => {
+    if (!ghost) {
+      if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return;
+      gleeok.dispatch({ type: 'tabDrag', active: true });
+      ghost = document.createElement('div');
+      ghost.className = 'tab-ghost';
+      ghost.textContent = label;
+      document.body.append(ghost);
+      document.body.classList.add('tab-dragging');
+    }
+    ghost.style.transform = `translate(${ev.clientX + 12}px, ${ev.clientY + 8}px)`;
+    mark(target(ev.clientX, ev.clientY));
+  };
+  const end = (ev: PointerEvent | null) => {
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', up);
+    el.removeEventListener('lostpointercapture', lost);
+    window.removeEventListener('keydown', key, true);
+    if (!ghost) return;
+    // The click that follows letting go (if one does) is not one.
+    const swallow = (c: MouseEvent) => c.stopPropagation();
+    el.addEventListener('click', swallow, true);
+    setTimeout(() => el.removeEventListener('click', swallow, true), 0);
+    ghost.remove();
+    document.body.classList.remove('tab-dragging');
+    mark(null);
+    if (ev) {
+      const pane = target(ev.clientX, ev.clientY);
+      const outside = ev.clientX < 0 || ev.clientY < 0 || ev.clientX >= window.innerWidth || ev.clientY >= window.innerHeight;
+      if (pane) gleeok.dispatch({ type: 'moveTab', tabId: tab.id, toSlot: Number(pane.dataset.slot) });
+      else if (outside) gleeok.dispatch({ type: 'dropTabAt', tabId: tab.id, x: ev.screenX, y: ev.screenY });
+    }
+    gleeok.dispatch({ type: 'tabDrag', active: false });
+  };
+  const up = (ev: PointerEvent) => end(ev);
+  const lost = () => end(null);
+  const key = (ev: KeyboardEvent) => {
+    if (ev.key !== 'Escape' || !ghost) return;
+    ev.preventDefault();
+    el.releasePointerCapture(e.pointerId); // ends it, with no drop
+  };
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up);
+  el.addEventListener('lostpointercapture', lost);
+  window.addEventListener('keydown', key, true);
+}
 
 /**
  * Tracks whether an input's current value came from a paste with no typing since; such a
@@ -575,15 +627,7 @@ function TabButton({ tab, slot, active, code }: { tab: Tab; slot: number; active
   return (
     <div
       className={`tab ${active ? 'active' : ''}`}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData(TAB_MIME, tab.id);
-        e.dataTransfer.effectAllowed = 'move';
-        // Pages sit above the shell and would swallow the drag; main swaps them for screenshots.
-        gleeok.dispatch({ type: 'tabDrag', active: true });
-      }}
-      onDragEnd={() => gleeok.dispatch({ type: 'tabDrag', active: false })}
-      onMouseDown={(e) => e.button === 0 && gleeok.dispatch({ type: 'tabDragPrepare' })}
+      onPointerDown={(e) => startTabDrag(e, tab, slot, code ? codeTabLabel(code) : tab.title || tab.url)}
       onClick={() => gleeok.dispatch({ type: 'activateTab', slot, tabId: tab.id })}
       onAuxClick={(e) => e.button === 1 && gleeok.dispatch({ type: 'closeTab', slot, tabId: tab.id })}
       title={`${tab.title}\n${tab.url}`}

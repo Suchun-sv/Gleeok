@@ -3857,3 +3857,28 @@ input.plan-pop-title {
 .tunnel-row .hint.error {
   margin-left: 24px;
 }
+
+/* A tab being dragged to another pane (see startTabDrag in Panes) */
+.tab-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  max-width: 220px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+body.tab-dragging,
+body.tab-dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}

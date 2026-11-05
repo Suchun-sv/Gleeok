@@ -1684,6 +1684,12 @@ function dispatch(action: Action) {
     case 'tabDragPrepare':
       prepareTabDrag();
       return;
+    case 'dropTabAt': {
+      const inside = (r: Rect | null) => !!r && action.x >= r.x && action.x < r.x + r.width && action.y >= r.y && action.y < r.y + r.height;
+      const to = allVisibleSlots().find((s) => inside(paneOnScreen(s)));
+      if (to !== undefined) dispatch({ type: 'moveTab', tabId: action.tabId, toSlot: to });
+      return;
+    }
     case 'tabDrag':
       if (action.active) void startTabDrag();
       else {

@@ -1,0 +1,15 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 6000 },
+  { "evalMain": "'before: ' + [...document.querySelectorAll('.pane[data-slot]')].map(p => p.dataset.slot + ':' + p.querySelectorAll('.tab').length).join(' ')" },
+  { "mouseDrag": { "selector": ".pane[data-slot='0'] .tab", "index": 0, "dx": 1000, "dy": 300, "steps": 12 } },
+  { "wait": 800 },
+  { "evalMain": "'after drag 0→2: ' + [...document.querySelectorAll('.pane[data-slot]')].map(p => p.dataset.slot + ':' + p.querySelectorAll('.tab').length).join(' ') + ' | ghost left: ' + document.querySelectorAll('.tab-ghost').length + ' | drop zones: ' + document.querySelectorAll('.drop-zone').length" },
+  { "capture": "after" },
+  { "mouseDrag": { "selector": ".pane[data-slot='2'] .tab", "index": 0, "dx": 2, "dy": 0, "steps": 2 } },
+  { "wait": 500 },
+  { "evalMain": "'tiny move (click): ' + [...document.querySelectorAll('.pane[data-slot]')].map(p => p.dataset.slot + ':' + p.querySelectorAll('.tab').length).join(' ') + ' | active in 2: ' + document.querySelector(\".pane[data-slot='2'] .tab.active .title\")?.textContent" },
+  { "mouseDrag": { "selector": ".pane[data-slot='1'] .tab", "index": 0, "dx": -500, "dy": 200, "steps": 12 } },
+  { "wait": 800 },
+  { "evalMain": "'after drag 1→0: ' + [...document.querySelectorAll('.pane[data-slot]')].map(p => p.dataset.slot + ':' + p.querySelectorAll('.tab').length).join(' ')" }
+]
