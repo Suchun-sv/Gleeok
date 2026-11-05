@@ -5,6 +5,7 @@ import { AgentSettings, SETTINGS_TAB_KEY } from './AgentConnections.tsx';
 import {
   DEFAULT_PANE_NAMES,
   codeHost,
+  codeIdleMinutes,
   codeServers,
   type CodeTunnel,
   DEFAULT_SUGGESTIONS,
@@ -90,7 +91,12 @@ export function SettingsPage({ snap, toggle }: { snap: Snapshot; toggle: React.R
         )}
         {tab === 'agent' && <AgentSettings />}
         {tab === 'paseo' && <PaseoSettings snap={snap} />}
-        {tab === 'code' && <CodeTunnelSettings snap={snap} />}
+        {tab === 'code' && (
+          <>
+            <CodeIdleSettings snap={snap} />
+            <CodeTunnelSettings snap={snap} />
+          </>
+        )}
         {tab === 'sync' && <SyncSettings snap={snap} />}
         {tab === 'vault' && <VaultSettings snap={snap} />}
         {tab === 'about' && <About snap={snap} />}
@@ -658,6 +664,34 @@ function KeyInput({ saved, placeholder, onSave }: { saved: string | null; placeh
       <input type="password" value={draft} placeholder={saved ? `已保存（${saved}），输入新的替换` : placeholder} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={blurOnEnter} />
       {saved && <button onClick={() => onSave('')}>清除</button>}
     </>
+  );
+}
+
+const IDLE_CHOICES = [10, 30, 60, 120, 0];
+
+/** How long a 代码栏 out of sight keeps its VS Code window loaded (this machine). */
+function CodeIdleSettings({ snap }: { snap: Snapshot }) {
+  const minutes = codeIdleMinutes(snap.state);
+  const choices = IDLE_CHOICES.includes(minutes) ? IDLE_CHOICES : [...IDLE_CHOICES.slice(0, -1), minutes, 0].sort((a, b) => (a || 1e9) - (b || 1e9));
+  return (
+    <section className="card">
+      <h3>闲置的代码栏</h3>
+      <div className="row">
+        <span className="meta">看不见超过</span>
+        <select value={minutes} onChange={(e) => gleeok.dispatch({ type: 'setCodeIdleMinutes', minutes: Number(e.target.value) })}>
+          {choices.map((m) => (
+            <option key={m} value={m}>
+              {m === 0 ? '从不关闭' : m < 60 ? `${m} 分钟` : `${m / 60} 小时`}
+            </option>
+          ))}
+        </select>
+        <span className="meta">就关掉网页，切回来时重新加载</span>
+      </div>
+      <p className="hint">
+        每个代码栏在 code-server 上都是一个单独的 VS Code 窗口，各自带一个几百 MB 的扩展进程。后台项目里、或者被同一栏其他标签盖住的代码栏，看不见超过这个时间就关掉网页，
+        标签留着，切回来时重新加载（几秒钟），没保存的修改 VS Code 会恢复。只对这台电脑生效。
+      </p>
+    </section>
   );
 }
 

@@ -1,0 +1,22 @@
+[
+  {"action": {"type": "selectProject", "id": "$project:2"}},
+  {"wait": 5000},
+  {"action": {"type": "setCodeTunnel", "origin": "$codeOrigin:2", "tunnel": {"ssh": "good-host", "remotePort": 18443}}},
+  {"action": {"type": "setCodeIdleMinutes", "minutes": 1}},
+  {"action": {"type": "openCode", "projectId": "$project:2"}},
+  {"wait": 5000},
+  {"evalPage": "'shown: ' + location.href"},
+  {"action": {"type": "selectProject", "id": "$project:0"}},
+  {"wait": 64000},
+  {"action": {"type": "setCodeIdleMinutes", "minutes": 1}},
+  {"wait": 500},
+  {"action": {"type": "selectProject", "id": "$project:2"}},
+  {"wait": 5000},
+  {"evalPage": "'back: ' + location.href + ' | ' + document.title"},
+  {"action": {"type": "setView", "view": "settings"}},
+  {"wait": 300},
+  {"evalMain": "[...document.querySelectorAll('.settings-nav button')].find(b => b.textContent === '代码').click(), 'ok'"},
+  {"wait": 500},
+  {"capture": "settings"},
+  {"action": {"type": "setView", "view": "panes"}}
+]

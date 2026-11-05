@@ -193,6 +193,8 @@ export type Action =
   /** Open a code-server (by its links' origin) over SSH, or no longer (null). This machine only. */
   | { type: 'setCodeTunnel'; origin: string; tunnel: { ssh: string; remotePort: number } | null }
   | { type: 'retryCodeTunnel'; origin: string }
+  /** How long a 代码栏 out of sight keeps its page (minutes; 0: always). */
+  | { type: 'setCodeIdleMinutes'; minutes: number }
   | { type: 'newTab'; slot?: number; url?: string }
   | { type: 'closeTab'; slot?: number; tabId?: string }
   | { type: 'activateTab'; slot: number; tabId: string }

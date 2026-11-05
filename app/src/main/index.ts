@@ -32,6 +32,8 @@ import {
   primaryCodeLink,
   sameCodePage,
   codeLinkOf,
+  codeIdleMinutes,
+  DEFAULT_CODE_IDLE_MINUTES,
   codeTabLabel,
   terminalTitle,
   sameUrl,
@@ -294,6 +296,7 @@ function reloadCodeServer(origin: string) {
 
 async function setCodeTunnel(origin: string, set: { ssh: string; remotePort: number } | null) {
   const list = state.codeTunnels ?? [];
+  if (set && !/^https?:\/\/[^/]+$/.test(origin)) return;
   const old = list.find((t) => t.origin === origin);
   if (!set) {
     if (!old) return;
@@ -747,6 +750,38 @@ async function confirmDelete(id: string) {
   if (response === 0) await deleteProject(id).catch(() => {});
 }
 
+/** When each loaded page was last on screen (refreshed on every sync while it is). */
+const codeSeenAt = new Map<string, number>();
+
+/**
+ * 代码栏 out of sight longer than 设置 → 代码 allows lose their page: every one is a VS Code window
+ * with its own extension host on the code-server. The tab stays and loads again when shown
+ * (VS Code keeps unsaved edits across the reload).
+ */
+function closeIdleCode() {
+  const minutes = codeIdleMinutes(state);
+  if (!minutes) return;
+  const cutoff = Date.now() - minutes * 60_000;
+  for (const s of Object.values(state.sessions)) {
+    const project = config.projects.find((p) => p.id === s.projectId);
+    if (!project) continue;
+    for (const pane of s.panes)
+      for (const t of pane.tabs) {
+        if (!views.has(t.id) || !codeLinkOf(project, t.url)) continue;
+        const seen = codeSeenAt.get(t.id);
+        if (seen === undefined) codeSeenAt.set(t.id, Date.now());
+        else if (seen < cutoff) {
+          log(`closed a 代码栏 out of sight for ${minutes} min: ${project.name}`);
+          views.destroy(t.id);
+          codeSeenAt.delete(t.id);
+          tunnelWaiting.delete(t.id);
+          tunnelFailed.delete(t.id);
+        }
+      }
+  }
+  changed();
+}
+
 /** Projects untouched since the start of today go to sleep; anything used today stays alive. */
 function hibernateStale() {
   const cutoff = dayStart();
@@ -884,6 +919,7 @@ function syncViews() {
       }
     }
     views.sync(bw, desired);
+    for (const tabId of desired.keys()) codeSeenAt.set(tabId, Date.now());
   }
   // A terminal lives as long as some tab shows it, hibernated or not.
   const termTabs = new Set<string>();
@@ -1555,6 +1591,11 @@ function dispatch(action: Action) {
       return;
     case 'retryCodeTunnel':
       tunnels.retry(action.origin);
+      return;
+    case 'setCodeIdleMinutes':
+      state.codeIdleMinutes = action.minutes === DEFAULT_CODE_IDLE_MINUTES ? undefined : Math.max(0, Math.round(action.minutes));
+      changed();
+      closeIdleCode();
       return;
     case 'setPointerFollows':
       state.pointerFollows = action.on ? undefined : false;
@@ -2391,6 +2432,7 @@ app.whenReady().then(async () => {
   if (state.currentProjectId) void checkRemoteTabs(state.currentProjectId);
   hibernateStale();
   setInterval(hibernateStale, 10 * 60_000);
+  setInterval(closeIdleCode, 60_000);
   powerMonitor.on('resume', hibernateStale);
   // Woken up, perhaps somewhere else: locate again and fetch a fresh forecast.
   powerMonitor.on('resume', () => weather.placeChanged());

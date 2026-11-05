@@ -349,6 +349,11 @@ export interface GlobalState {
   pointerFollows?: boolean;
   /** Light or dark, on this machine (unset: as the system is). Web pages follow it too. */
   theme?: 'light' | 'dark';
+  /**
+   * Minutes a 代码栏 may stay out of sight before its page is closed (each one is a VS Code window
+   * holding an extension host of a few hundred MB on its code-server); unset: 30; 0: never.
+   */
+  codeIdleMinutes?: number;
   /** code-servers this machine reaches over an SSH tunnel (设置 → 代码), by their links' origin. */
   codeTunnels?: CodeTunnel[];
   /** Installed builds: also take hot updates of every push to main (unset: releases only). */
@@ -367,6 +372,9 @@ export interface CodeTunnel {
   /** Fixed per code-server, so its pages keep one origin (sign-in, VS Code's own state). */
   localPort: number;
 }
+
+export const DEFAULT_CODE_IDLE_MINUTES = 30;
+export const codeIdleMinutes = (s: Pick<GlobalState, 'codeIdleMinutes'>) => s.codeIdleMinutes ?? DEFAULT_CODE_IDLE_MINUTES;
 
 export type TunnelStatus = { state: 'off' | 'connecting' | 'up' } | { state: 'failed'; error: string };
 
