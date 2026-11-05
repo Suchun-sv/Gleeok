@@ -154,6 +154,8 @@ export interface Snapshot {
   paletteWindows: string[];
   /** Tabs whose page process died (tab id → reason: oom, crashed, killed…). */
   crashedTabs: Record<string, string>;
+  /** Tabs whose page could not be loaded (Chromium's error code and name), being retried. */
+  failedTabs: Record<string, { code: number; description: string; host: string; tries: number }>;
   /** SSH tunnels to code-servers started since launch, by the origin they stand in for. */
   codeTunnels: Record<string, TunnelStatus>;
   /**
@@ -247,6 +249,8 @@ export type Action =
   | { type: 'startProject'; id: string }
   /** Rebuild a tab whose page process died. */
   | { type: 'reviveTab'; tabId: string }
+  /** Load a tab that could not be loaded again, now. */
+  | { type: 'retryLoad'; tabId: string }
   /** Open gleeok.log (page crashes, failed loads, dead processes). */
   | { type: 'openLog' }
   /** The weather's place: one picked in Settings, located by IP address, or no weather. */

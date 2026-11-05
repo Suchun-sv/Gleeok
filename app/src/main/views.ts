@@ -14,6 +14,12 @@ export const PARTITION = 'persist:gleeok';
 /** Preload for web pages (see preload/page.ts); also given to popups they open. */
 const PAGE_PRELOAD = join(__dirname, 'page-preload.js');
 
+export interface LoadFailure {
+  code: number;
+  description: string;
+  url: string;
+}
+
 export interface ViewHooks {
   onUpdate(tabId: string, patch: { url?: string; title?: string; favicon?: string }): void;
   onFocus(tabId: string): void;
@@ -26,8 +32,11 @@ export interface ViewHooks {
   onLoaded(tabId: string, wc: WebContents): void;
   /** A page wrote to its console (only Gleeok's own injected scripts' messages matter). */
   onConsole(tabId: string, message: string): void;
-  /** A page failed to load (its main frame), at the address the page had (see toPage). */
-  onLoadFailed(tabId: string, code: number): void;
+  /**
+   * A page stopped loading: null if it got there, else why its main frame could not be loaded
+   * (Chromium's error code and name, and the address the page had, see toPage).
+   */
+  onLoadResult(tabId: string, failure: LoadFailure | null): void;
   /**
    * The address a tab's page is loaded from, given the one the tab is known by (a code-server
    * on an SSH tunnel is loaded from localhost); fromPage is the way back, null for a page that
@@ -89,13 +98,18 @@ export class TabViews {
     wc.on('console-message', (e) => this.#hooks.onConsole(tabId, (e as unknown as { message?: string }).message ?? ''));
     wc.on('unresponsive', () => this.#hooks.log(`page unresponsive: ${hostOf(wc.getURL())}`));
     wc.on('responsive', () => this.#hooks.log(`page responsive again: ${hostOf(wc.getURL())}`));
+    // Electron shows no error page of its own: a page that cannot be loaded just stays white.
+    // Whether a load got there is known once it stops.
+    let failure: LoadFailure | null = null;
+    wc.on('did-start-loading', () => (failure = null));
     wc.on('did-fail-load', (_e, code, description, failedUrl, isMainFrame) => {
-      // -3 is a navigation that was replaced by another one: not a failure.
+      // -3 is a navigation that was replaced by another one (or became a download): not a failure.
       if (isMainFrame && code !== -3) {
         this.#hooks.log(`load failed: ${hostOf(failedUrl)} ${code} ${description}`);
-        this.#hooks.onLoadFailed(tabId, code);
+        failure = { code, description, url: failedUrl };
       }
     });
+    wc.on('did-stop-loading', () => this.#hooks.onLoadResult(tabId, failure));
     wc.setWindowOpenHandler(({ url: target, disposition }) => {
       // Scripted popups (OAuth sign-in and the like) need a real window so window.opener keeps
       // working; plain link opens become tabs in the same pane.

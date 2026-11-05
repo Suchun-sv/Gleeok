@@ -42,6 +42,26 @@ const CRASH_REASONS: Record<string, string> = {
   'integrity-failure': '代码完整性检查失败',
 };
 
+/** Why a page could not be loaded, by Chromium's net error code (the rest show its name). */
+const LOAD_ERRORS: Record<number, string> = {
+  [-7]: '连接超时',
+  [-21]: '网络切换了',
+  [-100]: '服务器断开了连接',
+  [-101]: '连接被重置',
+  [-102]: '服务器拒绝连接，服务可能没在运行',
+  [-104]: '连不上服务器',
+  [-105]: '找不到这个地址（域名解析失败）',
+  [-106]: '没有网络',
+  [-109]: '这个地址不可达',
+  [-118]: '连接超时',
+  [-130]: '代理服务器连不上',
+  [-137]: '域名解析失败',
+  [-200]: '网站的证书有问题',
+  [-201]: '网站的证书过期了，或者这台电脑的时间不对',
+  [-202]: '网站的证书不受信任',
+  [-324]: '服务器什么都没返回',
+};
+
 interface Props {
   snap: Snapshot;
   project: Project;
@@ -172,6 +192,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
           dragImage={dragImages[slot]}
           asleep={session.lifecycle !== 'live'}
           crashedTabs={snap.crashedTabs}
+          failedTabs={snap.failedTabs}
           windowButton={
             win.role === 'satellite' ? (
               <button onClick={() => gleeok.dispatch({ type: 'attachPane', slot })} title="合并回主窗口">
@@ -229,10 +250,12 @@ interface PaneProps {
   asleep: boolean;
   /** Tabs whose page process died (tab id → reason). */
   crashedTabs: Record<string, string>;
+  /** Tabs whose page could not be loaded, being retried. */
+  failedTabs: Snapshot['failedTabs'];
 }
 
 function PaneView(props: PaneProps) {
-  const { platform, name, suggestions, projects, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep, crashedTabs } = props;
+  const { platform, name, suggestions, projects, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep, crashedTabs, failedTabs } = props;
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
   const isTerm = isTerminalUrl(tab.url);
@@ -449,6 +472,19 @@ function PaneView(props: PaneProps) {
             <p className="hint">这个网页的进程停止了（{CRASH_REASONS[crashedTabs[tab.id]] ?? crashedTabs[tab.id]}），所以显示不出来。</p>
             <button className="primary" onClick={() => gleeok.dispatch({ type: 'reviveTab', tabId: tab.id })}>
               重新加载
+            </button>
+          </div>
+        )}
+        {!asleep && !dragging && !crashedTabs[tab.id] && failedTabs[tab.id] && (
+          <div className="asleep">
+            {tab.favicon ? <img src={tab.favicon} alt="" onError={(e) => (e.currentTarget.style.display = 'none')} /> : null}
+            <p className="title">打不开 {failedTabs[tab.id].host}</p>
+            <p className="hint">
+              {LOAD_ERRORS[failedTabs[tab.id].code] ?? failedTabs[tab.id].description}（{failedTabs[tab.id].description}）。会自动重试
+              {failedTabs[tab.id].tries > 1 ? `，已试 ${failedTabs[tab.id].tries} 次` : ''}，连上就会显示。
+            </p>
+            <button className="primary" onClick={() => gleeok.dispatch({ type: 'retryLoad', tabId: tab.id })}>
+              现在重试
             </button>
           </div>
         )}

@@ -58,7 +58,7 @@ import { setupPermissions } from './permissions.ts';
 import { matchShortcut } from './shortcuts.ts';
 import { activeTab, createSession, loadState, looksLikeUrl, newTab, normalizeUrl, saveState } from './state.ts';
 import { Terminals } from './terminal.ts';
-import { PARTITION, TabViews } from './views.ts';
+import { PARTITION, TabViews, type LoadFailure } from './views.ts';
 import { keepTailnetDirect } from './proxy.ts';
 import { canMovePointer, movePointer } from './pointer.ts';
 import { ARM, CodeLogins, fill, isSignInPage, typedPassword } from './code-login.ts';
@@ -148,6 +148,50 @@ const crashedTabs = new Map<string, string>();
 function crashed(): Map<string, string> {
   for (const id of crashedTabs.keys()) if (!views.crashed(id)) crashedTabs.delete(id);
   return crashedTabs;
+}
+
+/** Tabs whose page could not be loaded (offline, server down…): the pane says so, and it is retried. */
+const failedLoads = new Map<string, { code: number; description: string; host: string; tries: number }>();
+const retryTimers = new Map<string, NodeJS.Timeout>();
+/** Seconds between tries, then every minute. */
+const RETRY_DELAYS = [3, 6, 15, 30, 60];
+
+function failed() {
+  for (const id of failedLoads.keys()) if (!views.has(id)) failedLoads.delete(id);
+  return failedLoads;
+}
+
+function loadResult(tabId: string, failure: LoadFailure | null) {
+  clearTimeout(retryTimers.get(tabId));
+  retryTimers.delete(tabId);
+  const old = failedLoads.get(tabId);
+  if (!failure) {
+    if (old) {
+      failedLoads.delete(tabId);
+      changed();
+    }
+    return;
+  }
+  const tunnel = (state.codeTunnels ?? []).find((t) => failure.url.startsWith(tunnelOrigin(t)));
+  if (tunnel) tunnelFailed.add(tabId);
+  const tries = (old?.tries ?? 0) + 1;
+  failedLoads.set(tabId, { code: failure.code, description: failure.description, host: siteOf(modelUrl(failure.url, state.codeTunnels ?? [])), tries });
+  const delay = RETRY_DELAYS[Math.min(tries, RETRY_DELAYS.length) - 1];
+  retryTimers.set(tabId, setTimeout(() => retryLoad(tabId), delay * 1000));
+  changed();
+}
+
+/** Load a failed tab's address again (on a timer, or the pane's 重试 button). */
+function retryLoad(tabId: string) {
+  clearTimeout(retryTimers.get(tabId));
+  retryTimers.delete(tabId);
+  const hit = findTab(tabId);
+  const wc = views.get(tabId)?.webContents;
+  if (!hit || !wc || wc.isDestroyed()) {
+    failedLoads.delete(tabId);
+    return;
+  }
+  void wc.loadURL(toPage(tabId, hit.tab.url)).catch(() => {});
 }
 
 /** Rebuild a tab's page from its address: a fresh view and process. */
@@ -316,10 +360,7 @@ const views = new TabViews({
   onLoaded: codeSignInLoaded,
   toPage,
   fromPage: (url) => (url.startsWith(WAITING_PAGE) ? null : modelUrl(url, state.codeTunnels ?? [])),
-  onLoadFailed(tabId) {
-    const url = views.get(tabId)?.webContents.getURL() ?? '';
-    if ((state.codeTunnels ?? []).some((t) => url.startsWith(tunnelOrigin(t)))) tunnelFailed.add(tabId);
-  },
+  onLoadResult: loadResult,
   onConsole(tabId, message) {
     const password = typedPassword(message);
     const page = password && views.get(tabId)?.webContents.getURL();
@@ -890,6 +931,7 @@ function snapshot(): Snapshot {
     paletteWindows: [...paletteWindows],
     crashedTabs: Object.fromEntries(crashed()),
     codeTunnels: tunnels.statuses,
+    failedTabs: Object.fromEntries(failed()),
     weather: weather.snapshot,
     zoneWeather: Object.fromEntries(weather.others),
     drm,
@@ -915,7 +957,8 @@ function syncViews() {
         const tab = activeTab(session!.panes[slot]);
         const rect = rects[slot];
         // A dead page is taken off, so the pane can say so (and offer to reload) instead of white.
-        if (rect && !isInternalUrl(tab.url) && !crashed().has(tab.id)) desired.set(tab.id, { url: tab.url, bounds: rect });
+        // So is one that could not be loaded (it would be white): the pane says why while it is retried.
+        if (rect && !isInternalUrl(tab.url) && !crashed().has(tab.id) && !failed().has(tab.id)) desired.set(tab.id, { url: tab.url, bounds: rect });
       }
     }
     views.sync(bw, desired);
@@ -1682,6 +1725,9 @@ function dispatch(action: Action) {
       return;
     case 'reviveTab':
       reviveTab(action.tabId);
+      return;
+    case 'retryLoad':
+      retryLoad(action.tabId);
       return;
     case 'openLog':
       void shell.openPath(logPath());

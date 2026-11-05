@@ -1,0 +1,12 @@
+[
+  { "action": { "type": "selectProject", "id": "$project:0" } },
+  { "wait": 5000 },
+  { "action": { "type": "navigate", "slot": 0, "url": "http://127.0.0.1:18999/" } },
+  { "wait": 2500 },
+  { "evalMain": "'failed: ' + (document.querySelector(\".pane[data-slot='0'] .asleep\")?.innerText.replace(/\\s+/g, ' ') ?? 'no message')" },
+  { "capture": "failed" },
+  { "wait": 26000 },
+  { "evalMain": "'later: ' + (document.querySelector(\".pane[data-slot='0'] .asleep\")?.innerText.replace(/\\s+/g, ' ') ?? 'no message')" },
+  { "evalPage": "'page: ' + location.href + ' | ' + document.title" },
+  { "capture": "later" }
+]
