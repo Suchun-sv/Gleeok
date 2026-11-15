@@ -154,7 +154,7 @@ function Info({ item, save }: { item: LibraryItem; save: (fields: Record<string,
       </details>
       <p className="lib-dates">
         {item.createdBy ? `由 ${item.createdBy} 添加于 ` : '添加于 '}
-        {new Date(item.dateAdded).toLocaleString('zh-CN')} · 修改于 {new Date(item.dateModified).toLocaleString('zh-CN')}
+        {new Date(item.dateAdded).toLocaleString('zh-CN')}，修改于 {new Date(item.dateModified).toLocaleString('zh-CN')}
       </p>
     </div>
   );
@@ -475,7 +475,7 @@ function DblpPanel({ item, onDone, onError }: { item: LibraryItem; onDone: (mess
         <button key={c.key} className="lib-dblp-hit" disabled={!!busy} onClick={() => void apply(c)} title={`https://dblp.org/rec/${c.key}`}>
           <span className="lib-dblp-title">{c.title}</span>
           <span className="meta">
-            {[c.venue, c.year].filter(Boolean).join(' · ')}
+            {[c.venue, c.year].filter(Boolean).join(' ')}
             {c.preprint && <span className="lib-badge">预印本</span>}
             {c.score === 1 && <span className="lib-badge ok">标题一致</span>}
           </span>

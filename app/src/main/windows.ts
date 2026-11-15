@@ -16,7 +16,7 @@ export interface ShellHooks {
 
 /** Stable per window, so niri window rules can match it (e.g. open-on-output by title). */
 export function windowTitle(ws: AppWindowState, paneName: (slot: number) => string) {
-  return ws.role === 'main' ? 'Gleeok' : `Gleeok · ${ws.slots.map(paneName).join(' / ')}`;
+  return ws.role === 'main' ? 'Gleeok' : `Gleeok ${ws.slots.map(paneName).join(' / ')}`;
 }
 
 /**

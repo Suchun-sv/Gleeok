@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Snapshot } from '../../../shared/src/ipc.ts';
 import {
+  codeTabLabel,
   isCodeLink,
+  isDefaultCodeLabel,
   isManagedLink,
   paneName,
   parseTerminalUrl,
@@ -11,6 +13,7 @@ import {
   type Project,
   type TerminalTarget,
 } from '../../../shared/src/model.ts';
+import { Icon } from './Icons.tsx';
 import { faviconFor } from './Panes.tsx';
 import { ProjectTasks } from './planner/ProjectTasks.tsx';
 
@@ -132,7 +135,7 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
     const host = daemon && daemon.hostname.split('.')[0].toLowerCase() !== snap.hostname.split('.')[0].toLowerCase() ? daemon.hostname : '';
     const source = daemon?.projects.find((p) => p.projectId === project.paseo?.projectId);
     const cwd = project.paseo ? source?.latest?.dir || project.paseo.cwd : '';
-    const label = `终端 · ${host || '本机'}`;
+    const label = `${host || '本机'} 终端`;
     add({ id: newId(), label, url: terminalUrl({ host, cwd, name: label }), kind: 'terminal' });
   }
   const setTerminal = (l: Link, patch: TerminalTarget & { label?: string }) => {
@@ -141,6 +144,21 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
     setLink(l.id, { label: patch.label ?? l.label, url: terminalUrl(t) });
   };
   const hosts = [...new Set(snap.paseo.map((d) => d.hostname))];
+
+  /** Which pane a link opens in the first time the project opens on a machine: a pill, faint when unset. */
+  const pinChip = (l: Link) => (
+    <label className={`pin ${l.pinnedPane === undefined ? 'ghost' : ''}`} title="在一台电脑上第一次打开这个项目时，自动在哪一栏打开">
+      <Icon name="pin" size={12} />
+      <select value={l.pinnedPane ?? ''} onChange={(e) => setLink(l.id, { pinnedPane: e.target.value === '' ? undefined : Number(e.target.value) })}>
+        <option value="">自动打开</option>
+        {snap.state.paneNames.map((_, p) => (
+          <option key={p} value={p}>
+            {paneName(snap.state.paneNames, p)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 
   const termRow = (l: Link) => {
     const t = parseTerminalUrl(l.url);
@@ -162,22 +180,9 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
             <input value={t.cwd ?? ''} placeholder="~（目录）" title="打开时所在的目录" onChange={(e) => setTerminal(l, { cwd: e.target.value })} />
           </div>
         </div>
-        <span className="star" />
-        <select
-          className="chip"
-          value={l.pinnedPane ?? ''}
-          onChange={(e) => setLink(l.id, { pinnedPane: e.target.value === '' ? undefined : Number(e.target.value) })}
-          title="在一台电脑上第一次打开这个项目时，自动在哪一栏打开"
-        >
-          <option value="">不自动打开</option>
-          {snap.state.paneNames.map((_, p) => (
-            <option key={p} value={p}>
-              {paneName(snap.state.paneNames, p)}
-            </option>
-          ))}
-        </select>
+        {pinChip(l)}
         <button className="remove icon-btn" onClick={() => remove(l)} title="删除">
-          ×
+          <Icon name="trash" size={15} />
         </button>
       </div>
     );
@@ -191,7 +196,13 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
           <img src={l.icon ?? faviconFor(l.url)} alt="" />
         </button>
         <div className="link-text">
-          <input className="link-label" value={l.label} placeholder={hostOf(l.url) || '名称'} onChange={(e) => setLink(l.id, { label: e.target.value })} />
+          {/* A code link still named 代码 shows as folder@machine. */}
+          <input
+            className="link-label"
+            value={isCodeLink(l) && isDefaultCodeLabel(l.label) ? '' : l.label}
+            placeholder={isCodeLink(l) && l.url ? codeTabLabel(l) : hostOf(l.url) || '名称'}
+            onChange={(e) => setLink(l.id, { label: e.target.value })}
+          />
           {managed ? (
             <span className="link-url" title="自动维护，不用手动改">
               {l.url}
@@ -206,29 +217,22 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
             />
           )}
         </div>
-        {isCodeLink(l) && (
-          <button className={`star ${l === primary ? 'on' : ''}`} onClick={() => makePrimary(l.id)} title={l === primary ? '主要代码链接（</> 按钮打开它）' : '设为主要代码链接'}>
-            {l === primary ? '★' : '☆'}
-          </button>
-        )}
-        <select
-          className="chip"
-          value={l.pinnedPane ?? ''}
-          onChange={(e) => setLink(l.id, { pinnedPane: e.target.value === '' ? undefined : Number(e.target.value) })}
-          title="在一台电脑上第一次打开这个项目时，自动在哪一栏打开"
-        >
-          <option value="">不自动打开</option>
-          {snap.state.paneNames.map((_, p) => (
-            <option key={p} value={p}>
-              {paneName(snap.state.paneNames, p)}
-            </option>
+        {isCodeLink(l) &&
+          (l === primary ? (
+            <span className="badge" title="侧栏的代码按钮打开它">
+              默认
+            </span>
+          ) : (
+            <button className="set-default" onClick={() => makePrimary(l.id)} title="侧栏的代码按钮改为打开它">
+              设为默认
+            </button>
           ))}
-        </select>
+        {pinChip(l)}
         {managed ? (
           <span className="remove" />
         ) : (
           <button className="remove icon-btn" onClick={() => remove(l)} title="删除">
-            ×
+            <Icon name="trash" size={15} />
           </button>
         )}
       </div>
@@ -241,23 +245,45 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
         <header>
           <input className="drawer-title" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           <button className="icon-btn" onClick={() => void close()} title="关闭（Esc）">
-            ×
+            <Icon name="x" size={16} />
           </button>
         </header>
-        <p className="drawer-meta">
-          {project.paseo ? `Paseo · ${daemon?.hostname ?? project.paseo.daemonId} · ${project.paseo.cwd}` : '手动创建'}
-          {live && ` · 运行中${snap.memory[project.id] ? ` ${snap.memory[project.id]} MB` : ''}`}
-        </p>
+        <div className="drawer-meta">
+          {project.paseo ? (
+            <>
+              <span className="chip">
+                <Icon name="bot" size={12} />
+                Paseo
+              </span>
+              <span className="chip">{daemon?.hostname ?? project.paseo.daemonId}</span>
+              <span className="chip mono" title={project.paseo.cwd}>
+                {project.paseo.cwd.replace(/^\/(home|Users)\/[^/]+/, '~')}
+              </span>
+            </>
+          ) : (
+            <span className="chip">手动创建</span>
+          )}
+          {live && (
+            <span className="chip live">
+              <span className="dot-live" />
+              运行中{snap.memory[project.id] ? ` ${snap.memory[project.id] >= 1024 ? `${(snap.memory[project.id] / 1024).toFixed(1)} GB` : `${snap.memory[project.id]} MB`}` : ''}
+            </span>
+          )}
+        </div>
 
         {code.length > 0 && (
           <section>
-            <h4>代码</h4>
+            <h4>
+              代码文件夹<span className="n">{code.length}</span>
+            </h4>
             {code.map(row)}
           </section>
         )}
         {terms.length > 0 && (
           <section>
-            <h4>终端</h4>
+            <h4>
+              终端<span className="n">{terms.length}</span>
+            </h4>
             {terms.map(termRow)}
             <datalist id="gleeok-hosts">
               {hosts.map((h) => (
@@ -267,16 +293,23 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
           </section>
         )}
         <section>
-          <h4>链接</h4>
+          <h4>
+            链接<span className="n">{own.length}</span>
+          </h4>
           {own.length === 0 && <p className="hint">还没有链接。粘贴网址添加，或者在网页上按 ☆ 存进来。</p>}
           {own.map(row)}
           <div className="drawer-add">
-            <button onClick={() => add({ id: newId(), label: '', url: '' })}>+ 链接</button>
+            <button onClick={() => add({ id: newId(), label: '', url: '' })}>
+              <Icon name="plus" size={14} />
+              链接
+            </button>
             <button onClick={() => add({ id: newId(), label: '代码', url: '', kind: 'code' })} title="code-server、vscode.dev 等网页编辑器">
-              + 代码链接
+              <Icon name="plus" size={14} />
+              代码文件夹
             </button>
             <button onClick={addTerminal} title="本机或其他机器（ssh）上的终端，在新标签页里打开">
-              + 终端
+              <Icon name="plus" size={14} />
+              终端
             </button>
           </div>
         </section>
@@ -301,7 +334,10 @@ export function EntryDrawer({ project, snap, onClose }: { project: Project; snap
               <button onClick={undo}>撤销</button>
             </span>
           ) : (
-            <span className="meta">{status || '改动会自动保存'}</span>
+            <span className="meta saved">
+              <Icon name="check" size={13} />
+              {status || '改动会自动保存'}
+            </span>
           )}
           <span className="spacer" />
           <button

@@ -131,10 +131,13 @@ export function codeHost(link: Link): string {
   }
 }
 
+/** A code link's name as Gleeok gives it (代码, 代码 host, or older 代码 · host): shown as folder@machine. */
+export const isDefaultCodeLabel = (label: string) => /^代码(\s+(·\s+)?\S.*)?$/.test(label.trim());
+
 /** What a code tab is called: folder@machine, or the link's own name@machine. */
 export function codeTabLabel(link: Link): string {
   let name = link.label.trim();
-  if (!name || /^代码( · .*)?$/.test(name)) {
+  if (!name || isDefaultCodeLabel(name)) {
     try {
       const u = new URL(link.url);
       name = (u.searchParams.get('folder') ?? u.searchParams.get('workspace') ?? '').replace(/\/+$/, '').split('/').pop() || '代码';
@@ -164,7 +167,7 @@ export function managedPaseoLinks(
   }
   if (daemon.codeServer) {
     const code = keep('paseo-code');
-    out.push({ ...(code ?? { id: newId(), label: `代码 · ${daemon.hostname}` }), url: codeFolderUrl(daemon.codeServer, p.latest?.dir || p.path), kind: 'paseo-code' });
+    out.push({ ...(code ?? { id: newId(), label: `代码 ${daemon.hostname}` }), url: codeFolderUrl(daemon.codeServer, p.latest?.dir || p.path), kind: 'paseo-code' });
   }
   return out;
 }

@@ -94,7 +94,7 @@ function libraryItems(lib: LibrarySnapshot | null): Item[] {
         id: `lib:${i.key}`,
         group: '文献库',
         title: String(i.title || '（无标题）'),
-        detail: [creatorsShort(i), yearOf(i), publicationOf(i), pdf ? '' : '没有 PDF'].filter(Boolean).join(' · '),
+        detail: [creatorsShort(i), yearOf(i), publicationOf(i), pdf ? '' : '没有 PDF'].filter(Boolean).join('，'),
         run: pdf ? [{ type: 'openReader', attachment: pdf }] : [{ type: 'setView', view: 'library' }],
       };
     });
@@ -113,7 +113,7 @@ function buildItems(snap: Snapshot): Item[] {
         if (t.url === NEW_TAB_URL) continue;
         items.push({
           id: `tab:${t.id}`,
-          group: `标签 · ${paneName(snap.state.paneNames, slot)}`,
+          group: `${paneName(snap.state.paneNames, slot)}的标签`,
           title: t.title || t.url,
           detail: t.url,
           icon: t.favicon ?? faviconFor(t.url),
@@ -126,7 +126,7 @@ function buildItems(snap: Snapshot): Item[] {
   for (const p of snap.projects) {
     items.push({
       id: `project:${p.id}`,
-      group: snap.live.includes(p.id) ? '项目 · 运行中' : '项目',
+      group: snap.live.includes(p.id) ? '运行中的项目' : '项目',
       title: p.name,
       detail: p.paseo?.cwd,
       run: [{ type: 'selectProject', id: p.id }],
@@ -150,7 +150,7 @@ function buildItems(snap: Snapshot): Item[] {
       if (isCodeLink(l)) {
         items.push({
           id: `code:${p.id}:${l.id}`,
-          group: p === current ? '代码' : `代码 · ${p.name}`,
+          group: p === current ? '代码' : `${p.name}的代码`,
           title: `${l === primary ? '★ ' : ''}${codeTabLabel(l)}`,
           detail: l.url,
           icon: l.icon ?? faviconFor(l.url),
@@ -160,7 +160,7 @@ function buildItems(snap: Snapshot): Item[] {
       }
       items.push({
         id: `link:${p.id}:${l.id}`,
-        group: p === current ? '链接' : `链接 · ${p.name}`,
+        group: p === current ? '链接' : `${p.name}的链接`,
         title: l.label || l.url,
         detail: l.url,
         icon: l.icon ?? faviconFor(l.url),
@@ -178,10 +178,10 @@ function buildItems(snap: Snapshot): Item[] {
     for (const [i, url] of e.urls.entries()) {
       const icon = faviconFor(url);
       items.push(
-        { id: `vault:${e.id}:${i}`, group: '密码库 · 打开', title: e.name, detail: url, icon, run: [{ type: 'openLink', url, newTab: true }] },
+        { id: `vault:${e.id}:${i}`, group: '密码库：打开', title: e.name, detail: url, icon, run: [{ type: 'openLink', url, newTab: true }] },
         {
           id: `vault-url:${e.id}:${i}`,
-          group: '密码库 · 复制网址',
+          group: '密码库：复制网址',
           title: e.name,
           detail: url,
           icon,
@@ -192,7 +192,7 @@ function buildItems(snap: Snapshot): Item[] {
     if (e.username) {
       items.push({
         id: `vault-user:${e.id}`,
-        group: '密码库 · 复制用户名',
+        group: '密码库：复制用户名',
         title: e.name,
         detail: e.username,
         run: [{ type: 'vaultCopy', id: e.id, what: 'username' }],
@@ -201,7 +201,7 @@ function buildItems(snap: Snapshot): Item[] {
     if (e.hasPassword) {
       items.push({
         id: `vault-pw:${e.id}`,
-        group: '密码库 · 复制密码',
+        group: '密码库：复制密码',
         title: e.name,
         detail: e.username || undefined,
         run: [{ type: 'vaultCopy', id: e.id, what: 'password' }],

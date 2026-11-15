@@ -1,0 +1,15 @@
+[
+  { "action": { "type": "setTheme", "theme": "light" } },
+  { "action": { "type": "selectProject", "id": "$project:2" } },
+  { "wait": 5000 },
+  { "action": { "type": "setView", "view": "settings" } },
+  { "wait": 800 },
+  { "capture": "v2-settings" },
+  { "evalMain": "[...document.querySelectorAll('.settings-nav button')].find(b => b.textContent === '代码').click(), 'ok'" },
+  { "wait": 600 },
+  { "capture": "v2-settings-code" },
+  { "action": { "type": "setView", "view": "panes" } },
+  { "action": { "type": "newTab", "slot": 0 } },
+  { "wait": 800 },
+  { "evalMain": "'newtab bg: ' + getComputedStyle(document.querySelector('.newtab')).backgroundColor + ' content: ' + getComputedStyle(document.querySelector('.pane .content')).backgroundColor" }
+]

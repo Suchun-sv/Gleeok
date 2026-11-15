@@ -331,7 +331,7 @@ function LibrarySettingsCard({ snap }: { snap: Snapshot }) {
         <dt>状态</dt>
         <dd>
           {status}
-          {library?.error && library.status !== 'ok' ? ` · ${library.error}` : ''}
+          {library?.error && library.status !== 'ok' ? `，${library.error}` : ''}
         </dd>
         <dt>条目</dt>
         <dd>{library ? library.items.filter((i) => i.itemType !== 'note' && i.itemType !== 'attachment' && !i.deleted).length : '—'} 篇</dd>
@@ -535,8 +535,8 @@ function ZoneSettings({ snap }: { snap: Snapshot }) {
                 <dt>{z.name}</dt>
                 <dd>
                   {t.time}
-                  {t.day && ` ${t.day}`} <span className="meta">· {t.offset} · {z.timezone}</span>{' '}
-                  {z.latitude === undefined && <span className="meta">· 没有天气（早先加的），移除后重新添加即可 </span>}
+                  {t.day && ` ${t.day}`} <span className="meta">{t.offset}，{z.timezone}</span>{' '}
+                  {z.latitude === undefined && <span className="meta">没有天气（早先加的），移除后重新添加即可 </span>}
                   <button className="link" onClick={() => set(zones.filter((_, j) => j !== i))}>
                     移除
                   </button>
@@ -565,7 +565,7 @@ function ZoneSettings({ snap }: { snap: Snapshot }) {
                 setQ('');
               }}
             >
-              <b>{p.name}</b> <span className="meta">{p.detail} · {p.timezone}</span>
+              <b>{p.name}</b> <span className="meta">{p.detail}，{p.timezone}</span>
             </button>
           ))}
         </div>
@@ -742,7 +742,7 @@ function TunnelRow({ origin, host, tunnel, status }: { origin: string; host: str
   };
   const state = status?.state ?? 'off';
   const label = tunnel
-    ? { off: '用到时连接', connecting: '正在连接…', up: `已连接 · localhost:${tunnel.localPort}`, failed: '连不上' }[state]
+    ? { off: '用到时连接', connecting: '正在连接…', up: `已连接到 localhost:${tunnel.localPort}`, failed: '连不上' }[state]
     : '';
   return (
     <div className="tunnel-row">
@@ -784,7 +784,7 @@ function SyncSettings({ snap }: { snap: Snapshot }) {
         <dt>状态</dt>
         <dd>
           <span className={`dot ${server.status}`} /> {label}
-          {server.error && <span className="error"> · {server.error}</span>}
+          {server.error && <span className="error">，{server.error}</span>}
         </dd>
         {server.url && (
           <>
@@ -823,7 +823,7 @@ function VaultSettings({ snap }: { snap: Snapshot }) {
       <h3>密码库</h3>
       <dl className="facts">
         <dt>状态</dt>
-        <dd>{vault.unlocked ? `已解锁 · ${vault.entries.length} 条` : '已锁定'}</dd>
+        <dd>{vault.unlocked ? `已解锁，${vault.entries.length} 条` : '已锁定'}</dd>
         <dt>服务器</dt>
         <dd>
           <code>{vault.serverUrl}</code>
@@ -862,7 +862,7 @@ function About({ snap }: { snap: Snapshot }) {
         <dt>版本</dt>
         <dd>
           {snap.build.version}
-          {snap.build.commit !== 'unknown' && <span className="meta"> · {snap.build.commit.slice(0, 7)}</span>}
+          {snap.build.commit !== 'unknown' && <span className="meta"> {snap.build.commit.slice(0, 7)}</span>}
           {snap.build.hot && <span className="meta">（测试版热更新）</span>}
         </dd>
         <dt>构建时间</dt>
@@ -875,7 +875,7 @@ function About({ snap }: { snap: Snapshot }) {
                 <option value="stable">正式版：只装发布的版本</option>
                 <option value="beta">测试版：main 上每次改动都热更新</option>
               </select>
-              {snap.build.betaNeedsInstaller && <span className="hint"> · 最新的测试版换了 Electron，要等下一个正式版的安装包</span>}
+              {snap.build.betaNeedsInstaller && <span className="hint">，最新的测试版换了 Electron，要等下一个正式版的安装包</span>}
             </>
           ) : snap.build.updates === 'git' ? (
             '代码目录：跟着 main 分支（git pull 后重新构建）'
@@ -886,11 +886,11 @@ function About({ snap }: { snap: Snapshot }) {
         <dt>DRM</dt>
         <dd>
           {snap.drm.widevine ? `Widevine ${snap.drm.widevine}` : 'Widevine 还没就绪（第一次启动要下载，稍后再看）'}
-          {snap.drm.vmp === 'signed' && ' · 已有正式 VMP 签名'}
+          {snap.drm.vmp === 'signed' && '，已有正式 VMP 签名'}
           {snap.drm.vmp === 'none' && (
-            <span className="hint"> · 只有开发签名：Apple Music 等可能报错，在终端运行 deploy/macos-vmp-sign.sh</span>
+            <span className="hint">，只有开发签名：Apple Music 等可能报错，在终端运行 deploy/macos-vmp-sign.sh</span>
           )}
-          {snap.drm.vmp === 'stale' && <span className="error"> · Electron 更新后签名失效：在终端运行 deploy/macos-vmp-sign.sh</span>}
+          {snap.drm.vmp === 'stale' && <span className="error">，Electron 更新后签名失效：在终端运行 deploy/macos-vmp-sign.sh</span>}
         </dd>
         <dt>更新</dt>
         <dd>

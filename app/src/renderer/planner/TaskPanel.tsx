@@ -365,7 +365,7 @@ function TodayFocus({ data }: { data: PlannerSnapshot }) {
   const minutes = Math.round(done.reduce((n, p) => n + (Date.parse(p.end) - Date.parse(p.start)), 0) / 60_000);
   return (
     <div className="plan-focus-today">
-      <Icon name="timer" size={12} /> 今天专注 {done.length} 个番茄 · {minutes >= 60 ? `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟` : `${minutes} 分钟`}
+      <Icon name="timer" size={12} /> 今天专注 {done.length} 个番茄，共 {minutes >= 60 ? `${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟` : `${minutes} 分钟`}
     </div>
   );
 }

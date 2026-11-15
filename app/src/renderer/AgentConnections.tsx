@@ -100,7 +100,7 @@ export function AgentConnections({
             {panel.agents.map((a) => (
               <div key={a.id} className="agent-row">
                 <span className="name">{a.name}</span>
-                <span className="meta">{a.scopes.map(scopeLabel).join(' · ')}</span>
+                <span className="meta">{a.scopes.map(scopeLabel).join('，')}</span>
                 <span className="meta grow">{ago(a.lastUsedAt)}</span>
                 <button onClick={() => void agentCall<AgentNew>({ op: 'rotate', id: a.id }).then(handOver, fail)} title="旧令牌立即失效">
                   换新令牌

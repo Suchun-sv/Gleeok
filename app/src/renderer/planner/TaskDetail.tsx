@@ -76,7 +76,7 @@ export function TaskDetail({
         <label>
           <span>预估</span>
           <input type="number" min={0} max={99} value={task.estimate ?? 0} onChange={(e) => save({ estimate: Number(e.target.value) || null })} className="plan-num" />
-          <span className="meta">个番茄（{(task.estimate ?? 0) * 25} 分钟）· 已完成 {pomodoros.length} 个</span>
+          <span className="meta">个番茄（{(task.estimate ?? 0) * 25} 分钟），已完成 {pomodoros.length} 个</span>
         </label>
         {!task.done && !task.deleted && (
           <button className="plan-start-btn" onClick={() => gleeok.dispatch({ type: 'pomoStart', taskKey: task.key })}>

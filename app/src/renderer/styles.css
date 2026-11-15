@@ -4395,3 +4395,569 @@ main {
     transition: none;
   }
 }
+
+/* -- project settings: a floating sheet -- */
+.drawer-backdrop {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.drawer {
+  width: min(460px, calc(100vw - 16px));
+  height: auto;
+  margin: 8px;
+  padding: 20px 14px 0;
+  border-left: 0;
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--line), 0 24px 64px rgba(0, 0, 0, 0.18);
+  animation: drawer-in 220ms var(--ease);
+}
+
+.drawer header {
+  padding: 0 0 0 10px;
+}
+
+.drawer-title {
+  font-size: var(--t-xl);
+  letter-spacing: -0.01em;
+  border-radius: 6px;
+}
+
+.drawer-title:hover {
+  border-color: transparent;
+  background: var(--hover);
+}
+
+.drawer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 14px;
+  padding: 0 10px;
+}
+
+.drawer-meta .chip,
+.drawer .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--r-full);
+  background: var(--panel-2);
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.drawer-meta .chip.mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-meta .chip.live {
+  color: oklch(0.45 0.11 150);
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.drawer section {
+  padding: 0 0 18px;
+}
+
+.drawer h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  margin: 0;
+  padding: 0 10px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.drawer h4 .n {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.link-row {
+  gap: 12px;
+  min-height: 48px;
+  margin: 0;
+  padding: 6px 8px 6px 10px;
+  border-radius: 10px;
+  transition: background 120ms var(--ease);
+}
+
+.link-row:hover {
+  background: var(--hover);
+}
+
+.link-row .favicon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+}
+
+.link-text input,
+.link-text .link-url {
+  padding: 1px 4px;
+  margin-left: -4px;
+  border-radius: 5px;
+}
+
+.link-text input:hover,
+.link-text input:focus {
+  border-color: transparent;
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.link-label {
+  font-size: var(--t-md);
+  font-weight: 400;
+}
+
+.link-url {
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.drawer .badge {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r-full);
+  background: var(--text);
+  color: var(--panel);
+  font-size: var(--t-xs);
+}
+
+.drawer .set-default {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r-full);
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+}
+
+.link-row:hover .set-default {
+  opacity: 1;
+}
+
+.drawer .set-default:hover {
+  background: var(--press);
+  color: var(--text);
+}
+
+.drawer .pin {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--r-full);
+  background: var(--panel-2);
+  color: var(--ink-2);
+  font-size: var(--t-xs);
+  transition: opacity 120ms var(--ease), background 120ms var(--ease);
+}
+
+.drawer .pin select {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--t-xs);
+  color: inherit;
+  appearance: none;
+  cursor: pointer;
+}
+
+.drawer .pin.ghost {
+  background: none;
+  color: var(--ink-3);
+  opacity: 0;
+}
+
+.link-row:hover .pin.ghost,
+.drawer .pin:focus-within {
+  opacity: 1;
+}
+
+.drawer .pin:hover {
+  background: var(--press);
+  color: var(--text);
+}
+
+.link-row .remove {
+  width: 28px;
+  height: 28px;
+  color: var(--ink-3);
+}
+
+.drawer-add {
+  gap: 6px;
+  margin: 6px 0 0 10px;
+}
+
+.drawer-add button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-2);
+  transition: background 120ms var(--ease);
+}
+
+.drawer-add button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.drawer footer {
+  gap: 8px;
+  margin: auto -14px 0;
+  padding: 12px 14px 14px 24px;
+  border-top: 0;
+  box-shadow: 0 -1px 0 var(--line);
+  font-size: var(--t-xs);
+}
+
+.drawer footer .saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+}
+
+.drawer footer .saved .icon {
+  color: var(--ok);
+}
+
+.drawer footer > button {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--t-sm);
+  color: var(--text);
+}
+
+.drawer footer > button.danger {
+  color: var(--danger);
+}
+
+.drawer-h4-link {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+}
+
+/* -- new-tab page: the project's saved links as cards -- */
+.newtab {
+  padding: 48px 20px 32px;
+  background: var(--panel);
+}
+
+.newtab .search {
+  width: min(620px, 100%);
+  height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--line), 0 4px 16px rgba(0, 0, 0, 0.06);
+  font-size: var(--t-lg);
+}
+
+.newtab .search:focus {
+  box-shadow: 0 0 0 1px var(--focus), 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.newtab h3,
+.newtab .newtab-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: min(620px, 100%);
+  margin: 28px 0 8px;
+  padding: 0 4px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.newtab .newtab-label .n {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.newtab-label .link {
+  margin-left: auto;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.newtab-label .link:hover {
+  color: var(--text);
+}
+
+.newtab .links {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+  gap: 8px;
+  width: min(620px, 100%);
+}
+
+.newtab .links button {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  justify-items: start;
+  height: 56px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--line);
+  text-align: left;
+  transition: box-shadow 140ms var(--ease), transform 140ms var(--ease);
+}
+
+.newtab .links button:hover {
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--ink-3), 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+
+.newtab .links button:active {
+  transform: scale(0.98);
+}
+
+.newtab .links img {
+  grid-row: 1 / 3;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 5px;
+  background: none;
+}
+
+.newtab .links span {
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+
+.newtab .links span:only-of-type {
+  grid-row: 1 / 3;
+}
+
+.newtab .links .sub {
+  font-size: var(--t-xs);
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.newtab-add {
+  width: min(620px, 100%);
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.newtab .search:focus-visible {
+  outline: none;
+}
+
+/* -- settings: a card on the canvas, a list of pills, sections without boxes -- */
+.settings {
+  margin: 8px 8px 8px 0;
+  border-radius: var(--r-md);
+  background: var(--panel);
+  box-shadow: var(--shadow-pane);
+  overflow: hidden;
+}
+
+.app.no-sidebar .settings {
+  margin-left: 8px;
+}
+
+.settings-nav {
+  width: 200px;
+  gap: 1px;
+  padding: 16px 8px;
+  border-right: 1px solid var(--line);
+}
+
+.settings-title {
+  padding: 4px 10px 12px;
+}
+
+.settings-title h2 {
+  font-size: var(--t-lg);
+  font-weight: 600;
+}
+
+.settings-nav > button {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: var(--t-md);
+  transition: background 120ms var(--ease);
+}
+
+.settings-nav > button:hover {
+  background: var(--hover);
+}
+
+.settings-nav > button.on {
+  background: var(--select);
+  box-shadow: none;
+  font-weight: 500;
+}
+
+.settings-body {
+  padding: 28px 40px 48px;
+}
+
+.settings-body > div,
+.settings-body > section {
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.settings-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+}
+
+.settings-close:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.settings .card {
+  margin: 0 0 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.settings .card h3 {
+  margin: 0 0 10px;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.settings .card .row {
+  min-height: 40px;
+  margin: 4px 0;
+}
+
+.settings .hint {
+  font-size: var(--t-sm);
+  line-height: 1.6;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+.settings input,
+.settings select {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--panel);
+  transition: border-color 120ms var(--ease);
+}
+
+.settings input:hover,
+.settings select:hover {
+  border-color: var(--ink-3);
+}
+
+.settings input[type='checkbox'] {
+  height: auto;
+  accent-color: var(--text);
+}
+
+.settings .card .row button,
+.settings .card > button {
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background 120ms var(--ease);
+}
+
+.settings .card .row button:hover,
+.settings .card > button:hover {
+  background: var(--hover);
+}
+
+.settings .card .row .primary {
+  background: var(--text);
+  box-shadow: none;
+  color: var(--panel);
+}
+
+.settings .card .seg {
+  gap: 2px;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+}
+
+.settings .card .seg button {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--ink-2);
+}
+
+.settings .card .seg button.on {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.lib-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+}
+
+.tunnel-row {
+  padding: 10px 0;
+}

@@ -282,7 +282,7 @@ function waitingPage(ssh: string, error?: string) {
   return (
     WAITING_PAGE +
     encodeURIComponent(
-      `<!doctype html><title>${error ? 'SSH 连不上' : '正在连接'} · ${esc(ssh)}</title><meta name="color-scheme" content="light dark">` +
+      `<!doctype html><title>${error ? 'SSH 连不上' : '正在连接'} ${esc(ssh)}</title><meta name="color-scheme" content="light dark">` +
         `<style>body{font:14px system-ui,sans-serif;display:grid;place-items:center;height:90vh;margin:0;padding:0 32px}div{max-width:560px}pre{white-space:pre-wrap;opacity:.8}.m{opacity:.6}</style><div>${body}</div>`,
     )
   );

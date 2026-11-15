@@ -21,6 +21,8 @@ import {
   shortTitle,
   visibleSlots,
   codeLinkOf,
+  isCodeLink,
+  isDefaultCodeLabel,
   codeTabLabel,
   type AppWindowState,
   type Link,
@@ -870,15 +872,32 @@ function NewTab({
           if (e.key === 'Enter' && q.trim()) gleeok.dispatch({ type: 'navigate', slot, url: q, save: paste.wasPasted(q) });
         }}
       />
-      <h3>{project.name}</h3>
+      <h3 className="newtab-label">
+        {project.name}
+        <span className="n">{project.links.length}</span>
+        <button className="link" onClick={() => gleeok.dispatch({ type: 'toggleEntry' })}>
+          管理链接
+        </button>
+      </h3>
       <div className="links">
-        {project.links.length === 0 && <p className="hint">这个项目还没有链接，在右上角的项目设置里添加</p>}
-        {project.links.map((l) => (
-          <button key={l.id} onClick={() => gleeok.dispatch({ type: 'navigate', slot, url: l.url })} title={l.url}>
-            <img src={l.icon ?? faviconFor(l.url)} alt="" />
-            <span>{l.label}</span>
-          </button>
-        ))}
+        {project.links.length === 0 && <p className="hint">这个项目还没有链接：粘贴网址，或者在网页上按星标存进来</p>}
+        {project.links.map((l) => {
+          const code = isCodeLink(l);
+          const named = !(code && isDefaultCodeLabel(l.label));
+          let host = '';
+          try {
+            host = new URL(l.url).host;
+          } catch {
+            host = l.url;
+          }
+          return (
+            <button key={l.id} onClick={() => gleeok.dispatch({ type: 'navigate', slot, url: l.url })} title={l.url}>
+              <img src={l.icon ?? faviconFor(l.url)} alt="" />
+              <span>{code && !named ? codeTabLabel(l) : l.label || host}</span>
+              <span className="sub">{code ? (named ? codeTabLabel(l) : '代码文件夹') : host}</span>
+            </button>
+          );
+        })}
       </div>
       <PlannerTile slot={slot} project={project} />
       <LibraryTile slot={slot} />

@@ -592,7 +592,7 @@ function BlockPopover({
       )}
       <div className="meta">
         {s.getMonth() + 1}月{s.getDate()}日 {WEEKDAYS[s.getDay()]} {hhmm(s)}–{hhmm(e)}（{minutes} 分钟）
-        {task && isOverdue(task) ? ' · 已过期' : ''}
+        {task && isOverdue(task) ? '，已过期' : ''}
       </div>
       <div className="plan-pop-actions">
         {task && !task.done && (

@@ -1,0 +1,13 @@
+[
+  { "action": { "type": "setTheme", "theme": "light" } },
+  { "action": { "type": "selectProject", "id": "$project:2" } },
+  { "wait": 6000 },
+  { "action": { "type": "focusPane", "slot": 0 } },
+  { "action": { "type": "newTab", "slot": 0 } },
+  { "wait": 1200 },
+  { "capture": "v2-newtab" },
+  { "action": { "type": "toggleEntry" } },
+  { "wait": 1500 },
+  { "capture": "v2-drawer" },
+  { "action": { "type": "toggleEntry" } }
+]

@@ -583,14 +583,14 @@ export function LibraryView({ mode, slot, platform }: { mode: 'full' | 'pane'; s
         {last < rows.length && <div style={{ height: (rows.length - last) * ROW_HEIGHT }} />}
       </div>
       <div className="lib-status">
-        {rows.length} 项{selected.length > 1 ? ` · 已选 ${selected.length} 项` : ''}
-        {snap.status === 'offline' && <span className="warn"> · 离线：显示的是本机缓存，修改暂时无法保存</span>}
-        {snap.status === 'unavailable' && <span className="warn"> · {snap.error ?? '文献库不可用'}</span>}
-        {notice && <span className="ok"> · {notice}</span>}
+        {rows.length} 项{selected.length > 1 ? `，已选 ${selected.length} 项` : ''}
+        {snap.status === 'offline' && <span className="warn">，离线：显示的是本机缓存，修改暂时无法保存</span>}
+        {snap.status === 'unavailable' && <span className="warn">，{snap.error ?? '文献库不可用'}</span>}
+        {notice && <span className="ok">，{notice}</span>}
         {error && (
           <span className="warn">
             {' '}
-            · {error}{' '}
+            ，{error}{' '}
             <button className="lib-link" onClick={() => setError('')}>
               知道了
             </button>

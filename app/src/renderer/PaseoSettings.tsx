@@ -119,7 +119,7 @@ function DaemonSection({ daemon, snap }: { daemon: PaseoDaemon; snap: Snapshot }
   return (
     <section className="card">
       <h3>
-        {daemon.hostname} <span className="meta">· {daemon.serverId} · 同步于 {ago(daemon.syncedAt)} · {daemon.projects.length} 个项目</span>
+        {daemon.hostname} <span className="meta">{daemon.serverId}，同步于 {ago(daemon.syncedAt)}，{daemon.projects.length} 个项目</span>
       </h3>
       <div className="row">
         <input placeholder="筛选名称或路径" value={filter} onChange={(e) => setFilter(e.target.value)} />
