@@ -10,29 +10,61 @@
 }
 
 :root {
-  --bg: #16171b;
-  --panel: #1e2026;
-  --panel-2: #262932;
-  --line: #30343e;
-  --text: #d9dce3;
-  --muted: #8a909c;
-  --accent: #6aa7ff;
+  /* Neutral, ChatGPT-like palette (Claude Design: Gleeok 重设计 v2). --bg is the canvas the
+     sidebar sits on, --panel the pane cards, --panel-2 wells (active tab, address bar). */
+  --bg: #171717;
+  --panel: #212121;
+  --panel-2: #2c2c2c;
+  --line: rgba(255, 255, 255, 0.09);
+  --text: #ececec;
+  --muted: #9a9a9a;
+  --accent: #7ab0ff;
   --danger: #ef6b6b;
+  --ink-2: #b4b4b4;
+  --ink-3: #8a8a8a;
+  --hover: rgba(255, 255, 255, 0.06);
+  --press: rgba(255, 255, 255, 0.1);
+  --select: rgba(255, 255, 255, 0.09);
+  --card: rgba(255, 255, 255, 0.04);
+  --focus: oklch(0.72 0.14 255);
+  --ok: oklch(0.72 0.15 150);
+  --shadow-pane: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-pane-on: 0 0 0 1px rgba(255, 255, 255, 0.16), 0 8px 24px rgba(0, 0, 0, 0.35);
+  /* Five type sizes, three radii, one easing: what the redesign keeps to. */
+  --t-xs: 12px;
+  --t-sm: 13px;
+  --t-md: 14px;
+  --t-lg: 16px;
+  --t-xl: 20px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-full: 999px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
   color-scheme: dark;
-  font: 13px/1.4 system-ui, -apple-system, 'Noto Sans CJK SC', sans-serif;
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Noto Sans CJK SC', system-ui, sans-serif;
 }
 
 /* Light: Settings → 外观, or the system's choice when following it (main sets nativeTheme). */
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f6f7f9;
+    --bg: #ececeb;
     --panel: #ffffff;
-    --panel-2: #eef0f4;
-    --line: #dde1e8;
-    --text: #1f2329;
-    --muted: #6b7280;
+    --panel-2: #f3f3f3;
+    --line: rgba(0, 0, 0, 0.08);
+    --text: #0d0d0d;
+    --muted: #8f8f8f;
     --accent: #3b82f6;
     --danger: #d64545;
+    --ink-2: #5d5d5d;
+    --ink-3: #8f8f8f;
+    --hover: rgba(0, 0, 0, 0.05);
+    --press: rgba(0, 0, 0, 0.08);
+    --select: rgba(0, 0, 0, 0.07);
+    --card: rgba(255, 255, 255, 0.6);
+    --focus: oklch(0.62 0.17 255);
+    --ok: oklch(0.68 0.15 150);
+    --shadow-pane: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.05), 0 6px 18px rgba(0, 0, 0, 0.05);
+    --shadow-pane-on: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.07), 0 10px 28px rgba(0, 0, 0, 0.09);
     color-scheme: light;
   }
 
@@ -3885,4 +3917,481 @@ body.tab-dragging,
 body.tab-dragging * {
   cursor: grabbing !important;
   user-select: none;
+}
+
+
+/* ==== Redesign v2 (Claude Design: Gleeok 重设计) ==========================================
+   Layered over the rules above: the sidebar is the canvas, panes are rounded cards on it, rows
+   and tabs are soft pills with hover / press / focus states, glyphs are one icon set. */
+
+button:focus-visible,
+[role='button']:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.app,
+main {
+  background: var(--bg);
+}
+
+/* -- sidebar -- */
+.sidebar {
+  width: 248px;
+  background: var(--bg);
+  border-right: 0;
+}
+
+.sidebar.pomo-tint {
+  border-right: 0;
+}
+
+.sidebar header {
+  height: 52px;
+  padding: 0 8px 0 16px;
+  gap: 2px;
+}
+
+.brand {
+  gap: 8px;
+  font-size: var(--t-lg);
+  letter-spacing: -0.01em;
+}
+
+.brand img {
+  width: 20px;
+  height: 20px;
+}
+
+.sidebar-toggle,
+.sync-status {
+  min-width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  font-size: var(--t-xs);
+}
+
+.sidebar-toggle:hover,
+.sync-status:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.sidebar-toggle:active,
+.sync-status:active {
+  background: var(--press);
+}
+
+.sync-status.offline {
+  color: oklch(0.68 0.14 60);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 8px;
+}
+
+.project {
+  gap: 8px;
+  height: 36px;
+  padding: 0 6px 0 10px;
+  border-radius: var(--r-sm);
+  font-size: var(--t-md);
+  color: var(--text);
+  transition: background 120ms var(--ease);
+}
+
+.project:hover {
+  background: var(--hover);
+}
+
+.project:active {
+  background: var(--press);
+}
+
+.project.active {
+  background: var(--select);
+  box-shadow: none;
+  font-weight: 500;
+}
+
+.project .status {
+  width: 8px;
+}
+
+.dot-live {
+  width: 6px;
+  height: 6px;
+  background: var(--ok);
+}
+
+.project .mem {
+  display: inline;
+  font-size: var(--t-xs);
+  font-weight: 400;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.project .code-btn,
+.project .kebab {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity 120ms var(--ease), background 120ms var(--ease);
+}
+
+.project:hover .code-btn,
+.project:hover .kebab,
+.project.active .kebab {
+  display: grid;
+  opacity: 1;
+}
+
+.project .code-btn:hover,
+.project .kebab:hover {
+  background: var(--press);
+  color: var(--text);
+}
+
+.project kbd,
+.project:hover kbd {
+  display: inline;
+  font: var(--t-xs) / 1 inherit;
+  font-family: inherit;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.project.add,
+.archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: var(--t-sm);
+}
+
+.archived-toggle {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+}
+
+.archived-toggle:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.today-card {
+  margin: 4px 8px 6px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.today-clock .time {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.library-entry {
+  margin: 0 8px;
+  width: calc(100% - 16px);
+}
+
+.library-entry .status {
+  width: 18px;
+  color: var(--ink-2);
+}
+
+.sidebar footer {
+  gap: 4px;
+  padding: 0 0 8px;
+  border-top: 0;
+}
+
+.footer-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 8px;
+}
+
+.footer-row .library-entry {
+  flex: 1;
+  min-width: 0;
+}
+
+.update-available {
+  margin: 0 8px;
+  border-radius: var(--r-sm);
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.icon-btn:hover {
+  background: var(--hover);
+}
+
+/* -- panes: rounded cards on the canvas -- */
+.panes {
+  padding: 8px 8px 8px 0;
+  background: var(--bg);
+}
+
+.app.no-sidebar .panes {
+  padding-left: 8px;
+}
+
+.pane-divider {
+  width: 8px;
+  margin: 0;
+}
+
+.pane-divider::after {
+  inset: 40% 3px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 120ms var(--ease);
+}
+
+.pane-divider:hover::after,
+.pane-divider:active::after {
+  inset: 40% 3px;
+  background: var(--ink-3);
+}
+
+.pane {
+  background: var(--panel);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-pane);
+  overflow: hidden;
+  transition: box-shadow 160ms var(--ease);
+}
+
+.pane.focused {
+  box-shadow: var(--shadow-pane-on);
+}
+
+.pane .tabs {
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 6px 0 4px;
+  border-top: 0;
+}
+
+.pane.focused .tabs {
+  border-top-color: transparent;
+}
+
+.pane-name {
+  padding: 0 6px 0 8px;
+  font-size: var(--t-xs);
+  font-weight: 400;
+  color: var(--ink-3);
+  transition: color 160ms var(--ease);
+}
+
+.pane.focused .pane-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tab {
+  flex: 0 1 168px;
+  max-width: 168px;
+  height: 28px;
+  padding: 0 4px 0 8px;
+  border-right: 0;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.tab:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tab.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.tab img,
+.tab .fav {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.tab .close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity 120ms var(--ease), background 120ms var(--ease);
+}
+
+.tab:hover .close,
+.tab.active .close {
+  opacity: 1;
+}
+
+.tab .close:hover {
+  background: var(--press);
+  color: var(--text);
+}
+
+.tab-add {
+  display: inline-grid;
+  grid-auto-flow: column;
+  place-items: center;
+  flex: none;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: var(--r-sm);
+  color: var(--ink-3);
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.tab-add:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tabs-trailing {
+  background: var(--panel);
+}
+
+.pane-peek {
+  position: relative;
+  height: 8px;
+  background: transparent;
+}
+
+.pane-peek::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: 32px;
+  height: 3px;
+  margin-left: -16px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.pane.focused .pane-peek {
+  background: transparent;
+}
+
+.pane.focused .pane-peek::before {
+  background: var(--ink-3);
+}
+
+.toolbar {
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  padding: 0 8px 0 6px;
+  background: var(--panel);
+  border-bottom: 0;
+}
+
+.toolbar button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+}
+
+.toolbar button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.toolbar button:disabled {
+  opacity: 0.3;
+}
+
+.toolbar input {
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  background: var(--panel-2);
+  font-size: var(--t-sm);
+}
+
+.toolbar input:focus {
+  border-color: var(--focus);
+  background: var(--panel);
+}
+
+.toolbar .star.saved {
+  color: oklch(0.75 0.15 75);
+}
+
+.toolbar .star.saved svg {
+  fill: currentColor;
+}
+
+.pane .content {
+  margin: 0 6px 6px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--panel);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project,
+  .tab,
+  .pane,
+  .toolbar button,
+  .sidebar-toggle,
+  .sync-status {
+    transition: none;
+  }
 }

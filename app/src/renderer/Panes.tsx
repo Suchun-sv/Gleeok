@@ -193,10 +193,11 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
           asleep={session.lifecycle !== 'live'}
           crashedTabs={snap.crashedTabs}
           failedTabs={snap.failedTabs}
+          toolbarAll={!!snap.state.toolbarAll}
           windowButton={
             win.role === 'satellite' ? (
               <button onClick={() => gleeok.dispatch({ type: 'attachPane', slot })} title="合并回主窗口">
-                ⇱
+                <Icon name="minimize" size={14} />
               </button>
             ) : (
               <>
@@ -206,12 +207,12 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
                     onClick={() => gleeok.dispatch({ type: 'toggleMaximize', slot })}
                     title={`${win.maximized !== undefined ? '还原，显示所有栏' : '最大化这一栏，其他栏暂时收起'}（${snap.platform === 'darwin' ? '⌘⌥Z' : 'Ctrl+Alt+Z'}）`}
                   >
-                    <Icon name={win.maximized !== undefined ? 'minimize' : 'maximize'} size={12} />
+                    <Icon name={win.maximized !== undefined ? 'minimize' : 'maximize'} size={14} />
                   </button>
                 )}
                 {canDetach && (
                   <button onClick={() => gleeok.dispatch({ type: 'detachPane', slot })} title="拆到新窗口（可放到另一块屏幕）">
-                    ⧉
+                    <Icon name="externalLink" size={14} />
                   </button>
                 )}
               </>
@@ -252,10 +253,12 @@ interface PaneProps {
   crashedTabs: Record<string, string>;
   /** Tabs whose page could not be loaded, being retried. */
   failedTabs: Snapshot['failedTabs'];
+  /** Every pane shows its address bar, not only the one with focus (设置 → 栏). */
+  toolbarAll: boolean;
 }
 
 function PaneView(props: PaneProps) {
-  const { platform, name, suggestions, projects, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep, crashedTabs, failedTabs } = props;
+  const { platform, name, suggestions, projects, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep, crashedTabs, failedTabs, toolbarAll } = props;
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
   const isTerm = isTerminalUrl(tab.url);
@@ -343,26 +346,29 @@ function PaneView(props: PaneProps) {
         ))}
         {codeLink && (
           <button className="tab-add code-switch" onClick={() => gleeok.dispatch({ type: 'codeMenu', projectId: project.id, slot })} title="切换文件夹：这个项目的所有代码文件夹">
-            <Icon name="folder" size={13} /> ▾
+            <Icon name="folder" size={14} />
+            <Icon name="chevronDown" size={12} />
           </button>
         )}
         <button className="tab-add" onClick={() => gleeok.dispatch({ type: 'newTab', slot })} title="新标签页">
-          +
+          <Icon name="plus" size={15} />
         </button>
         {trailing && <div className="tabs-trailing">{trailing}</div>}
       </div>
       )}
       {/* A 代码栏 is VS Code alone: no address bar. */}
-      {!codeLink && (
+      {/* Only the pane with focus shows its address bar (unless 设置 → 栏 says every pane): fewer
+          controls on screen. One with something to say (a toast) or still blank keeps it. */}
+      {!codeLink && (toolbarAll || focused || toast || isNew) && (
       <div className="toolbar">
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew || isTerm || isLib || isPlanner}>
-          ‹
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew || isTerm || isLib || isPlanner} title="后退">
+          <Icon name="chevronLeft" size={16} />
         </button>
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'forward' })} disabled={isNew || isTerm || isLib || isPlanner}>
-          ›
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'forward' })} disabled={isNew || isTerm || isLib || isPlanner} title="前进">
+          <Icon name="chevronRight" size={16} />
         </button>
-        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'reload' })} disabled={isNew || isTerm || isLib || isPlanner}>
-          ⟳
+        <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'reload' })} disabled={isNew || isTerm || isLib || isPlanner} title="刷新">
+          <Icon name="rotateCw" size={14} />
         </button>
         <input
           ref={address}
@@ -392,7 +398,7 @@ function PaneView(props: PaneProps) {
             onClick={() => setSaveOpen((o) => !o)}
             title={savedLink ? `已在项目链接里：${savedLink.label}` : '保存到项目链接（⌘D / Ctrl+D）'}
           >
-            {savedLink ? '★' : '☆'}
+            <Icon name="star" size={15} />
           </button>
         )}
         {toast && (
@@ -686,7 +692,7 @@ function TabButton({ tab, slot, active, code }: { tab: Tab; slot: number; active
           gleeok.dispatch({ type: 'closeTab', slot, tabId: tab.id });
         }}
       >
-        ×
+        <Icon name="x" size={13} />
       </button>
     </div>
   );

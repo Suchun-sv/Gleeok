@@ -1640,6 +1640,10 @@ function dispatch(action: Action) {
       changed();
       closeIdleCode();
       return;
+    case 'setToolbarAll':
+      state.toolbarAll = action.on || undefined;
+      changed();
+      return;
     case 'setPointerFollows':
       state.pointerFollows = action.on ? undefined : false;
       changed();

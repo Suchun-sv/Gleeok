@@ -1,0 +1,15 @@
+[
+  { "action": { "type": "setTheme", "theme": "light" } },
+  { "action": { "type": "selectProject", "id": "$project:2" } },
+  { "action": { "type": "startProject", "id": "$project:2" } },
+  { "action": { "type": "setVisiblePanes", "count": 3 } },
+  { "action": { "type": "setPaneWeights", "winId": "main", "weights": { "0": 1, "1": 1, "2": 1 } } },
+  { "wait": 7000 },
+  { "action": { "type": "focusPane", "slot": 0 } },
+  { "wait": 800 },
+  { "capture": "v2-light" },
+  { "action": { "type": "setTheme", "theme": "dark" } },
+  { "wait": 1200 },
+  { "capture": "v2-dark" },
+  { "action": { "type": "setTheme", "theme": "light" } }
+]

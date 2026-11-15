@@ -168,6 +168,10 @@ function PaneFocusSettings({ snap }: { snap: Snapshot }) {
         />
         鼠标跟随焦点：用快捷键切到一栏时，指针也移过去
       </label>
+      <label className="lib-check">
+        <input type="checkbox" checked={!!snap.state.toolbarAll} onChange={(e) => gleeok.dispatch({ type: 'setToolbarAll', on: e.target.checked })} />
+        每一栏都显示地址栏（默认只有焦点所在的那一栏显示）
+      </label>
       <p className="hint">
         {mac ? '⌘1 / ⌘2 / ⌘3…' : 'Ctrl+Alt+1 / 2 / 3…'} 跳到第几栏（拆到其他窗口的栏接着往后数），{mac ? '⌘⌥← / →' : 'Ctrl+Alt+← / →'}{' '}
         切到左右一栏。指针回到你上次在那一栏里的位置，第一次去的栏放在中间；用鼠标点击切栏时指针不动。

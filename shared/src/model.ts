@@ -347,6 +347,8 @@ export interface GlobalState {
   zones?: Zone[];
   /** Panes picked with a shortcut take the mouse pointer along (unset: on, where possible). */
   pointerFollows?: boolean;
+  /** Every pane shows its address bar (unset: only the pane with focus). */
+  toolbarAll?: boolean;
   /** Light or dark, on this machine (unset: as the system is). Web pages follow it too. */
   theme?: 'light' | 'dark';
   /**

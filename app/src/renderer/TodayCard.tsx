@@ -85,7 +85,7 @@ export function TodayCard({ snap }: { snap: Snapshot }) {
             <span className="time">{hhmm(now)}</span>
             <span className="date">
               {/* Beside other places the line names the place instead of the weekday, to fit the sidebar. */}
-              {now.getMonth() + 1}月{now.getDate()}日 {zones.length > 0 && w?.place ? `· ${w.place}` : WEEKDAYS[now.getDay()]}
+              {now.getMonth() + 1}月{now.getDate()}日 {zones.length > 0 && w?.place ? w.place : WEEKDAYS[now.getDay()]}
             </span>
           </div>
         )}
@@ -108,7 +108,7 @@ export function TodayCard({ snap }: { snap: Snapshot }) {
               <div className="today-clock" title={`${z.timezone}，${t.offset === '同一时间' ? '和这里同一时间' : `比这里${t.offset.startsWith('-') ? '慢' : '快'} ${t.offset.replace(/^[+-]/, '')}`}`}>
                 <span className="time">{t.time}</span>
                 <span className="date">
-                  {t.monthDay} · {z.name}
+                  {t.monthDay} {z.name}
                 </span>
               </div>
             )}

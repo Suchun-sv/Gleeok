@@ -11,6 +11,9 @@ import { siteOf as hostOf } from './log.ts';
 
 export const PARTITION = 'persist:gleeok';
 
+/** Corner radius of a page in its pane; matches .pane .content in styles.css. */
+const PAGE_RADIUS = 8;
+
 /** Preload for web pages (see preload/page.ts); also given to popups they open. */
 const PAGE_PRELOAD = join(__dirname, 'page-preload.js');
 
@@ -78,6 +81,8 @@ export class TabViews {
     if (view && !view.webContents.isDestroyed()) return view;
     if (view) this.#forget(tabId);
     view = new WebContentsView({ webPreferences: { partition: PARTITION, sandbox: true, preload: PAGE_PRELOAD } });
+    // Pages sit in the panes' rounded content box (styles.css .pane .content).
+    view.setBorderRadius(PAGE_RADIUS);
     const wc = view.webContents;
     wc.on('page-title-updated', (_e, title) => this.#hooks.onUpdate(tabId, { title }));
     const navigated = (u: string) => {

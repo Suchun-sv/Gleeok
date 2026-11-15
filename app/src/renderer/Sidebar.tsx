@@ -30,10 +30,7 @@ export function SidebarToggle({ platform }: { platform: string }) {
   const keys = platform === 'darwin' ? '⌘⌥B' : 'Ctrl+Alt+B';
   return (
     <button className="sidebar-toggle" onClick={() => gleeok.dispatch({ type: 'toggleSidebar' })} title={`切换侧边栏 (${keys})`}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect width="18" height="18" x="3" y="3" rx="2" />
-        <path d="M9 3v18" />
-      </svg>
+      <Icon name="panelLeft" size={16} />
     </button>
   );
 }
@@ -62,16 +59,16 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         <span className="spacer" />
         {server.status === 'local' ? (
           <button className="sync-status local" data-tip={'本地模式：数据只存在这台电脑上\n点击设置同步'} aria-label="本地模式" onClick={openSyncSettings}>
-            <Icon name="laptop" size={13} />
+            <Icon name="laptop" size={16} />
           </button>
         ) : (
           <button
             className={`sync-status ${server.status}`}
-            data-tip={`${SYNC_LABELS[server.status]}${server.url ? ` · ${server.url}` : ''}${server.error ? `\n${server.error}` : ''}\n点击重新同步`}
+            data-tip={`${SYNC_LABELS[server.status]}${server.url ? `\n${server.url}` : ''}${server.error ? `\n${server.error}` : ''}\n点击重新同步`}
             aria-label={SYNC_LABELS[server.status]}
             onClick={() => void gleeok.refreshProjects()}
           >
-            <Icon name={server.status === 'ok' ? 'cloud' : 'cloudOff'} size={13} />
+            <Icon name={server.status === 'ok' ? 'cloud' : 'cloudOff'} size={16} />
             {/* All well is the cloud alone (the row is narrow, more so beside macOS's traffic lights); a problem says so. */}
             {server.status !== 'ok' && <span className="label">{SYNC_LABELS[server.status]}</span>}
           </button>
@@ -81,10 +78,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
           onClick={() => gleeok.dispatch({ type: 'openPalette' })}
           title={`命令面板（${snap.platform === 'darwin' ? '⌘⇧K' : 'Ctrl+Shift+K'}）`}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-4-4" />
-          </svg>
+          <Icon name="search" size={16} />
         </button>
         <SidebarToggle platform={snap.platform} />
       </header>
@@ -107,11 +101,11 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
               onClick={() => gleeok.dispatch({ type: 'selectProject', id: p.id })}
               onDoubleClick={() => gleeok.dispatch({ type: 'toggleEntry' })}
               onContextMenu={menu}
-              title={`${p.name}\n${live ? `运行中${mb ? ` · ${mb} MB` : ''}` : '已休眠'}\n双击打开项目设置，右键更多操作`}
+              title={`${p.name}\n${live ? `运行中${mb ? `，网页占用 ${gb(mb)}` : ''}` : '已休眠'}\n双击或点齿轮打开项目设置，右键更多操作`}
             >
               <span className="status">{live && <span className="dot-live" />}</span>
               <span className="name">{p.name}</span>
-              {live && mb ? <span className="mem">{mb} MB</span> : null}
+              {live && mb ? <span className="mem">{gb(mb)}</span> : null}
               {code && (
                 <button
                   className="code-btn"
@@ -126,11 +120,19 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
                   }}
                   title={`在草稿区打开代码：${codeTabLabel(code)}（${mod}C）\n右键：其他代码文件夹、设为主要`}
                 >
-                  {'</>'}
+                  <Icon name="code" size={14} />
                 </button>
               )}
-              <button className="kebab" onClick={menu} title="更多操作">
-                ⋯
+              <button
+                className="kebab"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (p.id !== state.currentProjectId) gleeok.dispatch({ type: 'selectProject', id: p.id });
+                  gleeok.dispatch({ type: 'toggleEntry' });
+                }}
+                title="项目设置（右键更多操作）"
+              >
+                <Icon name="settings2" size={14} />
               </button>
             </div>
           );
@@ -162,7 +164,8 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         {snap.archivedProjects.length > 0 && (
           <div className="archived">
             <button className="archived-toggle" onClick={() => setShowArchived(!showArchived)}>
-              {showArchived ? '▾' : '▸'} 已存档 {snap.archivedProjects.length}
+              <Icon name={showArchived ? 'chevronDown' : 'chevronRight'} size={12} />
+              已存档 {snap.archivedProjects.length}
             </button>
             {showArchived &&
               snap.archivedProjects.map((p) => {
@@ -175,8 +178,8 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
                   <div key={p.id} role="button" className="project is-archived" onClick={menu} onContextMenu={menu} title="点击：取消存档 / 删除">
                     <span className="status" />
                     <span className="name">{p.name}</span>
-                    <button className="kebab" onClick={menu}>
-                      ⋯
+                    <button className="kebab" onClick={menu} title="取消存档或删除">
+                      <Icon name="menu" size={14} />
                     </button>
                   </div>
                 );
@@ -227,21 +230,19 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
           </button>
         )}
         <div className="footer-row">
-          <IconButton
-            icon="settings"
-            on={state.view === 'settings'}
-            title="设置：Paseo 导入、同步、密码库"
+          <div
+            role="button"
+            className={`project library-entry ${state.view === 'settings' ? 'active' : ''}`}
             onClick={() => gleeok.dispatch({ type: 'setView', view: state.view === 'settings' ? 'panes' : 'settings' })}
-          />
-          <span className="build" title={memoryTitle(snap)}>
-            {snap.memoryTotal.gleeok > 0 && <span className="mem">内存占用 {gb(snap.memoryTotal.gleeok)} · </span>}
-            版本 {new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-          </span>
-          {snap.canSelfUpdate ? (
-            <IconButton icon="refresh" size={13} title="检查 Gleeok 有没有更新" onClick={() => gleeok.dispatch({ type: 'checkUpdate' })} />
-          ) : (
-            <span />
-          )}
+            title={`设置\n\n${memoryTitle(snap)}`}
+          >
+            <span className="status">
+              <Icon name="settings" size={15} />
+            </span>
+            <span className="name">设置</span>
+            {snap.memoryTotal.gleeok > 0 && <kbd>内存 {gb(snap.memoryTotal.gleeok)}</kbd>}
+          </div>
+          {snap.canSelfUpdate && <IconButton icon="refresh" size={14} title="检查 Gleeok 有没有更新" onClick={() => gleeok.dispatch({ type: 'checkUpdate' })} />}
         </div>
       </footer>
     </aside>
@@ -264,7 +265,7 @@ function memoryTitle(snap: Snapshot) {
     `  其余（窗口、GPU 等）：${gb(Math.max(0, gleeok - pages))}`,
     `这台电脑：已用 ${gb(systemUsed)} / 共 ${gb(systemTotal)}`,
     '休眠不用的项目（项目右键 → 休眠）可以释放它的网页内存。',
-    `build ${__GLEEOK_BUILD__}`,
+    `版本 ${new Date(__GLEEOK_BUILD__).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}（build ${__GLEEOK_BUILD__}）`,
   ].join('\n');
 }
 
@@ -280,7 +281,7 @@ function LibraryEntry({ active, platform }: { active: boolean; platform: string 
       title={`文献库（${platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+'}P）`}
     >
       <span className="status">
-        <Icon name="libraryBig" size={13} />
+        <Icon name="libraryBig" size={15} />
       </span>
       <span className="name">文献库</span>
       {count ? <kbd>{count}</kbd> : null}
@@ -315,7 +316,7 @@ function PlannerEntry({ active, platform, pomodoro }: { active: boolean; platfor
       title={`日程（${platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+'}A）${pomodoro.taskTitle && busy ? `\n${pomodoro.taskTitle}` : count ? `\n今天还有 ${count} 个任务` : ''}`}
     >
       <span className="status">
-        <Icon name={busy ? 'timer' : 'calendarCheck'} size={13} />
+        <Icon name={busy ? 'timer' : 'calendarCheck'} size={15} />
       </span>
       <span className="name">{label}</span>
       {busy ? (
