@@ -80,6 +80,15 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         >
           <Icon name="search" size={16} />
         </button>
+        <button
+          className="sidebar-toggle"
+          onClick={() => setAdding(true)}
+          // Local mode stores projects on this machine; only an unreachable sync server blocks creating.
+          disabled={server.status !== 'ok' && server.status !== 'local'}
+          title={server.status === 'ok' || server.status === 'local' ? '新项目' : '连不上同步服务器，暂时不能新建项目'}
+        >
+          <Icon name="squarePen" size={16} />
+        </button>
         <SidebarToggle platform={snap.platform} />
       </header>
 

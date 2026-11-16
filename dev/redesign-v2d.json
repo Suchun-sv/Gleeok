@@ -1,0 +1,8 @@
+[
+  { "action": { "type": "setTheme", "theme": "light" } },
+  { "wait": 4000 },
+  { "evalMain": "document.querySelectorAll('.sidebar header .sidebar-toggle')[1].click(), 'clicked: ' + !!document.querySelector('.new-project')" },
+  { "wait": 300 },
+  { "evalMain": "'input shown: ' + !!document.querySelector('.new-project') + ', focused: ' + (document.activeElement && document.activeElement.className)" },
+  { "capture": "v2-newproject" }
+]
