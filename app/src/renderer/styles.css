@@ -769,6 +769,8 @@ main {
   display: flex;
   align-items: stretch;
   height: 32px;
+  /* Chrome, not content: ⌘A in the window must not paint the tab names blue. */
+  user-select: none;
   border-top: 2px solid transparent;
   overflow-x: auto;
   scrollbar-width: none;
