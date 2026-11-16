@@ -75,7 +75,7 @@ import {
   localDaemon,
   localPaseoStatus,
   pairedDaemon,
-  parseOffer,
+  parseLink,
   readLocalPaseo,
   paseoError,
   readPairedPaseo,
@@ -2326,14 +2326,19 @@ ipcMain.handle('paseo:import', async (_e, serverId: string, projectIds: string[]
 });
 ipcMain.handle('paseo:pair', async (_e, url: string, password?: string) => {
   let serverId: string;
+  let inLink: string | undefined;
   try {
-    serverId = parseOffer(url.trim()).serverId;
+    ({
+      offer: { serverId },
+      password: inLink,
+    } = parseLink(url.trim()));
   } catch (e) {
     return { error: (e as Error).message };
   }
-  // Pairing the same daemon again keeps the password given before, unless a new one comes.
+  // Pairing the same daemon again keeps the password given before, unless a new one comes (typed,
+  // or in the link itself, which pairedDaemon reads from there).
   const before = pairings.find((p) => p.serverId === serverId);
-  const pass = password ?? before?.password;
+  const pass = password ?? (inLink ? undefined : before?.password);
   pairings = [
     ...pairings.filter((p) => p.serverId !== serverId),
     { serverId, url: url.trim(), ...(pass ? { password: pass } : {}), addedAt: new Date().toISOString() },

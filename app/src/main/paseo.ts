@@ -20,21 +20,47 @@ interface Offer {
   relay: { endpoint: string; useTls?: boolean };
 }
 
-/** Parse a pairing link; throws with a short reason when it is not one. */
-export function parseOffer(url: string): Offer {
-  const at = url.indexOf('#offer=');
-  if (at < 0) throw new Error('不是 Paseo 配对链接（缺少 #offer=）');
+/**
+ * Parse a pairing link; throws with a short reason when it is not one. Two forms, as Paseo's own
+ * app reads them: `#offer=` (base64url JSON) and `#connect=` / `relay://` (a relay URI whose
+ * query may also carry the daemon's password).
+ */
+export function parseLink(url: string): { offer: Offer; password?: string } {
+  const text = url.trim();
+  const at = text.indexOf('#connect=');
+  if (at >= 0 || text.startsWith('relay://')) {
+    let uri: URL;
+    try {
+      uri = new URL(at >= 0 ? decodeURIComponent(text.slice(at + 9)) : text);
+    } catch {
+      throw new Error('连接链接不完整');
+    }
+    const serverId = decodeURIComponent(uri.pathname.slice(1));
+    const key = uri.searchParams.get('key');
+    if (uri.protocol !== 'relay:' || !uri.hostname || !uri.port || !serverId || serverId.includes('/') || !key) {
+      throw new Error('无法识别的连接链接');
+    }
+    const password = uri.searchParams.get('password') || undefined;
+    return {
+      offer: { v: 2, serverId, daemonPublicKeyB64: key, relay: { endpoint: uri.host, useTls: uri.searchParams.get('ssl') === 'true' } },
+      ...(password ? { password } : {}),
+    };
+  }
+  const off = text.indexOf('#offer=');
+  if (off < 0) throw new Error('不是 Paseo 配对链接');
   let offer: Offer;
   try {
-    offer = JSON.parse(Buffer.from(url.slice(at + 7).trim(), 'base64url').toString('utf8')) as Offer;
+    offer = JSON.parse(Buffer.from(text.slice(off + 7).trim(), 'base64url').toString('utf8')) as Offer;
   } catch {
     throw new Error('配对链接不完整');
   }
   if (offer.v !== 2 || !offer.serverId || !offer.daemonPublicKeyB64 || !offer.relay?.endpoint) {
     throw new Error('无法识别的配对链接版本');
   }
-  return offer;
+  return { offer };
 }
+
+export const parseOffer = (url: string): Offer => parseLink(url).offer;
 
 /** Relay socket for a client of the offer's daemon (as `buildRelayWebSocketUrl` in @getpaseo/protocol). */
 function relayUrl(offer: Offer) {
@@ -79,12 +105,12 @@ export function localDaemon(clientId: string) {
  * encrypted connection: a daemon with a password set still asks for it.
  */
 export function pairedDaemon(url: string, clientId: string, password?: string) {
-  const offer = parseOffer(url);
+  const { offer, password: inLink } = parseLink(url);
   return new DaemonClient({
     url: relayUrl(offer),
     clientId,
     clientType: 'cli',
-    password: password || undefined,
+    password: password || inLink || undefined,
     connectTimeoutMs: 20_000,
     e2ee: { enabled: true, daemonPublicKeyB64: offer.daemonPublicKeyB64 },
     reconnect: { enabled: false },
