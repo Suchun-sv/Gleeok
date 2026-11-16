@@ -137,8 +137,11 @@ export class TabViews {
     return view;
   }
 
-  /** Make exactly `desired` (tabId → bounds) visible in `win`; everything else attached there is detached. */
-  sync(win: BrowserWindow, desired: Map<string, { url: string; bounds: Rectangle }>) {
+  /**
+   * Make exactly `desired` (tabId → bounds) visible in `win`; everything else attached there is
+   * detached. `flush`: the window is one pane edge to edge (a popped-out pane), square corners.
+   */
+  sync(win: BrowserWindow, desired: Map<string, { url: string; bounds: Rectangle }>, flush = false) {
     if (win.isDestroyed()) return;
     for (const [tabId, owner] of this.#attached) {
       if (owner.isDestroyed()) {
@@ -157,6 +160,7 @@ export class TabViews {
       const owner = this.#attached.get(tabId);
       if (owner !== win) {
         if (owner && !owner.isDestroyed()) owner.contentView.removeChildView(view);
+        view.setBorderRadius(flush ? 0 : PAGE_RADIUS);
         win.contentView.addChildView(view);
         this.#attached.set(tabId, win);
         this.#repaint(tabId, view);

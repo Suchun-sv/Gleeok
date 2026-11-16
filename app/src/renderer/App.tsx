@@ -160,7 +160,7 @@ export function App() {
 
   if (win.role === 'satellite') {
     return (
-      <div className={rootClass(true)}>
+      <div className={`${rootClass(true)} satellite`}>
         <main>
           {project && session ? (
             <Panes

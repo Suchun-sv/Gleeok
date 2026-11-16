@@ -979,7 +979,7 @@ function syncViews() {
         if (rect && !isInternalUrl(tab.url) && !crashed().has(tab.id) && !failed().has(tab.id)) desired.set(tab.id, { url: tab.url, bounds: rect });
       }
     }
-    views.sync(bw, desired);
+    views.sync(bw, desired, ws.role === 'satellite');
     for (const tabId of desired.keys()) codeSeenAt.set(tabId, Date.now());
   }
   // A terminal lives as long as some tab shows it, hibernated or not.

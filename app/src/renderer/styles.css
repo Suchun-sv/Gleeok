@@ -5524,3 +5524,20 @@ main {
     transform: rotate(360deg);
   }
 }
+
+/* A popped-out pane is the whole window: no canvas around it, no card, the page edge to edge. */
+.app.satellite .panes {
+  padding: 0;
+  background: var(--panel);
+}
+
+.app.satellite .pane,
+.app.satellite .pane.focused {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.app.satellite .pane .content {
+  margin: 0;
+  border-radius: 0;
+}
