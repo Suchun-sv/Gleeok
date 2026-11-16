@@ -5,6 +5,9 @@ import type { AgentCreated, AgentHandoff, AgentInfo, AgentScope } from './agents
 import type { WeatherPlace, WeatherSnapshot } from './weather.ts';
 import type { PlannerKind, PlannerTask, Pomodoro, TimeBlock } from './planner.ts';
 
+/** A paired daemon turned Gleeok away: it has a password, and none or the wrong one was given. */
+export type PaseoAuthFailure = 'password_required' | 'incorrect_password';
+
 /** Where a new Paseo project comes from. Paths may start with ~ (the daemon's home). */
 export type NewPaseoProject =
   | { kind: 'empty'; parent: string; name: string }
@@ -134,7 +137,7 @@ export interface Snapshot {
   archivedProjects: Project[];
   paseo: PaseoDaemon[];
   /** Daemons this machine reads through a pasted pairing link; `at`/`error` from the last attempt. */
-  paseoPairings: { serverId: string; at?: string; error?: string }[];
+  paseoPairings: { serverId: string; at?: string; error?: string; auth?: PaseoAuthFailure }[];
   /** Daemons Gleeok can act on (this machine's, paired ones); the rest are read-only catalogs. */
   paseoWritable: string[];
   downloads: Download[];
@@ -360,7 +363,10 @@ export interface GleeokApi {
   /** A dropped file's path on disk. */
   pathForFile(file: File): string;
   /** Remember a daemon's pairing link on this machine and read its projects through the relay. */
-  pairPaseo(url: string): Promise<{ error?: string }>;
+  /** Remember a pairing link (and the daemon's password, if it has one), then read the daemon. */
+  pairPaseo(url: string, password?: string): Promise<{ error?: string; auth?: PaseoAuthFailure }>;
+  /** Set the password of a paired daemon, then read it again. */
+  setPaseoPassword(serverId: string, password: string): Promise<{ error?: string; auth?: PaseoAuthFailure }>;
   /** Read every Paseo daemon again now (after a failure, instead of waiting for the next round). */
   syncPaseo(): Promise<void>;
   /** Folders on a daemon's machine matching a typed path (absolute). */

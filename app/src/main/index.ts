@@ -77,6 +77,7 @@ import {
   pairedDaemon,
   parseOffer,
   readLocalPaseo,
+  paseoError,
   readPairedPaseo,
   savePairings,
   searchRepos,
@@ -894,7 +895,7 @@ function changed() {
 // and from daemons whose pairing links were pasted here, read through Paseo's relay.
 
 let pairings: Pairing[] = loadPairings();
-const pairingStatus = new Map<string, { at: string; error?: string }>();
+const pairingStatus = new Map<string, { at: string; error?: string; auth?: 'password_required' | 'incorrect_password' }>();
 let paseoSyncing: Promise<void> | null = null;
 /** This machine's daemon, which Gleeok can act on even when a server syncs its catalog. */
 let localPaseoId: string | null = null;
@@ -910,10 +911,10 @@ function syncPaseo(): Promise<void> {
         .filter((p) => p.serverId !== local?.serverId)
         .map(async (p) => {
           try {
-            found.push(await readPairedPaseo(p.url, clientId));
+            found.push(await readPairedPaseo(p.url, clientId, p.password));
             pairingStatus.set(p.serverId, { at: new Date().toISOString() });
           } catch (e) {
-            pairingStatus.set(p.serverId, { at: new Date().toISOString(), error: String((e as Error).message ?? e).slice(0, 200) });
+            pairingStatus.set(p.serverId, { at: new Date().toISOString(), ...paseoError(e) });
           }
         }),
     );
@@ -2323,19 +2324,34 @@ ipcMain.handle('paseo:import', async (_e, serverId: string, projectIds: string[]
   changed();
   return created;
 });
-ipcMain.handle('paseo:pair', async (_e, url: string) => {
+ipcMain.handle('paseo:pair', async (_e, url: string, password?: string) => {
   let serverId: string;
   try {
     serverId = parseOffer(url.trim()).serverId;
   } catch (e) {
     return { error: (e as Error).message };
   }
-  pairings = [...pairings.filter((p) => p.serverId !== serverId), { serverId, url: url.trim(), addedAt: new Date().toISOString() }];
+  // Pairing the same daemon again keeps the password given before, unless a new one comes.
+  const before = pairings.find((p) => p.serverId === serverId);
+  const pass = password ?? before?.password;
+  pairings = [
+    ...pairings.filter((p) => p.serverId !== serverId),
+    { serverId, url: url.trim(), ...(pass ? { password: pass } : {}), addedAt: new Date().toISOString() },
+  ];
   savePairings(pairings);
   // A sync already under way started without this link.
   await paseoSyncing;
   await syncPaseo();
-  return { error: pairingStatus.get(serverId)?.error };
+  const status = pairingStatus.get(serverId);
+  return { error: status?.error, auth: status?.auth };
+});
+ipcMain.handle('paseo:password', async (_e, serverId: string, password: string) => {
+  pairings = pairings.map((p) => (p.serverId === serverId ? { ...p, password: password || undefined } : p));
+  savePairings(pairings);
+  await paseoSyncing;
+  await syncPaseo();
+  const status = pairingStatus.get(serverId);
+  return { error: status?.error, auth: status?.auth };
 });
 ipcMain.handle('paseo:sync', async () => {
   // One already under way may have started before whatever was fixed.
@@ -2367,7 +2383,7 @@ function onDaemon<T>(serverId: string, use: Parameters<typeof withDaemon<T>>[2])
   if (serverId === localPaseoId) return withDaemon('local', () => localDaemon(clientId), use);
   const pairing = pairings.find((p) => p.serverId === serverId);
   if (!pairing) return Promise.reject(new Error('这台机器只读，先在 设置 → Paseo 里贴配对链接'));
-  return withDaemon(serverId, () => pairedDaemon(pairing.url, clientId), use);
+  return withDaemon(serverId, () => pairedDaemon(pairing.url, clientId, pairing.password), use);
 }
 
 const errorText = (e: unknown) => String((e as Error)?.message ?? e).slice(0, 200);
@@ -2392,7 +2408,7 @@ ipcMain.handle('paseo:create-project', async (_e, serverId: string, req: NewPase
     // Read the daemon again so the catalog has the project, then make Gleeok's from it.
     const clientId = `gleeok-${device.id}`;
     const pairing = pairings.find((p) => p.serverId === serverId);
-    const catalog = serverId === localPaseoId ? await readLocalPaseo(clientId) : pairing ? await readPairedPaseo(pairing.url, clientId) : null;
+    const catalog = serverId === localPaseoId ? await readLocalPaseo(clientId) : pairing ? await readPairedPaseo(pairing.url, clientId, pairing.password) : null;
     if (catalog) await config.putPaseoDaemon(catalog.serverId, catalog.body);
     const [project] = await config.importPaseo(serverId, [made.projectId]);
     if (!project) return { path: made.path, error: 'Paseo 里建好了，但 Gleeok 没能导入' };

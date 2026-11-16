@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Snapshot } from '../../../shared/src/ipc.ts';
+import type { PaseoAuthFailure, Snapshot } from '../../../shared/src/ipc.ts';
 import type { PaseoDaemon, PaseoProject } from '../../../shared/src/model.ts';
 import { Icon } from './Icons.tsx';
 import { Group, Status, Tag, ago, type Tone } from './SettingsUI.tsx';
@@ -14,6 +14,7 @@ interface Machine {
   kind: 'paired' | 'local' | 'synced';
   daemon?: PaseoDaemon;
   error?: string;
+  auth?: PaseoAuthFailure;
 }
 
 /** Settings → Paseo: each machine (status, code-server, its projects to import), then pairing a new one. */
@@ -22,6 +23,9 @@ export function PaseoSettings({ snap }: { snap: Snapshot }) {
   const [offer, setOffer] = useState('');
   const [pairing, setPairing] = useState(false);
   const [message, setMessage] = useState('');
+  // The daemon turned the link away for want of its password: ask for it.
+  const [needPassword, setNeedPassword] = useState(false);
+  const [password, setPassword] = useState('');
 
   const writable = new Set(snap.paseoWritable);
   const machines: Machine[] = [
@@ -33,12 +37,13 @@ export function PaseoSettings({ snap }: { snap: Snapshot }) {
         kind: p ? 'paired' : writable.has(d.serverId) ? 'local' : 'synced',
         daemon: d,
         error: p?.error,
+        auth: p?.auth,
       } as Machine;
     }),
     // Paired but never read: nothing to list yet, only whether it answers.
     ...snap.paseoPairings
       .filter((p) => !snap.paseo.some((d) => d.serverId === p.serverId))
-      .map((p) => ({ serverId: p.serverId, host: p.serverId, kind: 'paired', error: p.error }) as Machine),
+      .map((p) => ({ serverId: p.serverId, host: p.serverId, kind: 'paired', error: p.error, auth: p.auth }) as Machine),
   ];
 
   async function pair() {
@@ -46,10 +51,16 @@ export function PaseoSettings({ snap }: { snap: Snapshot }) {
     if (!url || pairing) return;
     setPairing(true);
     setMessage('');
-    const { error } = await gleeok.pairPaseo(url);
+    const { error, auth } = await gleeok.pairPaseo(url, needPassword ? password : undefined);
     setPairing(false);
+    if (auth) {
+      setNeedPassword(true);
+      return setMessage(auth === 'incorrect_password' ? '密码错误' : '此机器设有密码');
+    }
     if (error) return setMessage(`已保存，但连接失败：${error}`);
     setOffer('');
+    setPassword('');
+    setNeedPassword(false);
     // Also pair Gleeok's own browser, so the projects' Paseo links open.
     if (snap.state.currentProjectId) gleeok.dispatch({ type: 'openLink', url, newTab: true });
   }
@@ -75,13 +86,35 @@ export function PaseoSettings({ snap }: { snap: Snapshot }) {
             className="s-field mono grow"
             placeholder="粘贴配对链接"
             value={offer}
-            onChange={(e) => setOffer(e.target.value)}
+            onChange={(e) => {
+              setOffer(e.target.value);
+              setNeedPassword(false);
+              setMessage('');
+            }}
             onKeyDown={(e) => e.key === 'Enter' && void pair()}
           />
-          <button className="s-btn primary" disabled={!offer.trim() || pairing} onClick={() => void pair()}>
-            {pairing ? '连接中…' : '配对'}
-          </button>
+          {!needPassword && (
+            <button className="s-btn primary" disabled={!offer.trim() || pairing} onClick={() => void pair()}>
+              {pairing ? '连接中…' : '配对'}
+            </button>
+          )}
         </div>
+        {needPassword && (
+          <div className="s-row">
+            <input
+              autoFocus
+              type="password"
+              className="s-field grow"
+              placeholder="Paseo 密码"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && password && void pair()}
+            />
+            <button className="s-btn primary" disabled={!password || pairing} onClick={() => void pair()}>
+              {pairing ? '连接中…' : '连接'}
+            </button>
+          </div>
+        )}
         {message && <p className="s-note s-err">{message}</p>}
       </Group>
     </>
@@ -115,7 +148,8 @@ function MachineRow({ m, snap, open, onToggle }: { m: Machine; snap: Snapshot; o
       </button>
       {open && (
         <div className="s-mpanel">
-          {m.error && (
+          {m.auth && <PasswordLine serverId={m.serverId} wrong={m.auth === 'incorrect_password'} />}
+          {m.error && !m.auth && (
             <div className="s-mline">
               <span className="k">错误</span>
               <span className="s-err grow">{m.error}</span>
@@ -145,6 +179,35 @@ function MachineRow({ m, snap, open, onToggle }: { m: Machine; snap: Snapshot; o
         </div>
       )}
     </>
+  );
+}
+
+/** A paired daemon that wants its password: enter it here and it is read again at once. */
+function PasswordLine({ serverId, wrong }: { serverId: string; wrong: boolean }) {
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (!password || busy) return;
+    setBusy(true);
+    await gleeok.setPaseoPassword(serverId, password);
+    setBusy(false);
+    setPassword('');
+  };
+  return (
+    <div className="s-mline">
+      <span className="k">密码</span>
+      <input
+        type="password"
+        className="s-field grow"
+        placeholder={wrong ? '密码错误，请重新输入' : '此机器设有密码'}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && void submit()}
+      />
+      <button className="s-btn primary" disabled={!password || busy} onClick={() => void submit()}>
+        {busy ? '连接中…' : '连接'}
+      </button>
+    </div>
   );
 }
 

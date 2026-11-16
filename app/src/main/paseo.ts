@@ -2,7 +2,7 @@ import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { createPaseoApi } from '@getpaseo/client';
-import { DaemonClient } from '@getpaseo/client/internal/daemon-client';
+import { DaemonClient, getDaemonAuthFailureReason } from '@getpaseo/client/internal/daemon-client';
 import type { NewPaseoProject } from '../../../shared/src/ipc.ts';
 
 /**
@@ -74,13 +74,17 @@ export function localDaemon(clientId: string) {
   });
 }
 
-/** A client of a paired daemon through Paseo's relay, not yet connected. */
-export function pairedDaemon(url: string, clientId: string) {
+/**
+ * A client of a paired daemon through Paseo's relay, not yet connected. The relay only carries the
+ * encrypted connection: a daemon with a password set still asks for it.
+ */
+export function pairedDaemon(url: string, clientId: string, password?: string) {
   const offer = parseOffer(url);
   return new DaemonClient({
     url: relayUrl(offer),
     clientId,
     clientType: 'cli',
+    password: password || undefined,
     connectTimeoutMs: 20_000,
     e2ee: { enabled: true, daemonPublicKeyB64: offer.daemonPublicKeyB64 },
     reconnect: { enabled: false },
@@ -99,8 +103,15 @@ export async function readLocalPaseo(clientId: string): Promise<Catalog | null> 
 }
 
 /** A daemon through its pairing link; throws with the reason when it cannot be reached. */
-export async function readPairedPaseo(url: string, clientId: string): Promise<Catalog> {
-  return readCatalog(pairedDaemon(url, clientId), { serverId: parseOffer(url).serverId });
+export async function readPairedPaseo(url: string, clientId: string, password?: string): Promise<Catalog> {
+  return readCatalog(pairedDaemon(url, clientId, password), { serverId: parseOffer(url).serverId });
+}
+
+/** Why a daemon could not be used, in the words the settings show. */
+export function paseoError(e: unknown): { error: string; auth?: 'password_required' | 'incorrect_password' } {
+  const auth = getDaemonAuthFailureReason(e) ?? undefined;
+  if (auth) return { error: auth === 'password_required' ? '需要密码' : '密码错误', auth };
+  return { error: String((e as Error)?.message ?? e).slice(0, 200) };
 }
 
 // --- Acting on a daemon ----------------------------------------------------------------------
@@ -244,6 +255,8 @@ async function readCatalog(daemon: DaemonClient, known: { serverId: string; host
 export interface Pairing {
   serverId: string;
   url: string;
+  /** The daemon's own password, when it has one (kept with the link, same file, owner-only). */
+  password?: string;
   addedAt: string;
 }
 
