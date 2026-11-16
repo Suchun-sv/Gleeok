@@ -221,6 +221,8 @@ export type Action =
   | { type: 'setView'; view: View }
   /** The project's entry drawer (links and settings), over the current window's pages. */
   | { type: 'toggleEntry' }
+  /** Open the 新建项目 dialog: a new project or one from Paseo, then its code folder and terminal. */
+  | { type: 'openNewProject' }
   /** The 文献库 in place of the panes, and back. */
   | { type: 'toggleLibrary' }
   /** The 日程 in place of the panes, and back. */
@@ -327,6 +329,8 @@ export interface GleeokApi {
   onPomodoroDialog(cb: () => void): () => void;
   /** Main asks this window to open (or, if open, close) the current project's entry drawer. */
   onEntryDrawer(cb: () => void): () => void;
+  /** The 新建项目 dialog was asked for (the sidebar's button): show it over the pages. */
+  onNewProject(cb: () => void): () => void;
   vaultUnlock(email: string, password: string, server?: string): Promise<{ error?: string }>;
   vaultSave(login: { name: string; url: string; username: string; password: string }): Promise<{ error?: string }>;
   dispatch(action: Action): void;

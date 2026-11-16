@@ -4961,3 +4961,455 @@ main {
 .tunnel-row {
   padding: 10px 0;
 }
+
+/* -- sidebar: 项目 heading with the archive behind a small button (opens in place of the list) -- */
+.sidebar .side-label {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.archive-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0 8px;
+  border-radius: var(--r-full);
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.archive-toggle:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.archive-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+
+.archive-back:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.project.is-archived {
+  cursor: default;
+}
+
+.project.is-archived .name {
+  color: var(--ink-3);
+}
+
+.project .restore {
+  flex: none;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--r-full);
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+}
+
+.project:hover .restore,
+.project .restore:focus-visible {
+  opacity: 1;
+}
+
+.project .restore:hover {
+  color: var(--text);
+}
+
+/* -- 新建项目: centred, in steps -- */
+.np-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 10vh;
+  background: rgba(0, 0, 0, 0.14);
+  animation: np-fade 140ms var(--ease);
+}
+
+.np {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100vw - 32px));
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--line), 0 24px 64px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  animation: np-pop 180ms var(--ease);
+}
+
+.np-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 14px 4px 24px;
+}
+
+.np-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.np-steps {
+  display: flex;
+  align-items: center;
+  padding: 2px 24px 14px;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.np-step-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.np-line {
+  width: 24px;
+  height: 1px;
+  margin: 0 8px;
+  background: var(--line);
+}
+
+.np-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.np-step .num {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 11px;
+}
+
+.np-step.on {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.np-step.on .num {
+  background: var(--text);
+  color: var(--panel);
+  box-shadow: none;
+}
+
+.np-step.done .num {
+  background: var(--panel-2);
+  color: var(--ink-2);
+  box-shadow: none;
+}
+
+.np-seg {
+  display: flex;
+  gap: 2px;
+  margin: 0 24px 14px;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+}
+
+.np-seg button {
+  flex: 1;
+  height: 30px;
+  border-radius: 6px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+
+.np-seg button.on {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.np-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 290px;
+  max-height: 52vh;
+  padding: 0 24px 16px;
+  overflow-y: auto;
+}
+
+.np-label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.np-field-wrap {
+  display: block;
+}
+
+.np-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-3);
+}
+
+.np-field:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--focus);
+}
+
+.np-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font-size: var(--t-md);
+  color: var(--text);
+}
+
+.np-field input:focus-visible {
+  outline: none;
+}
+
+.np-field input.mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--t-sm);
+}
+
+.np-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.np-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  transition: background 120ms var(--ease);
+}
+
+.np-chip:hover {
+  background: var(--hover);
+}
+
+.np-chip.on {
+  background: var(--text);
+  color: var(--panel);
+  box-shadow: none;
+}
+
+.np-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 -10px;
+}
+
+.np-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  text-align: left;
+  transition: background 120ms var(--ease);
+}
+
+.np-row:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.np-row.on {
+  background: var(--select);
+}
+
+.np-row.muted:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.np-ic {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: #2b2b2b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.np-txt {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.np-txt .t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-md);
+}
+
+.np-txt .d {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.np-when,
+.np-tag {
+  flex: none;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.np-tag {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r-full);
+  background: var(--panel-2);
+  line-height: 22px;
+}
+
+.np-tick {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+}
+
+.np-note {
+  margin: 0;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.np-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 14px 24px;
+  box-shadow: 0 -1px 0 var(--line);
+}
+
+.np-error {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--t-xs);
+  color: var(--danger);
+}
+
+.np-btn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--t-sm);
+  transition: background 120ms var(--ease), opacity 120ms var(--ease);
+}
+
+.np-btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.np-btn.ghost {
+  box-shadow: none;
+  color: var(--ink-2);
+}
+
+.np-btn.primary {
+  background: var(--text);
+  color: var(--panel);
+  box-shadow: none;
+}
+
+.np-btn.primary:hover:not(:disabled) {
+  background: var(--text);
+  opacity: 0.85;
+}
+
+.np-btn:disabled {
+  opacity: 0.35;
+}
+
+@keyframes np-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+@keyframes np-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.np-search {
+  height: 36px;
+  border-radius: var(--r-full);
+  background: var(--panel-2);
+  box-shadow: none;
+}
+
+/* A long list scrolls the body; nothing in it gets squeezed. */
+.np-body > *,
+.np-body > .np-field,
+.np-pick > * {
+  flex: none;
+}

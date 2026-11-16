@@ -2049,6 +2049,13 @@ function dispatch(action: Action) {
       if (state.view === 'library') void library.sync();
       changed();
       return;
+    case 'openNewProject':
+      if (state.view !== 'panes') {
+        state.view = 'panes';
+        changed();
+      }
+      void openOverlay('new-project');
+      return;
     case 'toggleEntry':
       if (!state.currentProjectId) return;
       if (state.view !== 'panes') {

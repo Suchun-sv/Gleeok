@@ -36,18 +36,11 @@ export function SidebarToggle({ platform }: { platform: string }) {
 }
 
 export function Sidebar({ snap }: { snap: Snapshot }) {
-  const [adding, setAdding] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
-  const [name, setName] = useState('');
   const { state, server } = snap;
   const mod = snap.platform === 'darwin' ? '⌘⌥' : 'Ctrl+Alt+';
-
-  async function create() {
-    if (!name.trim()) return;
-    await gleeok.createProject(name.trim());
-    setName('');
-    setAdding(false);
-  }
+  // The archive replaces the list while open; with nothing left in it, the list comes back.
+  const archiveShown = showArchived && snap.archivedProjects.length > 0;
 
   return (
     <aside className={`sidebar ${pomoMood(snap.pomodoro)}`}>
@@ -82,7 +75,7 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         </button>
         <button
           className="sidebar-toggle"
-          onClick={() => setAdding(true)}
+          onClick={() => gleeok.dispatch({ type: 'openNewProject' })}
           // Local mode stores projects on this machine; only an unreachable sync server blocks creating.
           disabled={server.status !== 'ok' && server.status !== 'local'}
           title={server.status === 'ok' || server.status === 'local' ? '新项目' : '连不上同步服务器，暂时不能新建项目'}
@@ -92,7 +85,40 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
         <SidebarToggle platform={snap.platform} />
       </header>
 
+      {archiveShown ? (
+        <nav>
+          <button className="archive-back" onClick={() => setShowArchived(false)}>
+            <Icon name="arrowLeft" size={15} />
+            已存档
+          </button>
+          {snap.archivedProjects.map((p) => {
+            const menu = (e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              gleeok.dispatch({ type: 'projectMenu', id: p.id });
+            };
+            return (
+              <div key={p.id} className="project is-archived" onContextMenu={menu} title={`${p.name}\n右键：删除`}>
+                <span className="status" />
+                <span className="name">{p.name}</span>
+                <button className="restore" onClick={() => gleeok.dispatch({ type: 'archiveProject', id: p.id, archived: false })}>
+                  恢复
+                </button>
+              </div>
+            );
+          })}
+        </nav>
+      ) : (
       <nav>
+        <div className="side-label">
+          项目
+          {snap.archivedProjects.length > 0 && (
+            <button className="archive-toggle" onClick={() => setShowArchived(true)} title="已存档的项目">
+              <Icon name="archive" size={13} />
+              {snap.archivedProjects.length}
+            </button>
+          )}
+        </div>
         {snap.projects.map((p, i) => {
           const live = snap.live.includes(p.id);
           const mb = snap.memory[p.id];
@@ -146,56 +172,8 @@ export function Sidebar({ snap }: { snap: Snapshot }) {
             </div>
           );
         })}
-        {adding ? (
-          <input
-            autoFocus
-            className="new-project"
-            placeholder="项目名，回车创建"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void create();
-              if (e.key === 'Escape') setAdding(false);
-            }}
-            onBlur={() => setAdding(false)}
-          />
-        ) : (
-          <button
-            className="project add"
-            onClick={() => setAdding(true)}
-            // Local mode stores projects on this machine; only an unreachable sync server blocks creating.
-            disabled={server.status !== 'ok' && server.status !== 'local'}
-            title={server.status === 'ok' || server.status === 'local' ? undefined : '连不上同步服务器，暂时不能新建项目（点顶部的圆点重试）'}
-          >
-            + 新项目
-          </button>
-        )}
-        {snap.archivedProjects.length > 0 && (
-          <div className="archived">
-            <button className="archived-toggle" onClick={() => setShowArchived(!showArchived)}>
-              <Icon name={showArchived ? 'chevronDown' : 'chevronRight'} size={12} />
-              已存档 {snap.archivedProjects.length}
-            </button>
-            {showArchived &&
-              snap.archivedProjects.map((p) => {
-                const menu = (e: React.MouseEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  gleeok.dispatch({ type: 'projectMenu', id: p.id });
-                };
-                return (
-                  <div key={p.id} role="button" className="project is-archived" onClick={menu} onContextMenu={menu} title="点击：取消存档 / 删除">
-                    <span className="status" />
-                    <span className="name">{p.name}</span>
-                    <button className="kebab" onClick={menu} title="取消存档或删除">
-                      <Icon name="menu" size={14} />
-                    </button>
-                  </div>
-                );
-              })}
-          </div>
-        )}
       </nav>
+      )}
 
       {snap.downloads.length > 0 && (
         <div className="downloads">

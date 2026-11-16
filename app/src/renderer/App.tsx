@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Command, Snapshot, VaultDialog as VaultDialogState } from '../../../shared/src/ipc.ts';
 import { EntryDrawer } from './EntryDrawer.tsx';
+import { NewProjectDialog } from './NewProjectDialog.tsx';
 import { SettingsPage } from './Settings.tsx';
 import { Palette } from './Palette.tsx';
 import { UpdateDialog } from './UpdateDialog.tsx';
@@ -26,6 +27,7 @@ export function App() {
   const [updateOpen, setUpdateOpen] = useState(false);
   const [pomoOpen, setPomoOpen] = useState(false);
   const [entryOpen, setEntryOpen] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
 
   useEffect(() => {
     void gleeok.getSnapshot().then(setSnap);
@@ -64,12 +66,18 @@ export function App() {
         return !open;
       });
     });
+    const offNewProject = gleeok.onNewProject(() => {
+      setPaletteOpen(false);
+      setEntryOpen(false);
+      setNewProjectOpen(true);
+    });
     const offPomo = gleeok.onPomodoroDialog(() => {
       setPaletteOpen(false);
       setEntryOpen(false);
       setPomoOpen(true);
     });
     return () => {
+      offNewProject();
       offPomo();
       offEntry();
       offUpdate();
@@ -122,6 +130,14 @@ export function App() {
     <PomodoroDialog state={snap.pomodoro} settings={pomodoroSettings(snap.state)} winId={WIN_ID} onClose={() => setPomoOpen(false)} />
   ) : updateOpen ? (
     <UpdateDialog update={snap.update} winId={WIN_ID} onClose={() => setUpdateOpen(false)} />
+  ) : newProjectOpen ? (
+    <NewProjectDialog
+      snap={snap}
+      onClose={() => {
+        setNewProjectOpen(false);
+        gleeok.dispatch({ type: 'closePalette', winId: WIN_ID });
+      }}
+    />
   ) : paletteOpen ? (
     <Palette snap={snap} winId={WIN_ID} onClose={() => setPaletteOpen(false)} />
   ) : entryOpen && project ? (

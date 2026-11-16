@@ -17,6 +17,7 @@ const api: GleeokApi = {
   onUpdateDialog: (cb) => subscribe<void>('update-dialog', () => cb()),
   onPomodoroDialog: (cb) => subscribe<void>('pomodoro-dialog', () => cb()),
   onEntryDrawer: (cb) => subscribe<void>('entry-drawer', () => cb()),
+  onNewProject: (cb) => subscribe<void>('new-project', () => cb()),
   vaultUnlock: (email, password, server) => ipcRenderer.invoke('vault:unlock', email, password, server),
   vaultSave: (login) => ipcRenderer.invoke('vault:save', login),
   dispatch: (action) => ipcRenderer.send('action', action),
