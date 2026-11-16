@@ -54,8 +54,9 @@ export class Shells {
       icon: join(__dirname, '..', 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon-512.png'),
       autoHideMenuBar: true,
       // macOS: no title bar; the traffic lights sit in the sidebar's top row (or the first tab
-      // strip when there is no sidebar), as in WeChat, and those rows drag the window.
-      ...(process.platform === 'darwin' ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 14, y: 12 } } : {}),
+      // strip when there is no sidebar), as in WeChat, and those rows drag the window. y puts the
+      // lights' centre (y + 7) on the 52px row's middle, level with its buttons.
+      ...(process.platform === 'darwin' ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 14, y: 19 } } : {}),
       show: false,
       webPreferences: { preload: join(__dirname, 'preload.js'), sandbox: true },
     });
