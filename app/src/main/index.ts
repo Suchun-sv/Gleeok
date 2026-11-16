@@ -10,7 +10,7 @@ import { agentHandoff, type AgentCreated, type AgentInfo } from '../../../shared
 import { AgentPort } from './agent-port.ts';
 import { log, logPath, siteOf } from './log.ts';
 import { Weather, searchPlaces } from './weather.ts';
-import type { Action, AgentNew, AgentOp, AgentPanel, Command, LibraryOp, PaneRects, PlannerOp, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
+import type { Action, AgentNew, AgentOp, AgentPanel, Command, LibraryOp, NewPaseoProject, PaneRects, PlannerOp, Snapshot, VaultDialog } from '../../../shared/src/ipc.ts';
 import { PLANNER_KINDS, type PlannerTask, type TimeBlock } from '../../../shared/src/planner.ts';
 import { LibraryClient } from './library.ts';
 import { SyncedClient } from './synced-client.ts';
@@ -68,7 +68,21 @@ import { canSelfUpdate, pendingUpdates, selfUpdate, vmpStatus } from './updater.
 import { installRelease, latestRelease, type Release } from './release-updater.ts';
 import { buildInfo, confirmHotBoot, installHot, latestHot, leaveHot, runningHot, type HotUpdate } from './hot-update.ts';
 import { VAULT_URL_DEFAULT, Vault, fillPage, readPage } from './vault.ts';
-import { type Pairing, loadPairings, parseOffer, readLocalPaseo, readPairedPaseo, savePairings } from './paseo.ts';
+import {
+  type Pairing,
+  createPaseoProject,
+  loadPairings,
+  localDaemon,
+  localPaseoStatus,
+  pairedDaemon,
+  parseOffer,
+  readLocalPaseo,
+  readPairedPaseo,
+  savePairings,
+  searchRepos,
+  suggestDirs,
+  withDaemon,
+} from './paseo.ts';
 
 app.setName('gleeok');
 registerReaderScheme();
@@ -882,11 +896,14 @@ function changed() {
 let pairings: Pairing[] = loadPairings();
 const pairingStatus = new Map<string, { at: string; error?: string }>();
 let paseoSyncing: Promise<void> | null = null;
+/** This machine's daemon, which Gleeok can act on even when a server syncs its catalog. */
+let localPaseoId: string | null = null;
 
 function syncPaseo(): Promise<void> {
   paseoSyncing ??= (async () => {
     const clientId = `gleeok-${device.id}`;
     const local = config.local ? await readLocalPaseo(clientId) : null;
+    localPaseoId = local?.serverId ?? (await localPaseoStatus())?.serverId ?? null;
     const found = local ? [local] : [];
     await Promise.all(
       pairings
@@ -913,6 +930,7 @@ function snapshot(): Snapshot {
     archivedProjects: config.projects.filter((p) => p.archived),
     paseo: config.paseo,
     paseoPairings: pairings.map((p) => ({ serverId: p.serverId, ...pairingStatus.get(p.serverId) })),
+    paseoWritable: [...new Set([localPaseoId, ...pairings.map((p) => p.serverId)])].filter((id): id is string => !!id),
     downloads: downloads?.list ?? [],
     live: Object.values(state.sessions).filter(isLive).map((s) => s.projectId),
     memory: Object.fromEntries(memory),
@@ -2336,6 +2354,49 @@ ipcMain.handle('paseo:detect-code-server', async (_e, serverId: string) => {
     return { url };
   } catch (e) {
     return { error: String(e).slice(0, 120) };
+  }
+});
+/** Run against a daemon Gleeok can reach directly: this machine's, or one with a pairing link. */
+function onDaemon<T>(serverId: string, use: Parameters<typeof withDaemon<T>>[2]): Promise<T> {
+  const clientId = `gleeok-${device.id}`;
+  if (serverId === localPaseoId) return withDaemon('local', () => localDaemon(clientId), use);
+  const pairing = pairings.find((p) => p.serverId === serverId);
+  if (!pairing) return Promise.reject(new Error('这台机器只读，先在 设置 → Paseo 里贴配对链接'));
+  return withDaemon(serverId, () => pairedDaemon(pairing.url, clientId), use);
+}
+
+const errorText = (e: unknown) => String((e as Error)?.message ?? e).slice(0, 200);
+
+ipcMain.handle('paseo:dirs', async (_e, serverId: string, query: string) => {
+  try {
+    return await onDaemon(serverId, (d) => suggestDirs(d, query));
+  } catch {
+    return [];
+  }
+});
+ipcMain.handle('paseo:repos', async (_e, serverId: string, query: string) => {
+  try {
+    return await onDaemon(serverId, (d) => searchRepos(d, query));
+  } catch (e) {
+    return { repos: [], error: errorText(e) };
+  }
+});
+ipcMain.handle('paseo:create-project', async (_e, serverId: string, req: NewPaseoProject, name: string) => {
+  try {
+    const made = await onDaemon(serverId, (d) => createPaseoProject(d, req));
+    // Read the daemon again so the catalog has the project, then make Gleeok's from it.
+    const clientId = `gleeok-${device.id}`;
+    const pairing = pairings.find((p) => p.serverId === serverId);
+    const catalog = serverId === localPaseoId ? await readLocalPaseo(clientId) : pairing ? await readPairedPaseo(pairing.url, clientId) : null;
+    if (catalog) await config.putPaseoDaemon(catalog.serverId, catalog.body);
+    const [project] = await config.importPaseo(serverId, [made.projectId]);
+    if (!project) return { path: made.path, error: 'Paseo 里建好了，但 Gleeok 没能导入' };
+    const named = name && project.name !== name ? await config.save({ ...project, name }) : project;
+    return { project: named, path: made.path };
+  } catch (e) {
+    return { error: errorText(e) };
+  } finally {
+    changed();
   }
 });
 ipcMain.handle('paseo:unpair', (_e, serverId: string) => {

@@ -5413,3 +5413,114 @@ main {
 .np-pick > * {
   flex: none;
 }
+
+/* 新建项目 in Paseo: the source switch, folder suggestions, the work under way. */
+.np-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.np-group > * {
+  flex: none;
+}
+
+.np-src {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+}
+
+.np-src button {
+  flex: 1;
+  height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+
+.np-src button.on {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.np-srow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  text-align: left;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+
+.np-srow .icon {
+  color: var(--ink-3);
+  flex: none;
+}
+
+.np-srow:hover:not(:disabled),
+.np-srow.on {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.np-srow:disabled {
+  opacity: 0.5;
+}
+
+.np-ic.gh {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.np-note b {
+  font-weight: 500;
+  color: var(--ink-2);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+.np-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.np-busy {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-spin {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  border-top-color: var(--text);
+  animation: np-spin 700ms linear infinite;
+}
+
+@keyframes np-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

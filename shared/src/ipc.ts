@@ -5,6 +5,12 @@ import type { AgentCreated, AgentHandoff, AgentInfo, AgentScope } from './agents
 import type { WeatherPlace, WeatherSnapshot } from './weather.ts';
 import type { PlannerKind, PlannerTask, Pomodoro, TimeBlock } from './planner.ts';
 
+/** Where a new Paseo project comes from. Paths may start with ~ (the daemon's home). */
+export type NewPaseoProject =
+  | { kind: 'empty'; parent: string; name: string }
+  | { kind: 'dir'; path: string }
+  | { kind: 'git'; repo: string; parent: string };
+
 export interface VaultLoginSummary {
   id: string;
   name: string;
@@ -129,6 +135,8 @@ export interface Snapshot {
   paseo: PaseoDaemon[];
   /** Daemons this machine reads through a pasted pairing link; `at`/`error` from the last attempt. */
   paseoPairings: { serverId: string; at?: string; error?: string }[];
+  /** Daemons Gleeok can act on (this machine's, paired ones); the rest are read-only catalogs. */
+  paseoWritable: string[];
   downloads: Download[];
   /** Projects whose pages are loaded (green dot); the rest are hibernated or never opened. */
   live: string[];
@@ -353,6 +361,12 @@ export interface GleeokApi {
   pathForFile(file: File): string;
   /** Remember a daemon's pairing link on this machine and read its projects through the relay. */
   pairPaseo(url: string): Promise<{ error?: string }>;
+  /** Folders on a daemon's machine matching a typed path (absolute). */
+  paseoDirs(serverId: string, query: string): Promise<string[]>;
+  /** GitHub repositories, through the daemon machine's gh. */
+  paseoRepos(serverId: string, query: string): Promise<{ repos: { name: string; description: string; private: boolean }[]; error?: string }>;
+  /** Make a Paseo project on the daemon (new folder, existing folder, or a clone), then Gleeok's from it. */
+  createPaseoProject(serverId: string, req: NewPaseoProject, name: string): Promise<{ project?: Project; path?: string; error?: string }>;
   unpairPaseo(serverId: string): Promise<void>;
   /** Set the code-server address projects from this daemon link into; '' goes back to detection. */
   setCodeServer(serverId: string, url: string): Promise<{ error?: string }>;
