@@ -5543,3 +5543,792 @@ main {
   margin: 0;
   border-radius: 0;
 }
+
+/* -- Settings v3 (Claude Design 「设置」): rows with a title and one line of description on the
+   left, the control on the right; facts each in their own element. -- */
+.settings-nav > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  color: var(--ink-2);
+}
+
+.settings-nav > button .icon {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.settings-nav > button.on,
+.settings-nav > button.on .icon {
+  color: var(--text);
+}
+
+.settings-sep {
+  height: 1px;
+  margin: 6px 10px;
+  background: var(--line);
+}
+
+.settings-body {
+  padding: 32px 40px 64px;
+  scrollbar-gutter: stable;
+}
+
+.settings-close {
+  z-index: 1;
+  top: 12px;
+  right: 12px;
+}
+
+.settings-body > .s-page {
+  max-width: 620px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.s-h {
+  margin: 0 0 -12px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.s-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.s-gh {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 2px;
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.s-gh .cnt {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.s-note {
+  margin: 8px 0 0;
+  font-size: var(--t-xs);
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+.s-lead {
+  margin: 0;
+  font-size: var(--t-sm);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.s-note code,
+.s-d code,
+.s-lead code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11.5px;
+}
+
+.s-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.s-group > .s-row:last-child,
+.s-group > .s-row:has(+ .s-note) {
+  border-bottom: 0;
+}
+
+.s-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.s-t {
+  font-size: var(--t-md);
+  color: var(--text);
+}
+
+.s-d {
+  font-size: var(--t-sm);
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+.s-val {
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.s-mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.s-mono.ink {
+  color: var(--ink-2);
+}
+
+.s-err {
+  color: var(--danger);
+}
+
+.s-group .grow,
+.s-page .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.s-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.s-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Controls. Higher specificity than the generic `.settings input` rules above. */
+.settings .s-field,
+.settings .s-select {
+  height: 32px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--panel);
+  font-size: var(--t-sm);
+  color: var(--text);
+}
+
+.settings .s-select {
+  padding-right: 28px;
+  flex: none;
+}
+
+.settings .s-field:focus {
+  outline: 0;
+  border-color: var(--focus);
+}
+
+.settings .s-field.mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--t-xs);
+}
+
+.settings .s-field.grow {
+  flex: 1;
+}
+
+.s-page .w-80 {
+  width: 80px;
+}
+
+.s-page .w-120 {
+  width: 120px;
+}
+
+.s-page .w-160 {
+  width: 160px;
+}
+
+.s-page .w-240 {
+  width: 240px;
+}
+
+.s-seg {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+}
+
+.s-seg button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  white-space: nowrap;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+
+.s-seg button:hover {
+  color: var(--text);
+}
+
+.s-seg button.on {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.s-sw {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 22px;
+  border-radius: var(--r-full);
+  background: var(--select);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background 160ms var(--ease);
+}
+
+.s-sw::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 160ms var(--ease);
+}
+
+.s-sw.on {
+  background: var(--text);
+  box-shadow: none;
+}
+
+.s-sw.on::after {
+  transform: translateX(14px);
+  background: var(--panel);
+}
+
+.s-sw:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.s-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--t-sm);
+  white-space: nowrap;
+  transition: background 120ms var(--ease);
+}
+
+.s-btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.s-btn:disabled {
+  opacity: 0.35;
+}
+
+.s-btn.primary {
+  background: var(--text);
+  color: var(--panel);
+  box-shadow: none;
+}
+
+.s-btn.primary:hover:not(:disabled) {
+  background: var(--text);
+  opacity: 0.85;
+}
+
+.s-btn.ghost {
+  box-shadow: none;
+  color: var(--ink-2);
+}
+
+.s-btn.danger {
+  box-shadow: none;
+  color: var(--danger);
+}
+
+.s-btn.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.s-link {
+  flex: none;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.s-link:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.s-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  color: var(--ink-3);
+}
+
+.s-icon:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* Row actions appear on hover (and stay reachable by keyboard). */
+.s-hover {
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+}
+
+.s-row:hover .s-hover,
+.s-item:hover .s-hover,
+.s-hover:focus-visible {
+  opacity: 1;
+}
+
+.s-status {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.s-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+.s-dot.ro {
+  background: var(--ink-3);
+}
+
+.s-dot.warn {
+  background: oklch(0.75 0.14 70);
+}
+
+.s-dot.bad {
+  background: var(--danger);
+}
+
+.s-tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--r-full);
+  background: var(--panel-2);
+  font-size: 11px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.s-kbd {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--line), 0 1px 0 var(--line);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+}
+
+.s-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+
+.s-chip.on {
+  background: var(--text);
+  color: var(--panel);
+  box-shadow: none;
+}
+
+.s-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+
+.s-add:hover {
+  color: var(--text);
+}
+
+.s-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings .s-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  background: var(--panel-2);
+  color: var(--ink-3);
+}
+
+.settings .s-search input {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font-size: var(--t-sm);
+  color: var(--text);
+}
+
+.s-results {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.s-results button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-sm);
+  text-align: left;
+}
+
+.s-results button:last-child {
+  border-bottom: 0;
+}
+
+.s-results button:hover {
+  background: var(--hover);
+}
+
+.s-results button .s-d {
+  margin-left: auto;
+  font-size: var(--t-xs);
+}
+
+/* 常用: rows edited in place, dragged by the grip in the margin. */
+.s-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.s-item.dragging {
+  opacity: 0.4;
+}
+
+.s-grip {
+  position: absolute;
+  left: -22px;
+  color: var(--ink-3);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+}
+
+.s-item:hover .s-grip {
+  opacity: 1;
+}
+
+.s-fav {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.settings .s-inline {
+  height: auto;
+  min-width: 0;
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: var(--t-md);
+  color: var(--text);
+}
+
+.settings .s-inline:hover {
+  background: var(--hover);
+}
+
+.settings .s-inline:focus {
+  outline: 0;
+  background: var(--panel);
+  box-shadow: 0 0 0 1.5px var(--focus);
+}
+
+.settings .s-inline.sm {
+  font-size: var(--t-sm);
+  color: var(--ink-3);
+}
+
+.settings .s-inline.mono {
+  flex: 1;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.s-item .s-inline-row {
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+/* Paseo machines: a row that opens a panel. */
+.s-mach {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.s-mach-ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--panel-2);
+  color: var(--ink-2);
+}
+
+.s-mach-status {
+  flex: none;
+  width: 64px;
+}
+
+.s-chev {
+  flex: none;
+  color: var(--ink-3);
+  transition: transform 160ms var(--ease);
+}
+
+.s-chev.open {
+  transform: rotate(90deg);
+}
+
+.s-mach:hover .s-chev {
+  color: var(--text);
+}
+
+.s-mpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 16px 46px;
+  border-bottom: 1px solid var(--line);
+}
+
+.s-mline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--t-sm);
+}
+
+.s-mline.top {
+  align-items: flex-start;
+}
+
+.s-mline > .k {
+  flex: none;
+  width: 84px;
+  color: var(--ink-3);
+}
+
+.s-mline.top > .k {
+  padding-top: 8px;
+}
+
+.s-picker {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.s-pj {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.s-pj-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-sm);
+  text-align: left;
+}
+
+.s-pj-row:last-child {
+  border-bottom: 0;
+}
+
+.s-pj-row:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.s-pj-row.done {
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.s-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.5px var(--ink-3);
+  color: var(--panel);
+}
+
+.s-box.on {
+  background: var(--text);
+  box-shadow: none;
+}
+
+.s-box.done {
+  background: var(--panel-2);
+  box-shadow: none;
+  color: var(--ink-3);
+}
+
+.s-pj-name {
+  flex: none;
+  width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.s-pj-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+.s-pj-when {
+  flex: none;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+
+/* Agent: the one-time token handoff. */
+.s-callout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--panel-2);
+}
+
+.s-callout > .s-t {
+  font-weight: 500;
+}
+
+.s-about {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.s-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 13px;
+}
+
+.s-about-name {
+  font-size: var(--t-xl);
+  font-weight: 600;
+}

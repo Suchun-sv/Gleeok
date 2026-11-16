@@ -1,0 +1,158 @@
+[
+ {
+  "action": {
+   "type": "setTheme",
+   "theme": "light"
+  }
+ },
+ {
+  "wait": 7000
+ },
+ {
+  "action": {
+   "type": "setView",
+   "view": "settings"
+  }
+ },
+ {
+  "wait": 800
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='栏').click(),'栏'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s00"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='外观').click(),'外观'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s01"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='常用').click(),'常用'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s02"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='天气与时间').click(),'天气与时间'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s03"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='文献库').click(),'文献库'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s04"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='日程').click(),'日程'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s05"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='Agent').click(),'Agent'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s06"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='Paseo').click(),'Paseo'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "evalMain": "(document.querySelector('.s-mach')||{click(){}}).click(),'open machine'"
+ },
+ {
+  "wait": 400
+ },
+ {
+  "capture": "s07"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='代码').click(),'代码'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s08"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='同步').click(),'同步'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s09"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='密码库').click(),'密码库'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s10"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='关于').click(),'关于'"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "s11"
+ },
+ {
+  "action": {
+   "type": "setTheme",
+   "theme": "dark"
+  }
+ },
+ {
+  "wait": 600
+ },
+ {
+  "capture": "dark-about"
+ },
+ {
+  "evalMain": "[...document.querySelectorAll('.settings-nav > button')].find(b=>b.textContent.trim()==='Paseo').click(),'p'"
+ },
+ {
+  "wait": 500
+ },
+ {
+  "capture": "dark-paseo"
+ },
+ {
+  "evalMain": "/[·•]/.test(document.body.innerText) ? 'HAS DOT' : 'no dots'"
+ }
+]

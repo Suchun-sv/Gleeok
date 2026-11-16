@@ -2337,6 +2337,11 @@ ipcMain.handle('paseo:pair', async (_e, url: string) => {
   await syncPaseo();
   return { error: pairingStatus.get(serverId)?.error };
 });
+ipcMain.handle('paseo:sync', async () => {
+  // One already under way may have started before whatever was fixed.
+  await paseoSyncing;
+  await syncPaseo();
+});
 ipcMain.handle('paseo:code-server', async (_e, serverId: string, url: string) => {
   try {
     await config.setDaemonSettings(serverId, { codeServer: url.trim() || null });

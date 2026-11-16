@@ -46,6 +46,7 @@ const api: GleeokApi = {
   onPlanner: (cb) => subscribe<PlannerSnapshot>('planner', cb),
   planner: (op) => ipcRenderer.invoke('planner:call', op),
   pairPaseo: (url) => ipcRenderer.invoke('paseo:pair', url),
+  syncPaseo: () => ipcRenderer.invoke('paseo:sync'),
   paseoDirs: (serverId, query) => ipcRenderer.invoke('paseo:dirs', serverId, query),
   paseoRepos: (serverId, query) => ipcRenderer.invoke('paseo:repos', serverId, query),
   createPaseoProject: (serverId, req, name) => ipcRenderer.invoke('paseo:create-project', serverId, req, name),

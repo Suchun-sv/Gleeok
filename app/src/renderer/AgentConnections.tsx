@@ -3,6 +3,7 @@ import { AGENT_SCOPES, type AgentScope } from '../../../shared/src/agents.ts';
 import type { AgentNew, AgentOp, AgentPanel } from '../../../shared/src/ipc.ts';
 import { Icon } from './Icons.tsx';
 import { lib } from './library/data.ts';
+import { Group, Row, Status, Switch, Tag } from './SettingsUI.tsx';
 
 /** sessionStorage key: the Settings tab to open on. */
 export const SETTINGS_TAB_KEY = 'gleeok.settings.tab';
@@ -131,42 +132,116 @@ export function AgentConnections({
   );
 }
 
+/** How long ago an agent last used its token, for the Settings list. */
+const usedAgo = (iso?: string) => {
+  if (!iso) return '从未使用';
+  const min = Math.round((Date.now() - Date.parse(iso)) / 60_000);
+  if (min < 2) return '刚刚使用';
+  if (min < 60) return `${min} 分钟前使用`;
+  if (min < 48 * 60) return `${Math.round(min / 60)} 小时前使用`;
+  return `${new Date(iso).toLocaleDateString('zh-CN')} 使用`;
+};
+
 /** Settings → Agent: the connections, and where agents reach Gleeok. */
 export function AgentSettings() {
   const [panel, setPanel] = useState<AgentPanel | null>(null);
   const [error, setError] = useState('');
-  useEffect(() => void agentCall<AgentPanel>({ op: 'list' }).then(setPanel, (e: Error) => setError(e.message)), []);
+  const [name, setName] = useState('');
+  const [scopes, setScopes] = useState<AgentScope[]>(['planner', 'library']);
+  const [fresh, setFresh] = useState<AgentNew | null>(null);
+  const [copied, setCopied] = useState('');
   const fail = (e: Error) => setError(e.message);
+  useEffect(() => void agentCall<AgentPanel>({ op: 'list' }).then(setPanel, fail), []);
+  const handOver = (r: AgentNew) => {
+    setPanel(r.panel);
+    setFresh(r);
+    setCopied('');
+    setError('');
+  };
+  const create = () => {
+    if (!name.trim() || !scopes.length) return;
+    void agentCall<AgentNew>({ op: 'create', name: name.trim(), scopes }).then((r) => {
+      handOver(r);
+      setName('');
+    }, fail);
+  };
+  const copy = (label: string, text: string) => void lib({ op: 'copyText', text }).then(() => setCopied(label));
+  const scopeLabel = (s: AgentScope) => AGENT_SCOPES.find((x) => x.id === s)?.label ?? s;
   return (
     <>
-      <AgentConnections onPanel={setPanel} />
-      {error && <p className="hint error">{error}</p>}
+      <p className="s-lead">为 agent 创建仅限日程和文献库的访问令牌，可随时吊销。</p>
+      {error && <p className="s-lead s-err">{error}</p>}
+      {fresh && (
+        <div className="s-callout">
+          <span className="s-t">「{fresh.created.agent.name}」的令牌仅显示一次</span>
+          <div className="s-inline-row">
+            <button className="s-btn primary" onClick={() => copy('guide', fresh.handoff.guide)}>
+              <Icon name={copied === 'guide' ? 'check' : 'copy'} size={14} />
+              {copied === 'guide' ? '已复制' : '复制说明'}
+            </button>
+            <button className="s-btn" onClick={() => copy('claude', fresh.handoff.claude)}>
+              {copied === 'claude' ? '已复制' : '复制 Claude Code 命令'}
+            </button>
+            <button className="s-btn" onClick={() => copy('codex', fresh.handoff.codex)}>
+              {copied === 'codex' ? '已复制' : '复制 Codex 配置'}
+            </button>
+            <span className="grow" />
+            <button className="s-btn ghost" onClick={() => setFresh(null)}>
+              完成
+            </button>
+          </div>
+        </div>
+      )}
+      <Group title="连接" count={panel?.agents.length}>
+        {panel?.agents.length === 0 && <Row title="暂无连接" />}
+        {panel?.agents.map((a) => (
+          <Row key={a.id} title={a.name} desc={usedAgo(a.lastUsedAt)}>
+            {a.scopes.map((sc) => (
+              <Tag key={sc}>{scopeLabel(sc)}</Tag>
+            ))}
+            <button className="s-btn ghost s-hover" title="旧令牌立即失效" onClick={() => void agentCall<AgentNew>({ op: 'rotate', id: a.id }).then(handOver, fail)}>
+              重置令牌
+            </button>
+            <button
+              className="s-btn danger s-hover"
+              onClick={() => confirm(`吊销「${a.name}」？其令牌将立即失效。`) && void agentCall<AgentPanel>({ op: 'revoke', id: a.id }).then(setPanel, fail)}
+            >
+              吊销
+            </button>
+          </Row>
+        ))}
+        <div className="s-row">
+          <input className="s-field grow" value={name} placeholder="连接名称" maxLength={40} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && create()} />
+          {AGENT_SCOPES.map((s) => {
+            const on = scopes.includes(s.id);
+            return (
+              <button key={s.id} className={`s-chip ${on ? 'on' : ''}`} onClick={() => setScopes(on ? scopes.filter((x) => x !== s.id) : [...scopes, s.id])}>
+                {on && <Icon name="check" size={13} />}
+                {s.label}
+              </button>
+            );
+          })}
+          <button className="s-btn primary" disabled={!name.trim() || !scopes.length} onClick={create}>
+            创建
+          </button>
+        </div>
+      </Group>
       {panel?.mode === 'server' && (
-        <section className="card">
-          <h3>地址</h3>
-          <p className="hint">
-            agent 连的是同步服务器 <code>{panel.url}</code>（REST 和 <code>/mcp</code>），它所在的机器要能访问这个地址（比如在同一个 tailnet 里）。
-          </p>
-        </section>
+        <Group title="服务地址">
+          <Row title="REST 与 MCP" desc="agent 所在机器需能访问此地址">
+            <span className="s-mono ink">{panel.url}</span>
+          </Row>
+        </Group>
       )}
       {panel?.mode === 'local' && (
-        <section className="card">
-          <h3>本机接口</h3>
-          <p className="hint">
-            没有同步服务器时，Gleeok 自己开一个端口给 agent，只认 agent 令牌，只在有连接、Gleeok 开着的时候监听。
-          </p>
-          <dl className="facts">
-            <dt>状态</dt>
-            <dd>{panel.port?.listening ? `监听 ${panel.url}` : panel.port?.error ?? '没有连接，未开启'}</dd>
-          </dl>
-          <div className="row">
-            <label className="lib-check">
-              <input type="checkbox" checked={!!panel.port?.lan} onChange={(e) => void agentCall<AgentPanel>({ op: 'setLan', lan: e.target.checked }).then(setPanel, fail)} />
-              允许其他电脑连接（tailnet / 局域网）
-            </label>
-          </div>
-          <p className="hint">默认只有这台电脑上的 agent 能连。打开后改变的是地址，已经发给 agent 的说明要用「换新令牌」重新复制。</p>
-        </section>
+        <Group title="本机接口" note="开启后地址会变化，已发出的说明需重置令牌后重新复制。">
+          <Row title="状态" desc={panel.port?.listening ? <span className="s-mono">{panel.url}</span> : panel.port?.error ? <span className="s-err">{panel.port.error}</span> : '有连接时自动开启'}>
+            <Status tone={panel.port?.listening ? 'ok' : panel.port?.error ? 'bad' : 'ro'}>{panel.port?.listening ? '监听中' : '未开启'}</Status>
+          </Row>
+          <Row title="允许其他电脑访问" desc="tailnet 或局域网内的 agent">
+            <Switch on={!!panel.port?.lan} onChange={(lan) => void agentCall<AgentPanel>({ op: 'setLan', lan }).then(setPanel, fail)} />
+          </Row>
+        </Group>
       )}
     </>
   );

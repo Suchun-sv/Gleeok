@@ -361,6 +361,8 @@ export interface GleeokApi {
   pathForFile(file: File): string;
   /** Remember a daemon's pairing link on this machine and read its projects through the relay. */
   pairPaseo(url: string): Promise<{ error?: string }>;
+  /** Read every Paseo daemon again now (after a failure, instead of waiting for the next round). */
+  syncPaseo(): Promise<void>;
   /** Folders on a daemon's machine matching a typed path (absolute). */
   paseoDirs(serverId: string, query: string): Promise<string[]>;
   /** GitHub repositories, through the daemon machine's gh. */
