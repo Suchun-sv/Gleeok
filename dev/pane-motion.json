@@ -1,0 +1,145 @@
+[
+ {
+  "action": {
+   "type": "setTheme",
+   "theme": "light"
+  }
+ },
+ {
+  "evalMain": "gleeok.createProject('栏宽').then(p => { gleeok.dispatch({ type: 'selectProject', id: p.id }); return 'project'; })"
+ },
+ {
+  "wait": 1200
+ },
+ {
+  "action": {
+   "type": "toggleEntry"
+  }
+ },
+ {
+  "wait": 500
+ },
+ {
+  "action": {
+   "type": "navigate",
+   "slot": 0,
+   "url": "https://example.com/"
+  }
+ },
+ {
+  "action": {
+   "type": "navigate",
+   "slot": 1,
+   "url": "https://example.org/"
+  }
+ },
+ {
+  "action": {
+   "type": "navigate",
+   "slot": 2,
+   "url": "https://example.net/"
+  }
+ },
+ {
+  "wait": 2500
+ },
+ {
+  "evalMain": "gleeok.getSnapshot().then(s => { const w = s.state.windows.find(x => x.role === 'main'); gleeok.dispatch({ type: 'setPaneWeights', winId: w.id, weights: { 0: 1.6, 1: 0.6, 2: 0.8 } }); return 'weights set'; })"
+ },
+ {
+  "wait": 600
+ },
+ {
+  "evalMain": "window.widths = () => [...document.querySelectorAll('.pane')].map(p => Math.round(p.getBoundingClientRect().width)).join(' / ') + ' (row ' + Math.round(document.querySelector('.panes').getBoundingClientRect().width) + ')'; 'before: ' + widths()"
+ },
+ {
+  "capture": "1-uneven"
+ },
+ {
+  "action": {
+   "type": "toggleMaximize",
+   "slot": 1
+  }
+ },
+ {
+  "wait": 120
+ },
+ {
+  "evalMain": "(() => { const p = document.querySelector('.panes > .pane'); const cs = getComputedStyle(p); return 'transition: ' + cs.transitionProperty + ' ' + cs.transitionDuration + ' | grow ' + cs.flexGrow + ' | hidden ' + document.hidden + ' | visibility ' + document.visibilityState; })()"
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "wait": 80
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "wait": 80
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "wait": 80
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "wait": 300
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "evalMain": "gleeok.getSnapshot().then(s => 'after: ' + widths() + ' | moving ' + JSON.stringify(s.panesMoving) + ' | covered ' + JSON.stringify(s.paletteWindows) + ' | content ' + Math.round(document.querySelector('.pane .content').getBoundingClientRect().width))"
+ },
+ {
+  "capture": "2-maximized"
+ },
+ {
+  "action": {
+   "type": "toggleMaximize",
+   "slot": 1
+  }
+ },
+ {
+  "wait": 120
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "wait": 80
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "wait": 80
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "wait": 80
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "wait": 300
+ },
+ {
+  "evalMain": "'t: ' + widths() + ' | transitions running: ' + document.getAnimations().filter(a => a.transitionProperty === 'flex-grow').length + ' | moving class: ' + document.querySelector('.panes').classList.contains('moving') + ' | shots: ' + document.querySelectorAll('.drop-shot').length"
+ },
+ {
+  "evalMain": "'restored: ' + widths()"
+ },
+ {
+  "capture": "3-restored"
+ }
+]

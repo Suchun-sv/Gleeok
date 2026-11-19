@@ -163,6 +163,8 @@ export interface Snapshot {
   };
   /** Windows whose pages are swapped for screenshots because the command palette is open there. */
   paletteWindows: string[];
+  /** Windows whose panes are gliding to new widths (pages shown as screenshots meanwhile). */
+  panesMoving: string[];
   /** Tabs whose page process died (tab id → reason: oom, crashed, killed…). */
   crashedTabs: Record<string, string>;
   /** Tabs whose page could not be loaded (Chromium's error code and name), being retried. */
@@ -224,7 +226,8 @@ export type Action =
   /** The new-tab page's 常用 tiles; null goes back to the built-in list. */
   | { type: 'setSuggestions'; suggestions: Suggestion[] | null }
   /** Relative widths after dragging a divider (slot → weight); `cover` hides the pages while dragging. */
-  | { type: 'setPaneWeights'; winId: string; weights: Record<number, number> }
+  /** `animate`: glide there (a double click on a divider); a drag sets them as it goes. */
+  | { type: 'setPaneWeights'; winId: string; weights: Record<number, number>; animate?: boolean }
   | { type: 'coverPages'; winId: string; active: boolean }
   | { type: 'toggleFocusExpand' }
   /** Let one pane of the main window fill it, or bring the others back. */

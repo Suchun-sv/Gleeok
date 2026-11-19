@@ -948,6 +948,7 @@ function snapshot(): Snapshot {
       entries: vault?.entries() ?? [],
     },
     paletteWindows: [...paletteWindows],
+    panesMoving: [...panesMoving.keys()],
     crashedTabs: Object.fromEntries(crashed()),
     codeTunnels: tunnels.statuses,
     failedTabs: Object.fromEntries(failed()),
@@ -1546,6 +1547,70 @@ function setPanes(names: string[]) {
 }
 
 /** Swap a window's pages for screenshots (while a pane divider is dragged) and back. */
+/** Show `count` of the panes in the main window, bringing back any that sit in windows of their own. */
+function setVisiblePanes(main: AppWindowState, count: number) {
+  const want = Math.min(Math.max(1, count), state.paneNames.length);
+  // More panes than the main window holds: bring back panes that sit in windows of their own
+  // (perhaps out of sight, on another workspace), lowest first.
+  while (main.slots.length < want) {
+    const away = state.windows.filter((w) => w.role === 'satellite').flatMap((w) => w.slots);
+    if (away.length === 0) break;
+    attachPane(Math.min(...away));
+  }
+  const next = Math.min(want, main.slots.length);
+  // Each count of panes keeps its own widths: those set for three are no use for two.
+  if (next !== main.layout.visible) {
+    const saved = { ...main.layout.weightsFor };
+    if (main.layout.weights) saved[main.layout.visible] = main.layout.weights;
+    else delete saved[main.layout.visible];
+    main.layout.weights = saved[next];
+    delete saved[next];
+    main.layout.weightsFor = Object.keys(saved).length ? saved : undefined;
+  }
+  main.layout.visible = next;
+  const visible = allVisibleSlots();
+  if (!visible.includes(state.focusedPane)) focusSlot(visible[visible.length - 1]);
+}
+
+/** How long the panes take to reach new widths (styles.css .panes.moving). */
+const PANE_MOTION_MS = 240;
+/** Windows whose panes are moving to new widths, and when their pages come back. */
+const panesMoving = new Map<string, ReturnType<typeof setTimeout>>();
+
+/**
+ * Change the panes' widths with a transition. Pages are native views and cannot follow one frame by
+ * frame, so they turn into screenshots (as for a divider drag), the boxes glide to their new widths,
+ * and the pages come back at their new size once the motion is over.
+ */
+async function movePanes(winId: string, apply: () => void) {
+  const ws = state.windows.find((w) => w.id === winId);
+  const pagesShown = currentSession()?.lifecycle === 'live' && (ws?.role !== 'main' || state.view === 'panes');
+  // Under the palette or a dialog the pages are screenshots already, and stay so after.
+  const byOverlay = paletteWindows.has(winId) && !panesMoving.has(winId);
+  if (!ws || !pagesShown || byOverlay) {
+    apply();
+    changed();
+    return;
+  }
+  if (!panesMoving.has(winId)) {
+    // Hold the place, so a second change while capturing does not capture again.
+    panesMoving.set(winId, setTimeout(() => {}, 0));
+    await sendPageImages(ws);
+    paletteWindows.add(winId);
+  }
+  apply();
+  clearTimeout(panesMoving.get(winId));
+  panesMoving.set(
+    winId,
+    setTimeout(() => {
+      panesMoving.delete(winId);
+      paletteWindows.delete(winId);
+      changed();
+    }, PANE_MOTION_MS + 60),
+  );
+  changed();
+}
+
 async function coverPages(winId: string, active: boolean) {
   const ws = state.windows.find((w) => w.id === winId);
   if (!ws) return;
@@ -1676,28 +1741,7 @@ function dispatch(action: Action) {
       return;
     case 'setVisiblePanes': {
       const main = mainWindowState();
-      const want = Math.min(Math.max(1, action.count), state.paneNames.length);
-      // More panes than the main window holds: bring back panes that sit in windows of their own
-      // (perhaps out of sight, on another workspace), lowest first.
-      while (main.slots.length < want) {
-        const away = state.windows.filter((w) => w.role === 'satellite').flatMap((w) => w.slots);
-        if (away.length === 0) break;
-        attachPane(Math.min(...away));
-      }
-      const next = Math.min(want, main.slots.length);
-      // Each count of panes keeps its own widths: those set for three are no use for two.
-      if (next !== main.layout.visible) {
-        const saved = { ...main.layout.weightsFor };
-        if (main.layout.weights) saved[main.layout.visible] = main.layout.weights;
-        else delete saved[main.layout.visible];
-        main.layout.weights = saved[next];
-        delete saved[next];
-        main.layout.weightsFor = Object.keys(saved).length ? saved : undefined;
-      }
-      main.layout.visible = next;
-      const visible = allVisibleSlots();
-      if (!visible.includes(state.focusedPane)) focusSlot(visible[visible.length - 1]);
-      changed();
+      void movePanes(main.id, () => setVisiblePanes(main, action.count));
       return;
     }
     case 'setPanes':
@@ -1720,8 +1764,13 @@ function dispatch(action: Action) {
     case 'setPaneWeights': {
       const ws = state.windows.find((w) => w.id === action.winId);
       if (!ws) return;
-      ws.layout.weights = { ...ws.layout.weights, ...action.weights };
-      changed();
+      const apply = () => (ws.layout.weights = { ...ws.layout.weights, ...action.weights });
+      // A drag has its pages covered and its panes following the pointer already.
+      if (action.animate) void movePanes(ws.id, apply);
+      else {
+        apply();
+        changed();
+      }
       return;
     }
     case 'coverPages':
@@ -1730,17 +1779,19 @@ function dispatch(action: Action) {
     case 'toggleMaximize': {
       const main = mainWindowState();
       const slot = action.slot ?? state.focusedPane;
-      if (main.maximized !== undefined) delete main.maximized;
-      else if (visibleSlots(main).length > 1 && visibleSlots(main).includes(slot)) {
-        main.maximized = slot;
-        state.focusedPane = slot;
-      }
-      changed();
+      void movePanes(main.id, () => {
+        if (main.maximized !== undefined) delete main.maximized;
+        else if (visibleSlots(main).length > 1 && visibleSlots(main).includes(slot)) {
+          main.maximized = slot;
+          state.focusedPane = slot;
+        }
+      });
       return;
     }
     case 'toggleFocusExpand':
-      mainWindowState().layout.focusExpand = !mainWindowState().layout.focusExpand;
-      changed();
+      void movePanes(mainWindowState().id, () => {
+        mainWindowState().layout.focusExpand = !mainWindowState().layout.focusExpand;
+      });
       return;
     case 'showDownload': {
       const d = downloads?.list.find((x) => x.id === action.id);

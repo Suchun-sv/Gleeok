@@ -6381,3 +6381,19 @@ main {
     animation: none;
   }
 }
+
+/* Panes gliding to new widths (maximize, layout, equal widths): main shows screenshots meanwhile
+   and puts the pages back at the end (PANE_MOTION_MS in main). */
+.panes.moving > .pane {
+  transition: flex-grow 240ms var(--ease);
+}
+
+.panes.moving > .pane .drop-shot {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panes.moving > .pane {
+    transition: none;
+  }
+}

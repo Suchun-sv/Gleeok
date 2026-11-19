@@ -97,6 +97,32 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
   useEffect(() => setLive(null), [savedWeights]);
   const weightOf = (slot: number) => live?.[slot] ?? win.layout.weights?.[slot] ?? 1;
   const focusOf = (slot: number) => (focusExpand && snap.state.focusedPane === slot ? focusRatio : 1);
+  // Flex grows that add up to less than 1 hand out only that share of the row: a maximized pane
+  // whose weight was dragged below 1 left a gap. Scaled to add up to the number of panes, the
+  // shares stay the same and the row is always filled.
+  const rawTotal = slots.reduce((sum, s) => sum + weightOf(s) * focusOf(s), 0) || 1;
+  const growOf = (slot: number) => (weightOf(slot) * focusOf(slot) * slots.length) / rawTotal;
+
+  // While the widths glide (main shows screenshots meanwhile), a pane on its way out shrinks to
+  // nothing before it goes, and one coming in grows from nothing.
+  // Decided in the same render as the new widths: a pane removed now and put back a frame later
+  // would be a new element, with no width to glide from.
+  const moving = snap.panesMoving.includes(win.id);
+  const drawnBefore = useRef(slots);
+  const drawn = moving ? [...new Set([...slots, ...drawnBefore.current])].sort((a, b) => a - b) : slots;
+  const fresh = moving ? slots.filter((s) => !drawnBefore.current.includes(s)) : [];
+  const row = useRef<HTMLDivElement>(null);
+  const [, redraw] = useState(0);
+  useLayoutEffect(() => {
+    drawnBefore.current = drawn;
+    if (fresh.length) {
+      // A pane coming in is laid out at nothing first (reading a width makes the browser do it
+      // now), then given its width: the change from that is what glides. Timers and frames are
+      // slowed in a window in the background; this is not.
+      void row.current?.offsetWidth;
+      redraw((n) => n + 1);
+    }
+  });
 
   /** Drag the divider between two panes. Pages turn into screenshots meanwhile, so the pointer is never lost to them. */
   function startResize(e: React.PointerEvent<HTMLDivElement>, left: number, right: number) {
@@ -161,15 +187,16 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
   }, [slots.join(',')]);
 
   return (
-    <div className="panes">
-      {slots.map((slot, i) => [
+    <div className={`panes ${moving ? 'moving' : ''}`} ref={row}>
+      {/* One flat list keyed by slot, so a pane keeps its element (and its width) wherever it ends up. */}
+      {drawn.flatMap((slot, i) => [
         i > 0 && (
           <div
             key={`divider-${slot}`}
             className="pane-divider"
-            onPointerDown={(e) => startResize(e, slots[i - 1], slot)}
+            onPointerDown={(e) => startResize(e, drawn[i - 1], slot)}
             onDoubleClick={() =>
-              gleeok.dispatch({ type: 'setPaneWeights', winId: win.id, weights: Object.fromEntries(slots.map((s) => [s, 1])) })
+              gleeok.dispatch({ type: 'setPaneWeights', winId: win.id, weights: Object.fromEntries(slots.map((s) => [s, 1])), animate: true })
             }
             title="拖动调整宽度，双击恢复等宽"
           />
@@ -180,14 +207,19 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
           suggestions={snap.state.suggestions ?? DEFAULT_SUGGESTIONS}
           projects={snap.projects}
           leading={i === 0 ? leading : null}
-          trailing={i === slots.length - 1 ? trailing : null}
+          trailing={i === drawn.length - 1 ? trailing : null}
           key={slot}
           slot={slot}
           pane={session.panes[slot]}
           project={project}
           focused={snap.state.focusedPane === slot}
-          grow={weightOf(slot) * focusOf(slot)}
-          boxRef={(el) => (el ? boxes.current.set(slot, el) : boxes.current.delete(slot))}
+          grow={!slots.includes(slot) || fresh.includes(slot) ? 0 : growOf(slot)}
+          boxRef={(el) => {
+            // A pane on its way out has no page to place.
+            if (!slots.includes(slot)) return;
+            if (el) boxes.current.set(slot, el);
+            else boxes.current.delete(slot);
+          }}
           command={command?.slot === slot ? command : null}
           dragging={snap.tabDragging}
           covered={snap.tabDragging || snap.paletteWindows.includes(win.id)}
