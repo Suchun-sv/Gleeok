@@ -6332,3 +6332,52 @@ main {
   font-size: var(--t-xl);
   font-weight: 600;
 }
+
+/* Address bar folded per pane: the toggle and (when folded) the window buttons at the strip's end;
+   ⌘L brings the bar back in place of the strip, which is as high, so the page stays put. */
+.tabs-trailing .tab-tools {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.tabs-trailing .tab-tools button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  color: var(--ink-3);
+}
+
+.tabs-trailing .tab-tools button:hover,
+.tabs-trailing .tab-tools button.on {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.bar-toggle {
+  color: var(--ink-3);
+}
+
+.toolbar.in-strip {
+  flex: none;
+  animation: bar-swap 140ms var(--ease);
+}
+
+@keyframes bar-swap {
+  from {
+    opacity: 0;
+  }
+}
+
+/* macOS without a sidebar: the first pane's strip holds the traffic lights, and so does the bar in its place. */
+.app.mac-inset.no-sidebar .pane:first-child .toolbar.in-strip {
+  padding-left: 76px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar.in-strip {
+    animation: none;
+  }
+}

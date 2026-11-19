@@ -160,8 +160,12 @@ function PaneSettings({ snap }: { snap: Snapshot }) {
             onChange={(on) => gleeok.dispatch({ type: 'setPointerFollows', on })}
           />
         </Row>
-        <Row title="始终显示地址栏" desc="关闭时仅焦点栏显示">
-          <Switch on={!!snap.state.toolbarAll} onChange={(on) => gleeok.dispatch({ type: 'setToolbarAll', on })} />
+        <Row title="地址栏" desc={`用标签栏右端的按钮按栏展开或收起；收起时按 ${mac ? '⌘L' : 'Ctrl+L'} 临时显示`}>
+          {(snap.state.collapsedBars?.length ?? 0) > 0 && (
+            <button className="s-btn" onClick={() => gleeok.dispatch({ type: 'expandAllBars' })}>
+              全部展开
+            </button>
+          )}
         </Row>
       </Group>
       <Group title="快捷键">

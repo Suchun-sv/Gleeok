@@ -1659,8 +1659,15 @@ function dispatch(action: Action) {
       changed();
       closeIdleCode();
       return;
-    case 'setToolbarAll':
-      state.toolbarAll = action.on || undefined;
+    case 'setBarCollapsed': {
+      const rest = (state.collapsedBars ?? []).filter((s) => s !== action.slot);
+      const next = action.collapsed ? [...rest, action.slot].sort((a, b) => a - b) : rest;
+      state.collapsedBars = next.length ? next : undefined;
+      changed();
+      return;
+    }
+    case 'expandAllBars':
+      state.collapsedBars = undefined;
       changed();
       return;
     case 'setPointerFollows':

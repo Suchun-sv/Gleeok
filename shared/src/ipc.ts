@@ -203,7 +203,8 @@ export type Action =
   /** The N-th pane on screen (main window first, then the others), 0-based. */
   | { type: 'focusPaneIndex'; index: number; follow?: boolean }
   | { type: 'setPointerFollows'; on: boolean }
-  | { type: 'setToolbarAll'; on: boolean }
+  | { type: 'setBarCollapsed'; slot: number; collapsed: boolean }
+  | { type: 'expandAllBars' }
   /** Open a code-server (by its links' origin) over SSH, or no longer (null). This machine only. */
   | { type: 'setCodeTunnel'; origin: string; tunnel: { ssh: string; remotePort: number } | null }
   | { type: 'retryCodeTunnel'; origin: string }

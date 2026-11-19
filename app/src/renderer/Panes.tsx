@@ -195,7 +195,7 @@ export function Panes({ snap, project, session, command, win, dragImages, leadin
           asleep={session.lifecycle !== 'live'}
           crashedTabs={snap.crashedTabs}
           failedTabs={snap.failedTabs}
-          toolbarAll={!!snap.state.toolbarAll}
+          barCollapsed={!!snap.state.collapsedBars?.includes(slot)}
           windowButton={
             win.role === 'satellite' ? (
               <button onClick={() => gleeok.dispatch({ type: 'attachPane', slot })} title="合并回主窗口">
@@ -255,12 +255,12 @@ interface PaneProps {
   crashedTabs: Record<string, string>;
   /** Tabs whose page could not be loaded, being retried. */
   failedTabs: Snapshot['failedTabs'];
-  /** Every pane shows its address bar, not only the one with focus (设置 → 栏). */
-  toolbarAll: boolean;
+  /** This pane's address bar is folded away (the button at the end of its tab strip). */
+  barCollapsed: boolean;
 }
 
 function PaneView(props: PaneProps) {
-  const { platform, name, suggestions, projects, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep, crashedTabs, failedTabs, toolbarAll } = props;
+  const { platform, name, suggestions, projects, slot, pane, project, focused, grow, boxRef, command, leading, trailing, windowButton, dragging, dragImage, asleep, crashedTabs, failedTabs, barCollapsed } = props;
   const tab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? pane.tabs[0];
   const isNew = tab.url === NEW_TAB_URL;
   const isTerm = isTerminalUrl(tab.url);
@@ -291,9 +291,20 @@ function PaneView(props: PaneProps) {
   };
   useEffect(() => () => clearTimeout(hideTimer.current), []);
 
+  // A folded address bar comes back for ⌘L or a toast in place of the tab strip, which is as high,
+  // so the page never moves; the strip returns when the address is left or the toast goes.
+  const [peek, setPeek] = useState(false);
+  const barAway = !!codeLink || barCollapsed;
+  const barInStrip = !codeLink && barCollapsed && (peek || !!toast);
+
   useEffect(() => setDraft(isNew ? '' : tab.url), [tab.id, tab.url]);
   useEffect(() => {
-    if (command?.type === 'focusAddress') address.current?.select();
+    if (command?.type === 'focusAddress') {
+      if (barCollapsed && !codeLink) {
+        setPeek(true);
+        requestAnimationFrame(() => address.current?.select());
+      } else address.current?.select();
+    }
     if (command?.type === 'focusNewTab') {
       if (isTerm) setTermFocus(command.seq);
       else search.current?.focus();
@@ -327,42 +338,8 @@ function PaneView(props: PaneProps) {
 
   const focusMe = () => !focused && gleeok.dispatch({ type: 'focusPane', slot });
 
-  return (
-    <section
-      className={`pane ${focused ? 'focused' : ''}`}
-      data-slot={slot}
-      style={{ flexGrow: grow }}
-      onMouseDown={focusMe}
-    >
-      {/* A 代码栏 hides its tab strip too: a thin line stays, and the strip slides in while the
-          pointer is at the pane's top (it pushes VS Code down; nothing can lie over a page). On
-          macOS the first pane's strip holds the traffic lights, so there it stays. */}
-      {stripHidden && !stripShown && !dragging ? (
-        <div className="pane-peek" onMouseEnter={showStrip} title="标签" />
-      ) : (
-      <div className="tabs" onMouseEnter={stripHidden ? showStrip : undefined} onMouseLeave={stripHidden ? hideStripSoon : undefined}>
-        {leading && <div className="tabs-leading">{leading}</div>}
-        <span className="pane-name">{name}</span>
-        {pane.tabs.map((t) => (
-          <TabButton key={t.id} tab={t} slot={slot} active={t.id === tab.id} code={codeLinkOf(project, t.url)} />
-        ))}
-        {codeLink && (
-          <button className="tab-add code-switch" onClick={() => gleeok.dispatch({ type: 'codeMenu', projectId: project.id, slot })} title="切换文件夹：这个项目的所有代码文件夹">
-            <Icon name="folder" size={14} />
-            <Icon name="chevronDown" size={12} />
-          </button>
-        )}
-        <button className="tab-add" onClick={() => gleeok.dispatch({ type: 'newTab', slot })} title="新标签页">
-          <Icon name="plus" size={15} />
-        </button>
-        {trailing && <div className="tabs-trailing">{trailing}</div>}
-      </div>
-      )}
-      {/* A 代码栏 is VS Code alone: no address bar. */}
-      {/* Only the pane with focus shows its address bar (unless 设置 → 栏 says every pane): fewer
-          controls on screen. One with something to say (a toast) or still blank keeps it. */}
-      {!codeLink && (toolbarAll || focused || toast || isNew) && (
-      <div className="toolbar">
+  const toolbar = (inStrip: boolean) => (
+      <div className={`toolbar ${inStrip ? 'in-strip' : ''}`}>
         <button onClick={() => gleeok.dispatch({ type: 'history', slot, op: 'back' })} disabled={isNew || isTerm || isLib || isPlanner} title="后退">
           <Icon name="chevronLeft" size={16} />
         </button>
@@ -381,6 +358,7 @@ function PaneView(props: PaneProps) {
           onBlur={() => {
             setDraft(isNew ? '' : tab.url);
             paste.reset();
+            setPeek(false);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && draft.trim()) {
@@ -390,6 +368,7 @@ function PaneView(props: PaneProps) {
             }
             if (e.key === 'Escape') {
               setDraft(isNew ? '' : tab.url);
+              setPeek(false);
               gleeok.dispatch({ type: 'focusPane', slot });
             }
           }}
@@ -418,9 +397,68 @@ function PaneView(props: PaneProps) {
             )}
           </span>
         )}
-        {windowButton}
+        {inStrip ? (
+          <button onMouseDown={(e) => e.preventDefault()} onClick={() => setPeek(false)} title="完成（Esc）">
+            <Icon name="x" size={14} />
+          </button>
+        ) : (
+          windowButton
+        )}
+      </div>
+  );
+
+
+  return (
+    <section
+      className={`pane ${focused ? 'focused' : ''}`}
+      data-slot={slot}
+      style={{ flexGrow: grow }}
+      onMouseDown={focusMe}
+    >
+      {/* A 代码栏 hides its tab strip too: a thin line stays, and the strip slides in while the
+          pointer is at the pane's top (it pushes VS Code down; nothing can lie over a page). On
+          macOS the first pane's strip holds the traffic lights, so there it stays. */}
+      {barInStrip ? (
+        toolbar(true)
+      ) : stripHidden && !stripShown && !dragging ? (
+        <div className="pane-peek" onMouseEnter={showStrip} title="标签" />
+      ) : (
+      <div className="tabs" onMouseEnter={stripHidden ? showStrip : undefined} onMouseLeave={stripHidden ? hideStripSoon : undefined}>
+        {leading && <div className="tabs-leading">{leading}</div>}
+        <span className="pane-name">{name}</span>
+        {pane.tabs.map((t) => (
+          <TabButton key={t.id} tab={t} slot={slot} active={t.id === tab.id} code={codeLinkOf(project, t.url)} />
+        ))}
+        {codeLink && (
+          <button className="tab-add code-switch" onClick={() => gleeok.dispatch({ type: 'codeMenu', projectId: project.id, slot })} title="切换文件夹：这个项目的所有代码文件夹">
+            <Icon name="folder" size={14} />
+            <Icon name="chevronDown" size={12} />
+          </button>
+        )}
+        <button className="tab-add" onClick={() => gleeok.dispatch({ type: 'newTab', slot })} title="新标签页">
+          <Icon name="plus" size={15} />
+        </button>
+        {/* Stays at the right end however many tabs scroll. With the address bar folded, its window
+            buttons (maximize, pop out) come along. */}
+        {(!codeLink || trailing) && (
+          <div className="tabs-trailing">
+            {barCollapsed && !codeLink && <span className="tab-tools">{windowButton}</span>}
+            {!codeLink && (
+              <button
+                className={`tab-add bar-toggle ${barCollapsed ? '' : 'on'}`}
+                onClick={() => gleeok.dispatch({ type: 'setBarCollapsed', slot, collapsed: !barCollapsed })}
+                title={barCollapsed ? `展开地址栏（收起时按 ${platform === 'darwin' ? '⌘L' : 'Ctrl+L'} 临时显示）` : '收起地址栏'}
+              >
+                <Icon name={barCollapsed ? 'panelTopOpen' : 'panelTopClose'} size={15} />
+              </button>
+            )}
+            {trailing}
+          </div>
+        )}
       </div>
       )}
+      {/* A 代码栏 is VS Code alone: no address bar. A folded one shows only in place of the strip. */}
+      {!barAway && toolbar(false)}
       {saveOpen && !isNew && (
         <SaveBar
           key={tab.id}
